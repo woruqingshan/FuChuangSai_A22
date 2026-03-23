@@ -3,12 +3,12 @@
 ## 1. 项目目标
 本项目面向 A22 情感陪护虚拟数字人系统。
 
-当前阶段的目标不是先接入真实推理服务，而是先完成本地非推理链路的搭建与验证，包括：
+当前阶段的目标是在保持本地展示与转发链路稳定的前提下，完成远端真实推理服务接入与联调，包括：
 
 - 前端展示界面
 - 本地边缘后端
 - 本地统一入口
-- 与未来远程推理服务的接口预留
+- 与远程真实推理服务的接口对接
 
 ## 2. 当前系统架构
 当前架构按三层划分：
@@ -69,7 +69,8 @@ A22/
 │  ├─ edge-backend/
 │  └─ README.md
 ├─ remote/
-│  └─ orchestrator/
+│  ├─ orchestrator/
+│  └─ qwen-server/
 ├─ shared/
 │  ├─ contracts/
 │  └─ README.md
@@ -143,33 +144,195 @@ docker compose -f compose.yaml -f compose.local.yaml ps
 docker compose -f compose.yaml -f compose.local.yaml logs -f
 ```
 
-### 7.6 远端 orchestrator（实验室服务器）
+### 7.6 远端 server 推理与 orchestrator（实验室服务器）
 
-如果远端用户**没有 Docker daemon 权限**，当前推荐使用 `uv + .venv + uvicorn`。
+当前远端代码目录位于：
 
 ```bash
-cd remote/orchestrator
-rm -rf .venv
-uv python install 3.11
-uv venv --python 3.11 .venv
+/home/zifeng/siyuan/A22/A22_wmzjbyGroup
+```
+
+当前模型目录位于：
+
+```bash
+/data/zifeng/siyuan/A22/models/Qwen2.5-7B-Instruct
+```
+
+当前推荐采用两层服务：
+
+- `remote/qwen-server`：独立运行 `vLLM`，提供 OpenAI-compatible HTTP 接口
+- `remote/orchestrator`：维持 `/chat` 契约与结构化返回，内部调用 `qwen-server`
+
+注意：
+
+- 模型权重必须放在 `/data/...`，不要放到 `/home`
+- `uv` 虚拟环境可以放在项目目录，即 `/home/...` 下
+- `remote/orchestrator/.venv` 如果已经存在，不需要重建；只有在依赖新增或 `pyproject.toml` 更新后，再执行一次同步安装即可
+- `remote/qwen-server/.venv` 建议独立创建，不要与 `orchestrator` 共用
+
+#### 7.6.1 准备 qwen-server 的 `uv` 环境
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote
+mkdir -p qwen-server
+cd qwen-server
+uv venv --python /usr/bin/python3.11 .venv
+source .venv/bin/activate
+uv pip install --upgrade pip
+uv pip install vllm
+```
+
+兼容性说明：
+
+- `vllm` 会自动安装其依赖的 `torch`、CUDA 相关 wheel 与运行时依赖
+- 如果服务器驱动版本、Python 版本或 Linux 环境与 wheel 不匹配，安装阶段或启动阶段可能出现兼容问题
+- 当前服务器为 `3 x RTX 4090 24GB`，运行 `Qwen2.5-7B-Instruct` 资源上是足够的，通常先按单卡部署即可
+- 建议在全新独立 `.venv` 中安装 `vllm`，避免与其他推理框架依赖冲突
+- 如果安装或启动异常，优先检查 `nvidia-smi`、Python 版本以及 `vllm` 安装日志
+
+#### 7.6.2 启动 Qwen 模型服务
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
+source .venv/bin/activate
+python -m vllm.entrypoints.openai.api_server \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --model /data/zifeng/siyuan/A22/models/Qwen2.5-7B-Instruct \
+  --served-model-name Qwen2.5-7B-Instruct \
+  --dtype auto \
+  --gpu-memory-utilization 0.90 \
+  --trust-remote-code
+```
+
+启动后可在服务器本机验证：
+
+```bash
+curl http://127.0.0.1:8000/v1/models
+```
+
+#### 7.6.3 准备 orchestrator 的 `uv` 环境
+
+如果 `remote/orchestrator/.venv` 已经存在，直接复用即可：
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
 source .venv/bin/activate
 uv sync
+```
+
+如果 `.venv` 尚未创建，再执行：
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
+uv venv --python /usr/bin/python3.11 .venv
+source .venv/bin/activate
+uv sync
+```
+
+当接入真实 Qwen provider 后，启动前需要设置：
+
+```bash
+export LLM_PROVIDER=qwen
+export LLM_MODEL=Qwen2.5-7B-Instruct
+export LLM_API_BASE=http://127.0.0.1:8000/v1
+export LLM_API_KEY=EMPTY
+export LLM_REQUEST_TIMEOUT_SECONDS=60
+```
+
+#### 7.6.4 启动 orchestrator 服务
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
+source .venv/bin/activate
 uv run uvicorn app:app --host 127.0.0.1 --port 9000
 ```
 
-当前已验证：
-
-- 远端 `uvicorn` 可在 `127.0.0.1:9000` 成功启动
-- 本地 SSH 隧道可访问 `127.0.0.1:19000/health`
-- 本地 SSH 隧道可访问 `127.0.0.1:19000/chat`
-
-如果远端后续拿到 Docker 权限，再切回：
+启动后可在服务器本机验证：
 
 ```bash
-docker compose -f compose.yaml -f compose.remote.yaml up -d orchestrator
+curl http://127.0.0.1:9000/health
 ```
 
+说明：
+
+- `local/edge-backend` 访问的是 `remote/orchestrator`
+- `remote/orchestrator` 再向 `qwen-server` 发起模型调用
+- 因此全链路运行时，服务器上必须同时启动 `qwen-server` 和 `orchestrator`
+
 HTTP 契约见 `shared/contracts/api_v1.md`，远端详细说明见 `remote/orchestrator/README.md`。
+
+### 7.7 当前版本全链路运行指令
+
+当前版本完整链路不是 3 步，而是 4 步：
+
+1. WSL 侧启动本地 Docker 服务
+2. 服务器侧启动 `qwen-server`
+3. 服务器侧启动 `orchestrator`
+4. WSL 侧建立 SSH 隧道
+
+#### 7.7.1 WSL 侧启动本地服务
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup
+docker compose -f compose.yaml -f compose.local.yaml up -d
+```
+
+#### 7.7.2 服务器侧启动模型服务
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
+source .venv/bin/activate
+python -m vllm.entrypoints.openai.api_server \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --model /data/zifeng/siyuan/A22/models/Qwen2.5-7B-Instruct \
+  --served-model-name Qwen2.5-7B-Instruct \
+  --dtype auto \
+  --gpu-memory-utilization 0.90 \
+  --trust-remote-code
+```
+
+#### 7.7.3 服务器侧启动 orchestrator
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
+source .venv/bin/activate
+export LLM_PROVIDER=qwen
+export LLM_MODEL=Qwen2.5-7B-Instruct
+export LLM_API_BASE=http://127.0.0.1:8000/v1
+export LLM_API_KEY=EMPTY
+export LLM_REQUEST_TIMEOUT_SECONDS=60
+uv run uvicorn app:app --host 127.0.0.1 --port 9000
+```
+
+#### 7.7.4 WSL 侧建立 SSH 隧道
+
+```bash
+ssh -N -L 19000:127.0.0.1:9000 <server_user>@<server_host>
+```
+
+其中：
+
+- 本地 `19000` 映射到远端 `orchestrator` 的 `9000`
+- 本地应用继续通过 `CLOUD_API_BASE=http://127.0.0.1:19000` 访问远端服务
+
+#### 7.7.5 全链路验证
+
+WSL 侧验证远端链路：
+
+```bash
+curl http://127.0.0.1:19000/health
+curl -X POST http://127.0.0.1:19000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"session_id":"demo-001","turn_id":1,"user_text":"hello","input_type":"text"}'
+```
+
+然后通过浏览器访问：
+
+```bash
+http://localhost
+```
 
 ## 8. 已有 yml 情况下的复现步骤
 如果仓库中已经存在 `compose.yaml` 和 `compose.local.yaml`，其他开发者复现本地环境时只需要完成以下操作。
@@ -229,7 +392,7 @@ curl -X POST http://localhost/api/chat -H "Content-Type: application/json" \
 - 当前完整链路推荐通过 `nginx` 的 `http://localhost` 来访问
 
 ## 9. 当前已完成内容
-当前本地骨架已经完成以下验证：
+当前版本已经完成以下验证：
 
 - `frontend` 容器已启动
 - `edge-backend` 容器已启动
@@ -238,14 +401,15 @@ curl -X POST http://localhost/api/chat -H "Content-Type: application/json" \
 - `http://localhost/api/chat` 可访问
 - `docker compose` 已可作为本地多服务管理入口
 - 远端 `remote/orchestrator` 已可通过 `uv` 运行
+- 远端 `qwen-server` 已可作为独立模型服务部署
 - SSH 隧道下的 `http://127.0.0.1:19000/health` 可访问
 - SSH 隧道下的 `http://127.0.0.1:19000/chat` 可访问
 
 补充说明：
 
 - 当前已经完成“本地到远端 orchestrator”的通信验证
-- 当前 `local/edge-backend` 仍然是**本地 mock 返回**
-- 因此完整业务链路 `frontend -> edge-backend -> remote/orchestrator -> frontend` 还没有全部接上
+- 当前远端推理采用“`orchestrator -> qwen-server`”两层结构
+- 当前目标是在不破坏 `/chat` 契约的前提下，将真实 Qwen provider 接入 `remote/orchestrator`
 
 ## 10. 下一步开发方向
 下一阶段将基于当前骨架继续补齐以下功能：
@@ -255,4 +419,5 @@ curl -X POST http://localhost/api/chat -H "Content-Type: application/json" \
 - 前端输入信号接入与消息状态管理
 - 消息格式、发送接收接口与边缘侧数据处理
 - 数字人形象控制与接收消息后的动作驱动逻辑
-- 后续逐步替换远端 mock orchestrator 为真实推理模块
+- 完成 `remote/orchestrator` 中 Qwen provider 的真实接入
+- 保持 `/chat` 返回结构与现有 local/remote 协议兼容
