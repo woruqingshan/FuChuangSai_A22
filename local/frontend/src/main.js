@@ -18,6 +18,7 @@ const state = {
   facialExpression: "neutral",
   headMotion: "steady",
   audioStatus: "Audio idle",
+  isSending: false,
 };
 
 const avatarPanel = createAvatarPanel();
@@ -45,16 +46,22 @@ app.innerHTML = `
       </div>
     </header>
     <main class="workspace-grid">
-      <section class="avatar-column panel"></section>
-      <section class="chat-column panel"></section>
-      <section class="control-column panel"></section>
+      <section class="left-column">
+        <section class="chat-column panel"></section>
+        <section class="control-column panel"></section>
+      </section>
+      <section class="right-column">
+        <section class="avatar-column panel"></section>
+        <section class="status-column panel"></section>
+      </section>
     </main>
   </div>
 `;
 
-app.querySelector(".avatar-column").appendChild(avatarPanel.element);
 app.querySelector(".chat-column").appendChild(chatPanel.element);
-app.querySelector(".control-column").append(statusBar.element, inputBar.element);
+app.querySelector(".control-column").append(inputBar.element);
+app.querySelector(".avatar-column").appendChild(avatarPanel.element);
+app.querySelector(".status-column").append(statusBar.element);
 
 chatPanel.addSystemMessage("Local UI is ready. Send text or record a short audio clip to start.");
 syncStatus({
@@ -63,6 +70,11 @@ syncStatus({
 });
 
 async function handleSend({ text, audio }) {
+  if (state.isSending) {
+    chatPanel.addSystemMessage("A request is already in progress. Please wait for the current reply.");
+    return false;
+  }
+
   const hasText = Boolean(text);
   const hasAudio = Boolean(audio?.audio_base64);
 
@@ -81,6 +93,8 @@ async function handleSend({ text, audio }) {
     meta: `Turn ${turnId} · ${inputMode}`,
   });
 
+  state.isSending = true;
+  inputBar.setBusy(true);
   chatPanel.setLoading(true);
   syncStatus({
     transport: "Sending request to local edge-backend",
@@ -128,6 +142,8 @@ async function handleSend({ text, audio }) {
     });
     return false;
   } finally {
+    state.isSending = false;
+    inputBar.setBusy(false);
     chatPanel.setLoading(false);
   }
 }

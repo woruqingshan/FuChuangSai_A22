@@ -21,7 +21,8 @@ export async function sendChatRequest(payload) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.detail || "The server returned an unexpected error.");
+    const detail = data.detail || `The server returned HTTP ${response.status}.`;
+    throw new Error(detail);
   }
 
   return data;

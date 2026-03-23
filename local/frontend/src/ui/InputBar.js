@@ -52,6 +52,7 @@ export function createInputBar({ onSend, onStatusChange }) {
   const form = element.querySelector(".input-form");
   const messageBox = element.querySelector("#message-box");
   const recordButton = element.querySelector('[data-role="record-button"]');
+  const sendButton = element.querySelector('[data-role="send-button"]');
   const attachment = element.querySelector('[data-role="audio-attachment"]');
 
   let mediaRecorder = null;
@@ -109,6 +110,13 @@ export function createInputBar({ onSend, onStatusChange }) {
     recordButton.textContent = "Start audio capture";
   }
 
+  function setBusy(isBusy) {
+    messageBox.disabled = isBusy;
+    recordButton.disabled = isBusy;
+    sendButton.disabled = isBusy;
+    sendButton.textContent = isBusy ? "Sending..." : "Send turn";
+  }
+
   recordButton.addEventListener("click", async () => {
     try {
       if (isRecording) {
@@ -145,5 +153,6 @@ export function createInputBar({ onSend, onStatusChange }) {
 
   return {
     element,
+    setBusy,
   };
 }

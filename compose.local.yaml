@@ -23,7 +23,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      CLOUD_API_BASE: http://replace-with-remote-server
+      CLOUD_API_BASE: http://host.docker.internal:19000
       LOG_DIR: /logs
       DATA_DIR: /data
     networks:

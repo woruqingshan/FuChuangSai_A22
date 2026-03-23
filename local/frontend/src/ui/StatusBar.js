@@ -4,7 +4,7 @@ export function createStatusBar() {
   element.innerHTML = `
     <div class="panel-heading">
       <div>
-        <p class="eyebrow">C · Status</p>
+        <p class="eyebrow">A · Status</p>
         <h2>Edge / Remote Runtime</h2>
       </div>
       <span class="chip">Session-aware</span>
