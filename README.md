@@ -140,17 +140,27 @@ docker compose -f compose.yaml -f compose.local.yaml ps
 docker compose -f compose.yaml -f compose.local.yaml logs -f
 ```
 
-### 7.6 远端 orchestrator（可选，在服务器上）
+### 7.6 远端 orchestrator（实验室服务器）
 
-当远端已安装 Docker 时，可在**服务器项目根目录**执行：
+如果远端用户**没有 Docker daemon 权限**，当前推荐使用 `uv + .venv + uvicorn`。
+
+```bash
+cd remote/orchestrator
+rm -rf .venv
+uv python install 3.11
+uv venv --python 3.11 .venv
+source .venv/bin/activate
+uv sync
+uv run uvicorn app:app --host 127.0.0.1 --port 9000
+```
+
+如果远端后续拿到 Docker 权限，再切回：
 
 ```bash
 docker compose -f compose.yaml -f compose.remote.yaml up -d orchestrator
 ```
 
-无 Docker 时可用 `venv + uvicorn`，见 `remote/orchestrator/README.md`。
-
-HTTP 契约见 `shared/contracts/api_v1.md`。
+HTTP 契约见 `shared/contracts/api_v1.md`，远端详细说明见 `remote/orchestrator/README.md`。
 
 ## 8. 已有 yml 情况下的复现步骤
 如果仓库中已经存在 `compose.yaml` 和 `compose.local.yaml`，其他开发者复现本地环境时只需要完成以下操作。

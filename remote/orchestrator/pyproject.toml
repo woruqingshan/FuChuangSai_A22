@@ -1,0 +1,13 @@
+[project]
+name = "a22-orchestrator"
+version = "0.1.0"
+description = "Remote orchestrator service for A22"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "pydantic",
+]
+
+[tool.uv]
+package = false
