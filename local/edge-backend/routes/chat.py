@@ -29,6 +29,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             "turn_id": turn_id,
             "input_type": request.input_type,
             "has_audio": bool(request.audio_base64),
+            "has_turn_time_window": bool(request.turn_time_window),
             "user_text_length": len((request.user_text or "").strip()),
         },
     )
@@ -60,6 +61,9 @@ async def chat(request: ChatRequest) -> ChatResponse:
             "has_audio": bool(remote_request.audio_base64),
             "client_asr_text": remote_request.client_asr_text,
             "resolved_user_text": remote_request.user_text,
+            "turn_window_id": (
+                remote_request.turn_time_window.window_id if remote_request.turn_time_window else None
+            ),
             "speech_tags": (
                 remote_request.speech_features.emotion_tags if remote_request.speech_features else []
             ),

@@ -15,9 +15,11 @@ for candidate in SHARED_PATH_CANDIDATES:
 from contracts.schemas import (  # noqa: E402
     AudioMetaSchema,
     AvatarActionSchema,
+    AvatarOutputSchema,
     ChatResponseSchema,
     ErrorResponseSchema,
     SpeechFeaturesSchema,
+    TurnTimeWindowSchema,
     VisionFeaturesSchema,
 )
 
@@ -31,6 +33,10 @@ class SpeechFeatures(SpeechFeaturesSchema):
 
 
 class VisionFeatures(VisionFeaturesSchema):
+    pass
+
+
+class TurnTimeWindow(TurnTimeWindowSchema):
     pass
 
 
@@ -51,6 +57,7 @@ class ChatRequest(BaseModel):
     audio_meta: AudioMeta | None = None
     speech_features: SpeechFeatures | None = None
     vision_features: VisionFeatures | None = None
+    turn_time_window: TurnTimeWindow | None = None
     alignment_mode: str | None = None
 
 
@@ -71,6 +78,7 @@ class RemoteChatRequest(BaseModel):
     audio_meta: AudioMeta | None = None
     speech_features: SpeechFeatures | None = None
     vision_features: VisionFeatures | None = None
+    turn_time_window: TurnTimeWindow | None = None
     alignment_mode: str | None = None
 
 
@@ -78,8 +86,13 @@ class AvatarAction(AvatarActionSchema):
     pass
 
 
+class AvatarOutput(AvatarOutputSchema):
+    pass
+
+
 class ChatResponse(ChatResponseSchema):
     avatar_action: AvatarAction
+    avatar_output: AvatarOutput | None = None
 
 
 class ErrorResponse(ErrorResponseSchema):

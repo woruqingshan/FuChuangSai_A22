@@ -15,10 +15,12 @@ for candidate in SHARED_PATH_CANDIDATES:
 from contracts.schemas import (  # noqa: E402
     AudioMetaSchema,
     AvatarActionSchema,
+    AvatarOutputSchema,
     ChatRequestSchema,
     ChatResponseSchema,
     ErrorResponseSchema,
     SpeechFeaturesSchema,
+    TurnTimeWindowSchema,
     VisionFeaturesSchema,
 )
 
@@ -35,10 +37,15 @@ class VisionFeatures(VisionFeaturesSchema):
     pass
 
 
+class TurnTimeWindow(TurnTimeWindowSchema):
+    pass
+
+
 class ChatRequest(ChatRequestSchema):
     audio_meta: AudioMeta | None = None
     speech_features: SpeechFeatures | None = None
     vision_features: VisionFeatures | None = None
+    turn_time_window: TurnTimeWindow | None = None
 
 
 class ContextMessage(BaseModel):
@@ -52,8 +59,13 @@ class AvatarAction(AvatarActionSchema):
     pass
 
 
+class AvatarOutput(AvatarOutputSchema):
+    pass
+
+
 class ChatResponse(ChatResponseSchema):
     avatar_action: AvatarAction
+    avatar_output: AvatarOutput | None = None
     reply_audio_url: str | None = None
 
 

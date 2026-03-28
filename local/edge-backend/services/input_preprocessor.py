@@ -60,5 +60,6 @@ def normalize_chat_request(
         audio_meta=audio_meta_payload,
         speech_features=speech_features_payload,
         vision_features=request.vision_features,
+        turn_time_window=request.turn_time_window,
         alignment_mode=alignment_mode,
     )

@@ -69,6 +69,19 @@ syncStatus({
   audioStatus: "Audio idle",
 });
 
+function buildTextTurnTimeWindow(turnId) {
+  const now = Date.now();
+  return {
+    window_id: `${state.sessionId}-turn-${turnId}`,
+    source_clock: "browser_epoch_ms",
+    transport_mode: "http_turn",
+    sequence_id: turnId,
+    capture_started_at_ms: now,
+    capture_ended_at_ms: now,
+    window_duration_ms: 0,
+  };
+}
+
 async function handleSend({ text, audio }) {
   if (state.isSending) {
     chatPanel.addSystemMessage("A request is already in progress. Please wait for the current reply.");
@@ -110,6 +123,7 @@ async function handleSend({ text, audio }) {
       user_text: hasText ? text : undefined,
       input_type: inputMode,
       client_ts: Math.floor(Date.now() / 1000),
+      turn_time_window: hasAudio ? audio.turn_time_window : buildTextTurnTimeWindow(turnId),
       ...(hasAudio ? audio : {}),
     });
 

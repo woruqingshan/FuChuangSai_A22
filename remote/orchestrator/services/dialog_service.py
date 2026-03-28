@@ -51,6 +51,13 @@ class DialogService:
             )
         )
         reply_audio_url = await tts_client.synthesize(llm_result.reply_text)
+        avatar_output = policy_service.build_avatar_output(
+            request=request,
+            emotion_style=emotion_style,
+            avatar_action=avatar_action,
+            reply_text=llm_result.reply_text,
+            reply_audio_url=reply_audio_url,
+        )
 
         session_state.append_message(
             request.session_id,
@@ -72,6 +79,7 @@ class DialogService:
             reply_text=llm_result.reply_text,
             emotion_style=emotion_style,
             avatar_action=avatar_action,
+            avatar_output=avatar_output,
             server_ts=int(datetime.now(timezone.utc).timestamp()),
             input_mode=request.input_type,
             reply_audio_url=reply_audio_url,
@@ -80,6 +88,7 @@ class DialogService:
             reasoning_hint=llm_result.reasoning_hint
             or aligned_turn.alignment_summary
             or prompt_builder.build_reasoning_hint(context_messages),
+            turn_time_window=request.turn_time_window,
             alignment_mode=aligned_turn.alignment_mode,
         )
         orchestrator_observability.log_chat_response(

@@ -76,6 +76,13 @@ function arrayBufferToBase64(buffer) {
   return window.btoa(binary);
 }
 
+function buildTurnWindowId(startedAt) {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `turn-${crypto.randomUUID()}`;
+  }
+  return `turn-${startedAt}`;
+}
+
 export function createAudioTurnRecorder({ speechLang = "zh-CN" } = {}) {
   const speechHintRecognizer = createBrowserSpeechHintRecognizer({ lang: speechLang });
 
@@ -176,17 +183,29 @@ export function createAudioTurnRecorder({ speechLang = "zh-CN" } = {}) {
       const wavBuffer = createWavBuffer(merged, sampleRate, 1);
       const transcriptHint = await transcriptPromise;
       const durationSeconds = totalFrames > 0 ? totalFrames / sampleRate : 0;
+      const stoppedAt = Date.now();
+      const windowDurationMs = Math.max(Math.round(durationSeconds * 1000), stoppedAt - startedAt);
 
       await cleanup();
 
       return {
         audio_base64: arrayBufferToBase64(wavBuffer),
         audio_format: "wav",
-        audio_duration_ms: Math.max(Math.round(durationSeconds * 1000), Date.now() - startedAt),
+        audio_duration_ms: windowDurationMs,
         audio_sample_rate_hz: sampleRate,
         audio_channels: 1,
         client_asr_text: transcriptHint || undefined,
         client_asr_source: transcriptHint ? "browser_speech_api" : undefined,
+        turn_time_window: {
+          window_id: buildTurnWindowId(startedAt),
+          source_clock: "browser_epoch_ms",
+          transport_mode: "http_turn",
+          capture_started_at_ms: startedAt,
+          capture_ended_at_ms: stoppedAt,
+          audio_started_at_ms: startedAt,
+          audio_ended_at_ms: stoppedAt,
+          window_duration_ms: windowDurationMs,
+        },
       };
     },
     async cancel() {
