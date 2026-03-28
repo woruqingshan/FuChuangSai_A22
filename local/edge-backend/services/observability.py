@@ -41,6 +41,11 @@ class EdgeObservability:
                 "cloud_api_base": settings.cloud_api_base,
                 "request_timeout_seconds": settings.request_timeout_seconds,
                 "local_asr_provider": settings.local_asr_provider,
+                "local_asr_model": settings.local_asr_model,
+                "local_asr_model_path": settings.local_asr_model_path,
+                "local_asr_language": settings.local_asr_language,
+                "local_asr_device": settings.local_asr_device,
+                "local_asr_warmup_enabled": settings.local_asr_warmup_enabled,
                 "log_dir": settings.log_dir,
             },
         )
@@ -67,6 +72,89 @@ class EdgeObservability:
             "chat_request_prepared",
             {
                 "request_id": request_id,
+                **payload,
+            },
+        )
+
+    def log_asr_provider_error(
+        self,
+        request_id: str,
+        *,
+        provider: str,
+        detail: str,
+        error_type: str,
+        latency_ms: int,
+        payload: dict,
+    ) -> None:
+        self._events_logger.emit(
+            "asr_provider_error",
+            {
+                "request_id": request_id,
+                "provider": provider,
+                "error_type": error_type,
+                "detail": detail,
+                "latency_ms": latency_ms,
+                **payload,
+            },
+        )
+
+    def log_asr_transcription(
+        self,
+        request_id: str,
+        *,
+        provider: str,
+        source: str,
+        confidence: float | None,
+        latency_ms: int,
+        payload: dict,
+    ) -> None:
+        self._events_logger.emit(
+            "asr_transcription",
+            {
+                "request_id": request_id,
+                "provider": provider,
+                "source": source,
+                "confidence": confidence,
+                "latency_ms": latency_ms,
+                **payload,
+            },
+        )
+
+    def log_asr_warmup_start(self, *, provider: str, payload: dict) -> None:
+        self._events_logger.emit(
+            "asr_warmup_start",
+            {
+                "provider": provider,
+                **payload,
+            },
+        )
+
+    def log_asr_warmup_ready(self, *, provider: str, latency_ms: int, payload: dict) -> None:
+        self._events_logger.emit(
+            "asr_warmup_ready",
+            {
+                "provider": provider,
+                "latency_ms": latency_ms,
+                **payload,
+            },
+        )
+
+    def log_asr_warmup_error(
+        self,
+        *,
+        provider: str,
+        detail: str,
+        error_type: str,
+        latency_ms: int,
+        payload: dict,
+    ) -> None:
+        self._events_logger.emit(
+            "asr_warmup_error",
+            {
+                "provider": provider,
+                "error_type": error_type,
+                "detail": detail,
+                "latency_ms": latency_ms,
                 **payload,
             },
         )

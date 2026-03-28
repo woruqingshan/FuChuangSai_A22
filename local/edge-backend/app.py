@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from routes.chat import router as chat_router
+from services.audio.transcription_service import speech_recognition_service
 from routes.health import router as health_router
 from services.observability import edge_observability
 
@@ -12,6 +13,7 @@ app.include_router(chat_router)
 @app.on_event("startup")
 async def on_startup() -> None:
     edge_observability.log_run_start()
+    speech_recognition_service.warmup()
 
 
 @app.on_event("shutdown")

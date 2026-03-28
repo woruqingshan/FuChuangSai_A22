@@ -23,7 +23,11 @@ services:
       - ./logs:/workspace-logs
       - a22_logs:/logs
       - a22_data:/data
-    command: bash -lc "pip install -r requirements.txt && uvicorn app:app --host 0.0.0.0 --port 8000"
+    command: >-
+      bash -lc "pip install --no-cache-dir
+      --extra-index-url $$PYTORCH_WHEEL_INDEX
+      -r requirements.txt
+      && uvicorn app:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     environment:
@@ -35,6 +39,8 @@ services:
       LOCAL_ASR_MODEL_PATH: /external-downloads/Belle-whisper-large-v3-turbo-zh
       LOCAL_ASR_LANGUAGE: zh
       LOCAL_ASR_DEVICE: cuda:0
+      LOCAL_ASR_WARMUP_ENABLED: "true"
+      PYTORCH_WHEEL_INDEX: https://download.pytorch.org/whl/cu126
       CUDA_VISIBLE_DEVICES: "0"
     networks:
       - a22-net

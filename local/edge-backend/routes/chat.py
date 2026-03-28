@@ -38,6 +38,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             request=request,
             session_id=session_id,
             turn_id=turn_id,
+            request_id=request_id,
         )
     except ValueError as exc:
         edge_observability.log_chat_error(
@@ -57,6 +58,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
             "text_source": remote_request.text_source,
             "alignment_mode": remote_request.alignment_mode,
             "has_audio": bool(remote_request.audio_base64),
+            "client_asr_text": remote_request.client_asr_text,
+            "resolved_user_text": remote_request.user_text,
             "speech_tags": (
                 remote_request.speech_features.emotion_tags if remote_request.speech_features else []
             ),

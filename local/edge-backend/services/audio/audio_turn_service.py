@@ -15,6 +15,7 @@ class AudioTurnService:
         audio_channels: int | None,
         client_asr_text: str | None,
         client_asr_source: str | None,
+        request_id: str | None = None,
     ) -> ProcessedAudioTurn:
         audio_bytes = decode_audio_base64(audio_base64)
         normalized_format = (audio_format or "wav").strip().lower() or "wav"
@@ -39,6 +40,7 @@ class AudioTurnService:
             audio_meta=base_audio_meta,
             client_text_hint=client_asr_text,
             client_text_source=client_asr_source,
+            request_id=request_id,
         )
 
         if decoded_audio is not None:

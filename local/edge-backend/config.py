@@ -15,6 +15,12 @@ class Settings:
         self.local_asr_language = os.getenv("LOCAL_ASR_LANGUAGE", "zh").strip() or "zh"
         self.local_asr_device = os.getenv("LOCAL_ASR_DEVICE", "cuda:0").strip() or "cuda:0"
         self.local_asr_compute_type = os.getenv("LOCAL_ASR_COMPUTE_TYPE", "int8").strip() or "int8"
+        self.local_asr_warmup_enabled = os.getenv("LOCAL_ASR_WARMUP_ENABLED", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
 
 
 settings = Settings()

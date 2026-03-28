@@ -6,6 +6,7 @@ def normalize_chat_request(
     request: ChatRequest,
     session_id: str,
     turn_id: int,
+    request_id: str | None = None,
 ) -> RemoteChatRequest:
     user_text = (request.user_text or "").strip()
     has_audio = bool(request.audio_base64)
@@ -26,6 +27,7 @@ def normalize_chat_request(
             audio_channels=request.audio_channels,
             client_asr_text=request.client_asr_text,
             client_asr_source=request.client_asr_source,
+            request_id=request_id,
         )
         input_type = "audio"
         user_text = processed_audio.user_text
