@@ -48,3 +48,4 @@ class HealthResponse(BaseModel):
     tts_mode: str
     tts_model: str
     tts_device: str
+    tts_speaker_id: str

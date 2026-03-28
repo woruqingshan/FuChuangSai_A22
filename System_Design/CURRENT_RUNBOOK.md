@@ -26,6 +26,18 @@ The current runtime chain is:
 7. remote `avatar-service` generates TTS / viseme / expression / motion outputs
 8. remote response returns to local backend and then to the frontend renderer
 
+## Recommended GPU placement
+
+With the current real model choices, the recommended remote GPU mapping is:
+
+1. `GPU0` -> `qwen-server`
+2. `GPU1` -> `speech-service` and `avatar-service`
+3. `GPU2` -> `vision-service`
+
+This is the recommended layout for stable demo latency. If `vision-service`
+must share `GPU1`, the chain can still run, but latency and memory pressure
+will increase significantly.
+
 ## Start order
 
 Use this order:
@@ -87,6 +99,7 @@ Notes:
 - `<cuda_id>` can be `0`, `1`, or `2`
 - this selects a single physical GPU for the vLLM process
 - the current 7B model can run as a single-GPU deployment
+- recommended value here is `0`
 
 Verify on the server:
 
@@ -168,9 +181,11 @@ Prepare and start:
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/vision-service
 uv venv --python /usr/bin/python3.11 .venv
 source .venv/bin/activate
-uv pip install -r requirements.txt
+uv pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu126
+export VISION_EXTRACTOR_MODE=qwen2_5_vl
 export VISION_MODEL=/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
-export VISION_DEVICE=cuda:1
+export CUDA_VISIBLE_DEVICES=2
+export VISION_DEVICE=cuda:0
 uvicorn app:app --host 127.0.0.1 --port 19200
 ```
 
@@ -188,10 +203,25 @@ Prepare and start:
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/avatar-service
 uv venv --python /usr/bin/python3.11 .venv
 source .venv/bin/activate
-uv pip install -r requirements.txt
+uv pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu126
+git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git /data/zifeng/siyuan/A22/models/CosyVoice
+export TTS_MODE=cosyvoice2_sft
 export TTS_MODEL=/data/zifeng/siyuan/A22/models/CosyVoice2-0.5B
-export TTS_DEVICE=cuda:1
+export CUDA_VISIBLE_DEVICES=1
+export TTS_DEVICE=cuda:0
+export TTS_REPO_PATH=/data/zifeng/siyuan/A22/models/CosyVoice
 uvicorn app:app --host 127.0.0.1 --port 19300
+```
+
+Notes:
+
+- `CosyVoice2-0.5B` weights alone are not sufficient; `avatar-service` also
+  needs the CosyVoice runtime codebase available under `TTS_REPO_PATH`
+- after cloning CosyVoice, ensure submodules are initialized:
+
+```bash
+cd /data/zifeng/siyuan/A22/models/CosyVoice
+git submodule update --init --recursive
 ```
 
 Verify:
@@ -241,6 +271,17 @@ observed on:
 - `speech-service /transcribe`
 - `vision-service /extract` when camera frames are attached
 - `avatar-service /generate` after the LLM reply is produced
+
+The port chain is:
+
+- browser -> `nginx:80`
+- `nginx` -> `edge-backend:8000`
+- local `edge-backend` -> `http://host.docker.internal:19000/chat`
+- SSH tunnel local `19000` -> remote `127.0.0.1:19000`
+- remote `orchestrator:19000` -> `speech-service:19100`
+- remote `orchestrator:19000` -> `vision-service:19200`
+- remote `orchestrator:19000` -> `avatar-service:19300`
+- remote `orchestrator:19000` -> `qwen-server:8000/v1`
 
 Watch the local logs:
 

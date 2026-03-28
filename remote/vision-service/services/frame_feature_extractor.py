@@ -2,6 +2,7 @@ import json
 
 from config import settings
 from models import ExtractRequest, ExtractResponse, VisionFeatures
+from services.qwen_vl_runtime import qwen_vl_runtime
 from services.storage import vision_storage
 
 
@@ -30,14 +31,17 @@ class FrameFeatureExtractor:
         if video_meta and video_meta.width and video_meta.height:
             summary_parts.append(f"{video_meta.width}x{video_meta.height}")
 
-        vision_features = VisionFeatures(
-            scene_summary=", ".join(summary_parts) or "video turn captured",
-            attention_target="camera",
-            motion_level=motion_level,
-            emotion_tags=[],
-            source="remote_vision_service",
-            frame_count=processed_frame_count or (video_meta.sampled_frame_count if video_meta else 0),
-        )
+        if settings.extractor_mode == "qwen2_5_vl":
+            vision_features = qwen_vl_runtime.extract(request)
+        else:
+            vision_features = VisionFeatures(
+                scene_summary=", ".join(summary_parts) or "video turn captured",
+                attention_target="camera",
+                motion_level=motion_level,
+                emotion_tags=[],
+                source="remote_vision_service",
+                frame_count=processed_frame_count or (video_meta.sampled_frame_count if video_meta else 0),
+            )
 
         if video_meta:
             serialized_video_meta = video_meta.model_dump() if hasattr(video_meta, "model_dump") else video_meta.dict()

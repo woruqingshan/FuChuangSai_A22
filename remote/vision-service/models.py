@@ -53,3 +53,4 @@ class HealthResponse(BaseModel):
     vision_model: str
     vision_device: str
     frame_input_mode: str
+    vision_dtype: str

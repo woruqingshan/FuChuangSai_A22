@@ -19,5 +19,15 @@ class AvatarStorage:
         output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return output_path
 
+    def persist_audio(self, *, session_id: str, turn_id: int, audio_bytes: bytes) -> Path:
+        output_path = self._turn_dir(session_id, turn_id) / "reply.wav"
+        output_path.write_bytes(audio_bytes)
+        return output_path
+
+    def persist_runtime_error(self, *, session_id: str, turn_id: int, payload: dict) -> Path:
+        output_path = self._turn_dir(session_id, turn_id) / "tts_runtime_error.json"
+        output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return output_path
+
 
 avatar_storage = AvatarStorage()

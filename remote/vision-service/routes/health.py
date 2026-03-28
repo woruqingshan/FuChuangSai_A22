@@ -14,4 +14,5 @@ async def health() -> HealthResponse:
         vision_model=settings.vision_model,
         vision_device=settings.vision_device,
         frame_input_mode=settings.frame_input_mode,
+        vision_dtype=settings.vision_dtype,
     )

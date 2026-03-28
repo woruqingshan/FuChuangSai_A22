@@ -25,13 +25,16 @@ BELLE Whisper ASR
 
 ```text
 Vision model
-/data/zifeng/siyuan/A22/models/<vision-model-name>
+/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
 
 2D avatar behavior model
 /data/zifeng/siyuan/A22/models/<avatar-model-name>
 
 TTS model
-/data/zifeng/siyuan/A22/models/<tts-model-name>
+/data/zifeng/siyuan/A22/models/CosyVoice2-0.5B
+
+CosyVoice runtime repository
+/data/zifeng/siyuan/A22/models/CosyVoice
 ```
 
 ### Runtime cache and temporary files
@@ -218,15 +221,15 @@ Primary deployment assumption for the current server:
 ```text
 GPU0: qwen-server
 GPU1: speech-service + avatar-service
-GPU2: reserved
+GPU2: vision-service
 ```
 
 Practical note:
 
-- `vision-service` can initially share `GPU1` or run on the reserved card later
-  if latency becomes unacceptable.
-- If avatar generation is heavier than expected, the reserved GPU should be
-  reassigned to `avatar-service`.
+- this is the recommended deployment after `Qwen2.5-VL-7B-Instruct` and
+  `CosyVoice2-0.5B` are both active in the remote stack
+- if the server must temporarily keep `GPU2` unused, `vision-service` can
+  share `GPU1`, but memory pressure and latency will increase
 
 ## Core Shared Contracts
 

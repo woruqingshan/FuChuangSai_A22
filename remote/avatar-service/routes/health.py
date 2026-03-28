@@ -15,4 +15,5 @@ async def health() -> HealthResponse:
         tts_mode=settings.tts_mode,
         tts_model=settings.tts_model,
         tts_device=settings.tts_device,
+        tts_speaker_id=settings.tts_speaker_id,
     )

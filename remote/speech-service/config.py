@@ -12,7 +12,7 @@ class Settings:
             or "/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh"
         )
         self.asr_language = os.getenv("ASR_LANGUAGE", "zh").strip() or "zh"
-        self.asr_device = os.getenv("ASR_DEVICE", "cuda:1").strip() or "cuda:1"
+        self.asr_device = os.getenv("ASR_DEVICE", "cuda:0").strip() or "cuda:0"
         self.asr_warmup_enabled = os.getenv("ASR_WARMUP_ENABLED", "true").strip().lower() in {
             "1",
             "true",
