@@ -9,18 +9,20 @@ export function createStatusBar() {
       </div>
       <span class="chip">Session-aware</span>
     </div>
-    <dl class="status-grid">
-      <div><dt>Session</dt><dd data-role="session-id"></dd></div>
-      <div><dt>Next turn</dt><dd data-role="next-turn"></dd></div>
-      <div><dt>Transport</dt><dd data-role="transport"></dd></div>
-      <div><dt>Remote</dt><dd data-role="remote-status"></dd></div>
-      <div><dt>Input mode</dt><dd data-role="input-mode"></dd></div>
-      <div><dt>Emotion</dt><dd data-role="emotion-style"></dd></div>
-      <div><dt>Expression</dt><dd data-role="facial-expression"></dd></div>
-      <div><dt>Motion</dt><dd data-role="head-motion"></dd></div>
-      <div><dt>Audio</dt><dd data-role="audio-status"></dd></div>
-      <div><dt>Video</dt><dd data-role="video-status"></dd></div>
-    </dl>
+    <div class="status-scroll-shell">
+      <dl class="status-grid">
+        <div><dt>Session</dt><dd data-role="session-id"></dd></div>
+        <div><dt>Next turn</dt><dd data-role="next-turn"></dd></div>
+        <div><dt>Transport</dt><dd data-role="transport"></dd></div>
+        <div><dt>Remote</dt><dd data-role="remote-status"></dd></div>
+        <div><dt>Input mode</dt><dd data-role="input-mode"></dd></div>
+        <div><dt>Emotion</dt><dd data-role="emotion-style"></dd></div>
+        <div><dt>Expression</dt><dd data-role="facial-expression"></dd></div>
+        <div><dt>Motion</dt><dd data-role="head-motion"></dd></div>
+        <div><dt>Audio</dt><dd data-role="audio-status"></dd></div>
+        <div><dt>Video</dt><dd data-role="video-status"></dd></div>
+      </dl>
+    </div>
   `;
 
   const refs = {

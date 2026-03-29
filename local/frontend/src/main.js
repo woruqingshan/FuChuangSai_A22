@@ -20,7 +20,10 @@ const state = {
   audioStatus: "Audio idle",
   videoStatus: "Camera disabled",
   isSending: false,
+  cameraEnabled: false,
 };
+
+let leftTopStack = null;
 
 const avatarPanel = createAvatarPanel();
 const chatPanel = createChatPanel();
@@ -36,6 +39,10 @@ const inputBar = createInputBar({
     syncStatus({
       videoStatus,
     });
+  },
+  onCameraModeChange: (cameraEnabled) => {
+    state.cameraEnabled = cameraEnabled;
+    syncLayout();
   },
 });
 
@@ -53,8 +60,8 @@ app.innerHTML = `
     </header>
     <main class="workspace-grid">
       <section class="left-column">
-        <section class="media-column panel"></section>
-        <section class="interaction-column panel"></section>
+        <section class="left-top-stack camera-off"></section>
+        <section class="control-column panel"></section>
       </section>
       <section class="right-column">
         <section class="avatar-column panel"></section>
@@ -64,8 +71,9 @@ app.innerHTML = `
   </div>
 `;
 
-app.querySelector(".media-column").appendChild(inputBar.mediaElement);
-app.querySelector(".interaction-column").append(chatPanel.element, inputBar.controlsElement);
+leftTopStack = app.querySelector(".left-top-stack");
+leftTopStack.append(inputBar.mediaElement, chatPanel.element);
+app.querySelector(".control-column").append(inputBar.controlsElement);
 app.querySelector(".avatar-column").appendChild(avatarPanel.element);
 app.querySelector(".status-column").append(statusBar.element);
 
@@ -75,6 +83,7 @@ syncStatus({
   audioStatus: "Audio idle",
   videoStatus: "Camera disabled",
 });
+syncLayout();
 
 function buildTextTurnTimeWindow(turnId) {
   const now = Date.now();
@@ -209,4 +218,12 @@ function syncStatus(nextState) {
     audioStatus: state.audioStatus,
     videoStatus: state.videoStatus,
   });
+}
+
+function syncLayout() {
+  if (!leftTopStack) {
+    return;
+  }
+  leftTopStack.classList.toggle("camera-on", state.cameraEnabled);
+  leftTopStack.classList.toggle("camera-off", !state.cameraEnabled);
 }

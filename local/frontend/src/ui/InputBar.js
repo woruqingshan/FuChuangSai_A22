@@ -2,7 +2,7 @@ import { createAudioTurnRecorder } from "../audio/audioTurnRecorder";
 import { VOICE_TURN_STATE } from "../audio/recorderStates";
 import { createCameraTurnRecorder } from "../video/cameraTurnRecorder";
 
-export function createInputBar({ onSend, onStatusChange, onVideoStatusChange }) {
+export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, onCameraModeChange }) {
   const mediaElement = document.createElement("section");
   mediaElement.className = "capture-panel";
   mediaElement.innerHTML = `
@@ -87,6 +87,7 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange }) 
     cameraToggle.textContent = nextEnabled ? "Disable camera" : "Enable camera";
     cameraChip.textContent = nextEnabled ? "Camera live" : "Camera standby";
     cameraOverlay.textContent = nextEnabled ? "Live preview + event-window packaging" : "Camera off";
+    onCameraModeChange?.(nextEnabled);
   }
 
   function syncControls() {

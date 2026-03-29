@@ -61,9 +61,10 @@ textarea {
 
 .left-column {
   display: grid;
-  grid-template-rows: minmax(0, 2fr) minmax(280px, 1fr);
+  grid-template-rows: minmax(0, 2fr) minmax(240px, 1fr);
   gap: 16px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .right-column {
@@ -124,22 +125,44 @@ textarea {
   flex-direction: column;
 }
 
+.left-top-stack,
 .media-column,
-.interaction-column,
+.chat-column,
+.control-column,
 .avatar-column,
 .status-column {
   min-height: 0;
 }
 
-.interaction-column {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.left-top-stack {
+  display: grid;
+  gap: 16px;
+  min-height: 0;
+  align-items: stretch;
+  overflow: hidden;
 }
 
-.interaction-column > .chat-panel {
-  flex: 1;
+.left-top-stack.camera-off {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.left-top-stack.camera-on {
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+}
+
+.left-top-stack.camera-off .capture-panel {
+  display: none;
+}
+
+.left-top-stack.camera-off .chat-panel {
+  display: flex;
+}
+
+.control-column {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 
 .avatar-stage {
@@ -309,6 +332,35 @@ textarea {
   padding-right: 4px;
   flex: 1;
   min-height: 0;
+  max-height: 100%;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+.status-scroll-shell {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+.chat-log::-webkit-scrollbar,
+.status-scroll-shell::-webkit-scrollbar {
+  width: 10px;
+}
+
+.chat-log::-webkit-scrollbar-thumb,
+.status-scroll-shell::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+}
+
+.chat-log::-webkit-scrollbar-track,
+.status-scroll-shell::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.28);
+  border-radius: 999px;
 }
 
 .message-card {
@@ -342,12 +394,14 @@ textarea {
   margin: 0;
   color: #e2e8f0;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .message-meta {
   margin-top: 10px;
   color: #94a3b8;
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .loading-indicator {
@@ -376,6 +430,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
 }
 
 .primary-button:disabled,
@@ -479,6 +534,11 @@ textarea {
   text-align: center;
 }
 
+.capture-placeholder.hidden,
+.camera-preview-shell.hidden {
+  display: none;
+}
+
 .capture-title {
   margin: 0 0 12px;
   font-size: 28px;
@@ -498,6 +558,7 @@ textarea {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  display: block;
 }
 
 .camera-preview-shell[data-state="enabled"] {
@@ -587,6 +648,30 @@ textarea {
   font-size: 13px;
 }
 
+.chat-panel,
+.capture-panel,
+.status-panel,
+.input-panel,
+.left-top-stack > section {
+  min-height: 0;
+}
+
+.chat-panel,
+.status-panel,
+.input-panel,
+.capture-panel {
+  overflow: hidden;
+}
+
+.left-top-stack.camera-on > .chat-panel,
+.left-top-stack.camera-on > .capture-panel {
+  height: 100%;
+}
+
+.left-top-stack.camera-off > .chat-panel {
+  height: 100%;
+}
+
 @keyframes slowNod {
   0%,
   100% {
@@ -614,6 +699,11 @@ textarea {
 
   .left-column {
     grid-template-rows: minmax(360px, 58vh) auto;
+  }
+
+  .left-top-stack.camera-on {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(260px, 42vh) minmax(240px, 1fr);
   }
 
   .right-column {
