@@ -82,7 +82,7 @@ Start vLLM on a selected GPU:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
-source .venv/bin/activate
+source /data/zifeng/.uv_envs/qwen-server/bin/activate
 export CUDA_VISIBLE_DEVICES=<cuda_id>
 python -m vllm.entrypoints.openai.api_server \
   --host 127.0.0.1 \
@@ -113,8 +113,8 @@ Prepare the environment:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
-uv venv --python /usr/bin/python3.11 .venv
-source .venv/bin/activate
+uv venv /data/zifeng/.uv_envs/orchestrator
+source /data/zifeng/.uv_envs/orchestrator/bin/activate
 uv sync
 ```
 
@@ -122,7 +122,7 @@ If `.venv` already exists:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
-source .venv/bin/activate
+source /data/zifeng/.uv_envs/orchestrator/bin/activate
 uv sync
 ```
 
@@ -130,7 +130,7 @@ Start orchestrator:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
-source .venv/bin/activate
+source /data/zifeng/.uv_envs/orchestrator/bin/activate
 export LLM_PROVIDER=qwen
 export LLM_MODEL=Qwen2.5-7B-Instruct
 export LLM_API_BASE=http://127.0.0.1:8000/v1
@@ -151,8 +151,8 @@ Prepare the environment:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
-uv venv --python /usr/bin/python3.11 .venv
-source .venv/bin/activate
+uv venv /data/zifeng/.uv_envs/speech_service
+source /data/zifeng/.uv_envs/speech_service/bin/activate
 uv sync
 ```
 
@@ -160,7 +160,7 @@ Start speech-service on the GPU chosen for BELLE ASR:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
-source .venv/bin/activate
+source /data/zifeng/.uv_envs/speech_service/bin/activate
 export CUDA_VISIBLE_DEVICES=1
 export ASR_MODEL=/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh
 export ASR_DEVICE=cuda:0
@@ -179,8 +179,8 @@ Prepare and start:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/vision-service
-uv venv --python /usr/bin/python3.11 .venv
-source .venv/bin/activate
+uv venv /data/zifeng/.uv_envs/vision_service
+source /data/zifeng/.uv_envs/vision_service/bin/activate
 uv sync
 export VISION_EXTRACTOR_MODE=qwen2_5_vl
 export VISION_MODEL=/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
@@ -201,8 +201,8 @@ Prepare and start:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/avatar-service
-uv venv --python /usr/bin/python3.11 .venv
-source .venv/bin/activate
+uv venv /data/zifeng/.uv_envs/avatar_service
+source /data/zifeng/.uv_envs/avatar_service/bin/activate
 uv sync
 git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git /data/zifeng/siyuan/A22/models/CosyVoice
 export TTS_MODE=cosyvoice2_sft
