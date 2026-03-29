@@ -13,6 +13,50 @@ This document describes how to run the current A22 stack end to end:
 - remote `orchestrator`
 - SSH tunnel from local to remote
 
+## Remote filesystem layout
+
+The current recommended layout separates code, uv cache, and virtual
+environments:
+
+```text
+/data/zifeng/
+├── .cache/uv/
+└── .uv_envs/
+    ├── orchestrator/
+    ├── qwen-server/
+    ├── speech-service/
+    ├── vision-service/
+    └── avatar-service/
+
+/home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/
+├── orchestrator/
+├── qwen-server/
+├── speech-service/
+├── vision-service/
+└── avatar-service/
+```
+
+Use this layout consistently so package caches do not fill `/home` and each
+service has a stable dedicated environment path.
+
+## Shared uv environment variables
+
+Before creating or syncing any remote service environment, export:
+
+```bash
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+```
+
+When working on a specific service, also export:
+
+```bash
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/<service-name>
+```
+
+This is important because `uv sync` otherwise defaults to a project-local
+`.venv`, which is not the layout used in this deployment.
+
 ## Current architecture
 
 The current runtime chain is:
@@ -52,6 +96,217 @@ Use this order:
 8. Verify local runtime status
 9. Run end-to-end tests
 
+## Copy-Paste Command Blocks
+
+The blocks below are designed to be copied and executed as complete chunks.
+They assume:
+
+- code lives under `/home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote`
+- uv cache lives under `/data/zifeng/.cache/uv`
+- virtual environments live under `/data/zifeng/.uv_envs`
+
+### qwen-server: create environment and start
+
+```bash
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/qwen-server
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
+rm -rf .venv
+uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+source /data/zifeng/.uv_envs/qwen-server/bin/activate
+uv sync
+
+export CUDA_VISIBLE_DEVICES=0
+python -m vllm.entrypoints.openai.api_server \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --model /data/zifeng/siyuan/A22/models/Qwen2.5-7B-Instruct \
+  --served-model-name Qwen2.5-7B-Instruct \
+  --dtype auto \
+  --gpu-memory-utilization 0.90 \
+  --trust-remote-code
+```
+
+### qwen-server: start only
+
+```bash
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/qwen-server
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
+source /data/zifeng/.uv_envs/qwen-server/bin/activate
+
+export CUDA_VISIBLE_DEVICES=0
+python -m vllm.entrypoints.openai.api_server \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --model /data/zifeng/siyuan/A22/models/Qwen2.5-7B-Instruct \
+  --served-model-name Qwen2.5-7B-Instruct \
+  --dtype auto \
+  --gpu-memory-utilization 0.90 \
+  --trust-remote-code
+```
+
+### speech-service: create environment and start
+
+```bash
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/speech-service
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
+rm -rf .venv
+uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+source /data/zifeng/.uv_envs/speech-service/bin/activate
+uv sync
+
+export CUDA_VISIBLE_DEVICES=1
+export ASR_MODEL=/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh
+export ASR_DEVICE=cuda:0
+uvicorn app:app --host 127.0.0.1 --port 19100
+```
+
+### speech-service: start only
+
+```bash
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/speech-service
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
+source /data/zifeng/.uv_envs/speech-service/bin/activate
+
+export CUDA_VISIBLE_DEVICES=1
+export ASR_MODEL=/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh
+export ASR_DEVICE=cuda:0
+uvicorn app:app --host 127.0.0.1 --port 19100
+```
+
+### vision-service: create environment and start
+
+```bash
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/vision-service
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/vision-service
+rm -rf .venv
+uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+source /data/zifeng/.uv_envs/vision-service/bin/activate
+uv sync
+
+export VISION_EXTRACTOR_MODE=qwen2_5_vl
+export VISION_MODEL=/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
+export CUDA_VISIBLE_DEVICES=2
+export VISION_DEVICE=cuda:0
+uvicorn app:app --host 127.0.0.1 --port 19200
+```
+
+### vision-service: start only
+
+```bash
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/vision-service
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/vision-service
+source /data/zifeng/.uv_envs/vision-service/bin/activate
+
+export VISION_EXTRACTOR_MODE=qwen2_5_vl
+export VISION_MODEL=/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
+export CUDA_VISIBLE_DEVICES=2
+export VISION_DEVICE=cuda:0
+uvicorn app:app --host 127.0.0.1 --port 19200
+```
+
+### avatar-service: create environment and start
+
+```bash
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/avatar-service
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/avatar-service
+rm -rf .venv
+uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+source /data/zifeng/.uv_envs/avatar-service/bin/activate
+uv sync
+
+if [ ! -d /data/zifeng/siyuan/A22/models/CosyVoice ]; then
+  git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git /data/zifeng/siyuan/A22/models/CosyVoice
+fi
+cd /data/zifeng/siyuan/A22/models/CosyVoice
+git submodule update --init --recursive
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/avatar-service
+export TTS_MODE=cosyvoice2_sft
+export TTS_MODEL=/data/zifeng/siyuan/A22/models/CosyVoice2-0.5B
+export CUDA_VISIBLE_DEVICES=1
+export TTS_DEVICE=cuda:0
+export TTS_REPO_PATH=/data/zifeng/siyuan/A22/models/CosyVoice
+uvicorn app:app --host 127.0.0.1 --port 19300
+```
+
+### avatar-service: start only
+
+```bash
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/avatar-service
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/avatar-service
+source /data/zifeng/.uv_envs/avatar-service/bin/activate
+
+export TTS_MODE=cosyvoice2_sft
+export TTS_MODEL=/data/zifeng/siyuan/A22/models/CosyVoice2-0.5B
+export CUDA_VISIBLE_DEVICES=1
+export TTS_DEVICE=cuda:0
+export TTS_REPO_PATH=/data/zifeng/siyuan/A22/models/CosyVoice
+uvicorn app:app --host 127.0.0.1 --port 19300
+```
+
+### orchestrator: create environment and start
+
+```bash
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/orchestrator
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
+rm -rf .venv
+uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+source /data/zifeng/.uv_envs/orchestrator/bin/activate
+uv sync
+
+export LLM_PROVIDER=qwen
+export LLM_MODEL=Qwen2.5-7B-Instruct
+export LLM_API_BASE=http://127.0.0.1:8000/v1
+export LLM_API_KEY=EMPTY
+export LLM_REQUEST_TIMEOUT_SECONDS=60
+uv run uvicorn app:app --host 127.0.0.1 --port 19000
+```
+
+### orchestrator: start only
+
+```bash
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/orchestrator
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
+source /data/zifeng/.uv_envs/orchestrator/bin/activate
+
+export LLM_PROVIDER=qwen
+export LLM_MODEL=Qwen2.5-7B-Instruct
+export LLM_API_BASE=http://127.0.0.1:8000/v1
+export LLM_API_KEY=EMPTY
+export LLM_REQUEST_TIMEOUT_SECONDS=60
+uv run uvicorn app:app --host 127.0.0.1 --port 19000
+```
+
 ## Remote server: qwen-server
 
 Recommended server path:
@@ -72,16 +327,22 @@ Create and prepare the environment:
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote
 mkdir -p qwen-server
 cd qwen-server
-uv venv --python /usr/bin/python3.11 .venv
-source .venv/bin/activate
-uv pip install --upgrade pip
-uv pip install vllm
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/qwen-server
+uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+uv sync
+source /data/zifeng/.uv_envs/qwen-server/bin/activate
+python -c "import sys, vllm; print(sys.executable); print(vllm.__version__)"
 ```
 
 Start vLLM on a selected GPU:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/qwen-server
 source /data/zifeng/.uv_envs/qwen-server/bin/activate
 export CUDA_VISIBLE_DEVICES=<cuda_id>
 python -m vllm.entrypoints.openai.api_server \
@@ -100,6 +361,8 @@ Notes:
 - this selects a single physical GPU for the vLLM process
 - the current 7B model can run as a single-GPU deployment
 - recommended value here is `0`
+- if `uv sync` was already run without `UV_PROJECT_ENVIRONMENT`, remove the
+  accidentally created project-local `.venv` before retrying
 
 Verify on the server:
 
@@ -113,15 +376,21 @@ Prepare the environment:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
-uv venv /data/zifeng/.uv_envs/orchestrator
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/orchestrator
+uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 source /data/zifeng/.uv_envs/orchestrator/bin/activate
 uv sync
 ```
 
-If `.venv` already exists:
+If the environment already exists:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/orchestrator
 source /data/zifeng/.uv_envs/orchestrator/bin/activate
 uv sync
 ```
@@ -130,6 +399,9 @@ Start orchestrator:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/orchestrator
 source /data/zifeng/.uv_envs/orchestrator/bin/activate
 export LLM_PROVIDER=qwen
 export LLM_MODEL=Qwen2.5-7B-Instruct
@@ -151,8 +423,11 @@ Prepare the environment:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
-uv venv /data/zifeng/.uv_envs/speech_service
-source /data/zifeng/.uv_envs/speech_service/bin/activate
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/speech-service
+uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+source /data/zifeng/.uv_envs/speech-service/bin/activate
 uv sync
 ```
 
@@ -160,7 +435,10 @@ Start speech-service on the GPU chosen for BELLE ASR:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
-source /data/zifeng/.uv_envs/speech_service/bin/activate
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/speech-service
+source /data/zifeng/.uv_envs/speech-service/bin/activate
 export CUDA_VISIBLE_DEVICES=1
 export ASR_MODEL=/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh
 export ASR_DEVICE=cuda:0
@@ -179,8 +457,11 @@ Prepare and start:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/vision-service
-uv venv /data/zifeng/.uv_envs/vision_service
-source /data/zifeng/.uv_envs/vision_service/bin/activate
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/vision-service
+uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+source /data/zifeng/.uv_envs/vision-service/bin/activate
 uv sync
 export VISION_EXTRACTOR_MODE=qwen2_5_vl
 export VISION_MODEL=/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
@@ -201,8 +482,11 @@ Prepare and start:
 
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/avatar-service
-uv venv /data/zifeng/.uv_envs/avatar_service
-source /data/zifeng/.uv_envs/avatar_service/bin/activate
+export UV_CACHE_DIR=/data/zifeng/.cache/uv
+export UV_LINK_MODE=copy
+export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/avatar-service
+uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+source /data/zifeng/.uv_envs/avatar-service/bin/activate
 uv sync
 git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git /data/zifeng/siyuan/A22/models/CosyVoice
 export TTS_MODE=cosyvoice2_sft
