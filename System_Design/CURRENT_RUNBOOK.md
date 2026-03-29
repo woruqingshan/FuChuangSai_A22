@@ -158,6 +158,7 @@ export UV_LINK_MODE=copy
 export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/speech-service
 
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
+rm -rf /data/zifeng/.uv_envs/speech-service
 rm -rf .venv
 uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 source /data/zifeng/.uv_envs/speech-service/bin/activate
@@ -166,6 +167,7 @@ uv sync
 export CUDA_VISIBLE_DEVICES=1
 export ASR_MODEL=/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh
 export ASR_DEVICE=cuda:0
+python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
 uvicorn app:app --host 127.0.0.1 --port 19100
 ```
 
@@ -182,6 +184,7 @@ source /data/zifeng/.uv_envs/speech-service/bin/activate
 export CUDA_VISIBLE_DEVICES=1
 export ASR_MODEL=/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh
 export ASR_DEVICE=cuda:0
+python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
 uvicorn app:app --host 127.0.0.1 --port 19100
 ```
 
