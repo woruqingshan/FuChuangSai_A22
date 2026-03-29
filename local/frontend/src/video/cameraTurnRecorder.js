@@ -71,12 +71,12 @@ function mergeTurnWindow(baseWindow, startedAt, endedAt) {
 }
 
 export function createCameraTurnRecorder({
-  sampleIntervalMs = 1000,
-  bufferDurationMs = 15000,
-  preRollMs = 6000,
-  postRollMs = 1200,
-  maxEventFrames = 12,
-  maxDimension = 640,
+  sampleIntervalMs = 1400,
+  bufferDurationMs = 12000,
+  preRollMs = 4000,
+  postRollMs = 800,
+  maxEventFrames = 6,
+  maxDimension = 480,
 } = {}) {
   let mediaStream = null;
   let previewElement = null;
@@ -116,16 +116,16 @@ export function createCameraTurnRecorder({
     }
 
     const timestampMs = Date.now();
-    const frame = {
-      frame_id: buildFrameId(prefix, backgroundFrameCount, timestampMs),
-      timestamp_ms: timestampMs,
-      source: "browser_camera",
-      ...encodeVideoFrame(previewElement, {
-        mimeType: "image/jpeg",
-        quality: 0.72,
-        maxDimension,
-      }),
-    };
+      const frame = {
+        frame_id: buildFrameId(prefix, backgroundFrameCount, timestampMs),
+        timestamp_ms: timestampMs,
+        source: "browser_camera",
+        ...encodeVideoFrame(previewElement, {
+          mimeType: "image/jpeg",
+          quality: 0.62,
+          maxDimension,
+        }),
+      };
     backgroundFrameCount += 1;
     return frame;
   }

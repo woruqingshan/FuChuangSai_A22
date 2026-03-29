@@ -53,8 +53,8 @@ app.innerHTML = `
     </header>
     <main class="workspace-grid">
       <section class="left-column">
-        <section class="chat-column panel"></section>
-        <section class="control-column panel"></section>
+        <section class="media-column panel"></section>
+        <section class="interaction-column panel"></section>
       </section>
       <section class="right-column">
         <section class="avatar-column panel"></section>
@@ -64,8 +64,8 @@ app.innerHTML = `
   </div>
 `;
 
-app.querySelector(".chat-column").appendChild(chatPanel.element);
-app.querySelector(".control-column").append(inputBar.element);
+app.querySelector(".media-column").appendChild(inputBar.mediaElement);
+app.querySelector(".interaction-column").append(chatPanel.element, inputBar.controlsElement);
 app.querySelector(".avatar-column").appendChild(avatarPanel.element);
 app.querySelector(".status-column").append(statusBar.element);
 

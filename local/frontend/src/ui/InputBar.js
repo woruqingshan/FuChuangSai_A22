@@ -1,80 +1,101 @@
 import { createAudioTurnRecorder } from "../audio/audioTurnRecorder";
 import { VOICE_TURN_STATE } from "../audio/recorderStates";
 import { createCameraTurnRecorder } from "../video/cameraTurnRecorder";
-import { createCameraPanel } from "./CameraPanel";
 
 export function createInputBar({ onSend, onStatusChange, onVideoStatusChange }) {
-  const element = document.createElement("section");
-  element.className = "input-panel";
-  element.innerHTML = `
+  const mediaElement = document.createElement("section");
+  mediaElement.className = "capture-panel";
+  mediaElement.innerHTML = `
     <div class="panel-heading">
       <div>
-        <p class="eyebrow">C · Input</p>
-        <h2>Text / Audio Entry</h2>
+        <p class="eyebrow">C · Capture</p>
+        <h2>Live Camera View</h2>
       </div>
-      <span class="chip">Audio + video scaffold</span>
+      <span class="chip" data-role="camera-chip">Camera standby</span>
     </div>
-    <form class="input-form">
-      <label class="field-label" for="message-box">Text message</label>
-      <textarea id="message-box" rows="5" placeholder="Type a supportive conversation prompt or record audio."></textarea>
-      <div class="input-actions">
-        <button type="submit" class="primary-button" data-role="send-button">Send turn</button>
+    <div class="capture-stage" data-camera-state="disabled">
+      <div class="capture-placeholder" data-role="capture-placeholder">
+        <p class="capture-title">Camera preview is currently off</p>
+        <p class="capture-copy">Enable the camera below to replace this area with a live preview. Text and voice turns will continue to work even if no video key frames are attached.</p>
       </div>
-      <button type="button" class="audio-turn-button" data-role="voice-button" aria-pressed="false">
-        <span class="audio-turn-title" data-role="voice-title">Start voice input</span>
-        <span class="audio-turn-meta" data-role="voice-meta">Use the microphone for one audio-only turn. Click again to stop and submit.</span>
-      </button>
-      <div data-role="camera-slot"></div>
+      <div class="camera-preview-shell hidden" data-role="camera-shell" data-state="disabled">
+        <video class="camera-preview camera-preview-large" autoplay muted playsinline></video>
+        <div class="camera-preview-overlay" data-role="camera-overlay">Camera off</div>
+      </div>
+    </div>
+  `;
+
+  const controlsElement = document.createElement("section");
+  controlsElement.className = "input-panel compact-input-panel";
+  controlsElement.innerHTML = `
+    <div class="panel-heading compact-panel-heading">
+      <div>
+        <p class="eyebrow">C · Input</p>
+        <h2>Conversation Controls</h2>
+      </div>
+      <span class="chip">Audio + video turns</span>
+    </div>
+    <form class="compact-input-form">
+      <div class="compact-compose-row">
+        <input id="message-box" class="message-input" type="text" placeholder="Type a supportive message or use the microphone." />
+        <button type="submit" class="primary-button" data-role="send-button">Send</button>
+      </div>
+      <div class="compact-control-row">
+        <button type="button" class="audio-turn-button audio-turn-button-compact" data-role="voice-button" aria-pressed="false">
+          <span class="audio-turn-title" data-role="voice-title">Start voice input</span>
+          <span class="audio-turn-meta" data-role="voice-meta">Click once to record and again to stop and submit.</span>
+        </button>
+        <button type="button" class="secondary-button camera-toggle-button" data-role="camera-toggle">Enable camera</button>
+        <div class="camera-inline-status">
+          <p class="camera-inline-title">Video turn window</p>
+          <p class="camera-inline-meta" data-role="camera-meta">Camera disabled. No key frames will be attached.</p>
+        </div>
+      </div>
     </form>
   `;
 
-  const form = element.querySelector(".input-form");
-  const messageBox = element.querySelector("#message-box");
-  const sendButton = element.querySelector('[data-role="send-button"]');
-  const voiceButton = element.querySelector('[data-role="voice-button"]');
-  const voiceTitle = element.querySelector('[data-role="voice-title"]');
-  const voiceMeta = element.querySelector('[data-role="voice-meta"]');
-  const cameraSlot = element.querySelector('[data-role="camera-slot"]');
+  const form = controlsElement.querySelector(".compact-input-form");
+  const messageBox = controlsElement.querySelector("#message-box");
+  const sendButton = controlsElement.querySelector('[data-role="send-button"]');
+  const voiceButton = controlsElement.querySelector('[data-role="voice-button"]');
+  const voiceTitle = controlsElement.querySelector('[data-role="voice-title"]');
+  const voiceMeta = controlsElement.querySelector('[data-role="voice-meta"]');
+  const cameraToggle = controlsElement.querySelector('[data-role="camera-toggle"]');
+  const cameraMeta = controlsElement.querySelector('[data-role="camera-meta"]');
+  const cameraChip = mediaElement.querySelector('[data-role="camera-chip"]');
+  const captureStage = mediaElement.querySelector(".capture-stage");
+  const capturePlaceholder = mediaElement.querySelector('[data-role="capture-placeholder"]');
+  const cameraShell = mediaElement.querySelector('[data-role="camera-shell"]');
+  const cameraOverlay = mediaElement.querySelector('[data-role="camera-overlay"]');
+  const cameraPreview = mediaElement.querySelector(".camera-preview");
 
   const recorder = createAudioTurnRecorder();
   const cameraRecorder = createCameraTurnRecorder();
-  const cameraPanel = createCameraPanel({
-    onToggle: async (shouldEnable) => {
-      if (shouldEnable) {
-        try {
-          await cameraRecorder.enable();
-          cameraPanel.setMeta("Camera preview is active. A rolling local buffer is collecting recent frames for event-window packaging.");
-          onVideoStatusChange("Camera preview and local rolling buffer enabled");
-          return true;
-        } catch (error) {
-          const detail = error instanceof Error ? error.message : "Camera capture failed.";
-          cameraPanel.setMeta(detail);
-          onVideoStatusChange(detail);
-          return false;
-        }
-      }
-
-      await cameraRecorder.disable();
-      cameraPanel.setMeta("Camera disabled. Video key frames will not be attached to turns.");
-      onVideoStatusChange("Camera disabled");
-      return false;
-    },
-  });
-
-  cameraSlot.appendChild(cameraPanel.element);
-  cameraRecorder.bindPreview(cameraPanel.preview);
+  cameraRecorder.bindPreview(cameraPreview);
 
   let isBusy = false;
   let voiceTurnState = VOICE_TURN_STATE.IDLE;
   let preservedDraft = "";
+  let cameraEnabled = false;
+
+  function setCameraPresentation(nextEnabled) {
+    cameraEnabled = nextEnabled;
+    captureStage.dataset.cameraState = nextEnabled ? "enabled" : "disabled";
+    cameraShell.dataset.state = nextEnabled ? "enabled" : "disabled";
+    cameraShell.classList.toggle("hidden", !nextEnabled);
+    capturePlaceholder.classList.toggle("hidden", nextEnabled);
+    cameraToggle.textContent = nextEnabled ? "Disable camera" : "Enable camera";
+    cameraChip.textContent = nextEnabled ? "Camera live" : "Camera standby";
+    cameraOverlay.textContent = nextEnabled ? "Live preview + event-window packaging" : "Camera off";
+  }
 
   function syncControls() {
     const textLocked = isBusy || voiceTurnState !== VOICE_TURN_STATE.IDLE;
 
     messageBox.disabled = textLocked;
     sendButton.disabled = textLocked;
-    sendButton.textContent = isBusy ? "Sending..." : "Send turn";
-    cameraPanel.setBusy(isBusy);
+    sendButton.textContent = isBusy ? "Sending..." : "Send";
+    cameraToggle.disabled = isBusy || voiceTurnState !== VOICE_TURN_STATE.IDLE;
 
     voiceButton.disabled = voiceTurnState === VOICE_TURN_STATE.PROCESSING
       || (isBusy && voiceTurnState !== VOICE_TURN_STATE.RECORDING);
@@ -97,7 +118,11 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange }) 
 
     voiceTitle.textContent = "Start voice input";
     voiceMeta.textContent = "Use the microphone for one audio-only turn. Click again to stop and submit.";
-    messageBox.placeholder = "Type a supportive conversation prompt or record audio.";
+    messageBox.placeholder = "Type a supportive message or use the microphone.";
+  }
+
+  function setCameraMeta(text) {
+    cameraMeta.textContent = text;
   }
 
   async function captureOptionalVideoTurn(baseTurnWindow = null) {
@@ -105,22 +130,32 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange }) 
       return null;
     }
 
-    onVideoStatusChange("Capturing camera key frames for this turn.");
-    const payload = await cameraRecorder.captureTurn(baseTurnWindow);
+    onVideoStatusChange("Capturing buffered camera key frames for this turn.");
 
-    if (payload?.video_frames?.length) {
-      const count = payload.video_frames.length;
-      const preRollMs = payload.turn_time_window?.pre_roll_ms || 0;
-      const postRollMs = payload.turn_time_window?.post_roll_ms || 0;
-      cameraPanel.setMeta(
-        `Camera preview active. Event window packaged with ${count} key frames (${preRollMs} ms pre-roll, ${postRollMs} ms post-roll).`,
-      );
-      onVideoStatusChange(`Attached ${count} buffered camera key frames`);
-    } else {
-      onVideoStatusChange("Camera was enabled, but no video frames were attached.");
+    try {
+      const payload = await cameraRecorder.captureTurn(baseTurnWindow);
+
+      if (payload?.video_frames?.length) {
+        const count = payload.video_frames.length;
+        const preRollMs = payload.turn_time_window?.pre_roll_ms || 0;
+        const postRollMs = payload.turn_time_window?.post_roll_ms || 0;
+        setCameraMeta(
+          `Camera live. Attached ${count} key frames (${preRollMs} ms pre-roll, ${postRollMs} ms post-roll).`,
+        );
+        onVideoStatusChange(`Attached ${count} buffered camera key frames`);
+      } else {
+        setCameraMeta("Camera live, but this turn was sent without video key frames.");
+        onVideoStatusChange("Camera was enabled, but no video frames were attached.");
+      }
+
+      return payload;
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Camera capture failed.";
+      setCameraMeta(`Camera live, but this turn fell back to audio/text only. ${detail}`);
+      onVideoStatusChange(`Camera capture unavailable for this turn: ${detail}`);
+      onStatusChange(`Camera capture was skipped for this turn: ${detail}`);
+      return null;
     }
-
-    return payload;
   }
 
   async function startVoiceTurn() {
@@ -183,6 +218,33 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange }) 
     syncControls();
   }
 
+  cameraToggle.addEventListener("click", async () => {
+    if (cameraToggle.disabled) {
+      return;
+    }
+
+    try {
+      if (!cameraEnabled) {
+        await cameraRecorder.enable();
+        setCameraPresentation(true);
+        setCameraMeta("Camera preview is active. A rolling local buffer is collecting recent frames for event-window packaging.");
+        onVideoStatusChange("Camera preview and local rolling buffer enabled");
+        return;
+      }
+
+      await cameraRecorder.disable();
+      setCameraPresentation(false);
+      setCameraMeta("Camera disabled. Video key frames will not be attached to turns.");
+      onVideoStatusChange("Camera disabled");
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Camera capture failed.";
+      setCameraPresentation(false);
+      setCameraMeta(detail);
+      onVideoStatusChange(detail);
+      onStatusChange(detail);
+    }
+  });
+
   voiceButton.addEventListener("click", async () => {
     if (voiceTurnState === VOICE_TURN_STATE.RECORDING) {
       await stopVoiceTurn();
@@ -208,11 +270,14 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange }) 
     }
   });
 
+  setCameraPresentation(false);
+  setCameraMeta("Camera disabled. Video key frames will not be attached to turns.");
   onVideoStatusChange("Camera disabled");
   syncControls();
 
   return {
-    element,
+    mediaElement,
+    controlsElement,
     setBusy,
   };
 }

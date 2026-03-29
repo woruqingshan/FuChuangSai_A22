@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from config import settings
 from models import TurnTimeWindow, VideoFrame, VideoMeta, VisionFeatures
 from services.media.frame_selector import select_key_frames
 from services.media.media_package_builder import merge_video_window

@@ -7,7 +7,7 @@ function stripDataUrlPrefix(dataUrl) {
   return dataUrl.slice(markerIndex + marker.length);
 }
 
-export function encodeVideoFrame(videoElement, { mimeType = "image/jpeg", quality = 0.72, maxDimension = 640 } = {}) {
+export function encodeVideoFrame(videoElement, { mimeType = "image/jpeg", quality = 0.62, maxDimension = 480 } = {}) {
   const sourceWidth = videoElement.videoWidth;
   const sourceHeight = videoElement.videoHeight;
 

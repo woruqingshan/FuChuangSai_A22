@@ -83,6 +83,14 @@ async def chat(request: ChatRequest) -> ChatResponse:
             status_code=exc.status_code,
         )
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except Exception as exc:
+        edge_observability.log_chat_error(
+            request_id,
+            latency_ms=int((time.perf_counter() - started_at) * 1000),
+            detail=f"Unexpected local processing error: {exc}",
+            status_code=500,
+        )
+        raise HTTPException(status_code=500, detail="Local edge-backend processing failed.") from exc
 
     if hasattr(response, "model_copy"):
         final_response = response.model_copy(update={"input_mode": remote_request.input_type})
