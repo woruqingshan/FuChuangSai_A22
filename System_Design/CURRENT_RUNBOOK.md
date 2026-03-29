@@ -105,6 +105,18 @@ They assume:
 - uv cache lives under `/data/zifeng/.cache/uv`
 - virtual environments live under `/data/zifeng/.uv_envs`
 
+Python interpreter note:
+
+- use `uv venv --python /home/zifeng/.local/bin/python3.11 ...`
+- the current remote host should use the exact interpreter path above
+- after activation, `which python3.11` should point into the target service
+  environment, for example:
+
+```bash
+which python3.11
+# /data/zifeng/.uv_envs/speech-service/bin/python3.11
+```
+
 ### qwen-server: create environment and start
 
 ```bash
@@ -114,11 +126,13 @@ export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/qwen-server
 
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
 rm -rf .venv
-uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+uv venv --python /home/zifeng/.local/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 source /data/zifeng/.uv_envs/qwen-server/bin/activate
 uv sync
 
 export CUDA_VISIBLE_DEVICES=0
+which python3.11
+python -c "import sys, vllm; print(sys.executable); print(vllm.__version__)"
 python -m vllm.entrypoints.openai.api_server \
   --host 127.0.0.1 \
   --port 8000 \
@@ -160,13 +174,14 @@ export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/speech-service
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
 rm -rf /data/zifeng/.uv_envs/speech-service
 rm -rf .venv
-uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+uv venv --python /home/zifeng/.local/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 source /data/zifeng/.uv_envs/speech-service/bin/activate
 uv sync
 
 export CUDA_VISIBLE_DEVICES=1
 export ASR_MODEL=/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh
 export ASR_DEVICE=cuda:0
+which python3.11
 python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
 uvicorn app:app --host 127.0.0.1 --port 19100
 ```
@@ -184,6 +199,7 @@ source /data/zifeng/.uv_envs/speech-service/bin/activate
 export CUDA_VISIBLE_DEVICES=1
 export ASR_MODEL=/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh
 export ASR_DEVICE=cuda:0
+which python3.11
 python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
 uvicorn app:app --host 127.0.0.1 --port 19100
 ```
@@ -197,7 +213,7 @@ export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/vision-service
 
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/vision-service
 rm -rf .venv
-uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+uv venv --python /home/zifeng/.local/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 source /data/zifeng/.uv_envs/vision-service/bin/activate
 uv sync
 
@@ -205,6 +221,8 @@ export VISION_EXTRACTOR_MODE=qwen2_5_vl
 export VISION_MODEL=/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
 export CUDA_VISIBLE_DEVICES=2
 export VISION_DEVICE=cuda:0
+which python3.11
+python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
 uvicorn app:app --host 127.0.0.1 --port 19200
 ```
 
@@ -222,6 +240,8 @@ export VISION_EXTRACTOR_MODE=qwen2_5_vl
 export VISION_MODEL=/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
 export CUDA_VISIBLE_DEVICES=2
 export VISION_DEVICE=cuda:0
+which python3.11
+python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
 uvicorn app:app --host 127.0.0.1 --port 19200
 ```
 
@@ -234,7 +254,7 @@ export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/avatar-service
 
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/avatar-service
 rm -rf .venv
-uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+uv venv --python /home/zifeng/.local/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 source /data/zifeng/.uv_envs/avatar-service/bin/activate
 uv sync
 
@@ -250,6 +270,8 @@ export TTS_MODEL=/data/zifeng/siyuan/A22/models/CosyVoice2-0.5B
 export CUDA_VISIBLE_DEVICES=1
 export TTS_DEVICE=cuda:0
 export TTS_REPO_PATH=/data/zifeng/siyuan/A22/models/CosyVoice
+which python3.11
+python -c "import torch, torchaudio; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available()); print(torchaudio.__version__)"
 uvicorn app:app --host 127.0.0.1 --port 19300
 ```
 
@@ -268,6 +290,8 @@ export TTS_MODEL=/data/zifeng/siyuan/A22/models/CosyVoice2-0.5B
 export CUDA_VISIBLE_DEVICES=1
 export TTS_DEVICE=cuda:0
 export TTS_REPO_PATH=/data/zifeng/siyuan/A22/models/CosyVoice
+which python3.11
+python -c "import torch, torchaudio; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available()); print(torchaudio.__version__)"
 uvicorn app:app --host 127.0.0.1 --port 19300
 ```
 
@@ -280,7 +304,7 @@ export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/orchestrator
 
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
 rm -rf .venv
-uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+uv venv --python /home/zifeng/.local/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 source /data/zifeng/.uv_envs/orchestrator/bin/activate
 uv sync
 
@@ -289,6 +313,8 @@ export LLM_MODEL=Qwen2.5-7B-Instruct
 export LLM_API_BASE=http://127.0.0.1:8000/v1
 export LLM_API_KEY=EMPTY
 export LLM_REQUEST_TIMEOUT_SECONDS=60
+which python3.11
+python -c "import sys, fastapi, httpx; print(sys.executable); print(fastapi.__version__); print(httpx.__version__)"
 uv run uvicorn app:app --host 127.0.0.1 --port 19000
 ```
 
@@ -333,7 +359,7 @@ cd qwen-server
 export UV_CACHE_DIR=/data/zifeng/.cache/uv
 export UV_LINK_MODE=copy
 export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/qwen-server
-uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+uv venv --python /home/zifeng/.local/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 uv sync
 source /data/zifeng/.uv_envs/qwen-server/bin/activate
 python -c "import sys, vllm; print(sys.executable); print(vllm.__version__)"
@@ -382,7 +408,7 @@ cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
 export UV_CACHE_DIR=/data/zifeng/.cache/uv
 export UV_LINK_MODE=copy
 export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/orchestrator
-uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+uv venv --python /home/zifeng/.local/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 source /data/zifeng/.uv_envs/orchestrator/bin/activate
 uv sync
 ```
@@ -429,7 +455,7 @@ cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
 export UV_CACHE_DIR=/data/zifeng/.cache/uv
 export UV_LINK_MODE=copy
 export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/speech-service
-uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+uv venv --python /home/zifeng/.local/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 source /data/zifeng/.uv_envs/speech-service/bin/activate
 uv sync
 ```
@@ -463,7 +489,7 @@ cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/vision-service
 export UV_CACHE_DIR=/data/zifeng/.cache/uv
 export UV_LINK_MODE=copy
 export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/vision-service
-uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+uv venv --python /home/zifeng/.local/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 source /data/zifeng/.uv_envs/vision-service/bin/activate
 uv sync
 export VISION_EXTRACTOR_MODE=qwen2_5_vl
@@ -488,7 +514,7 @@ cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/avatar-service
 export UV_CACHE_DIR=/data/zifeng/.cache/uv
 export UV_LINK_MODE=copy
 export UV_PROJECT_ENVIRONMENT=/data/zifeng/.uv_envs/avatar-service
-uv venv --python /usr/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
+uv venv --python /home/zifeng/.local/bin/python3.11 "$UV_PROJECT_ENVIRONMENT"
 source /data/zifeng/.uv_envs/avatar-service/bin/activate
 uv sync
 git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git /data/zifeng/siyuan/A22/models/CosyVoice
