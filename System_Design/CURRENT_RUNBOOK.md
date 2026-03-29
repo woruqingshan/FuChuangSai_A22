@@ -182,6 +182,7 @@ export CUDA_VISIBLE_DEVICES=1
 export ASR_MODEL=/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh
 export ASR_DEVICE=cuda:0
 which python3.11
+uv pip list | grep -E 'torch|torchaudio|nvidia|triton'
 python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
 uvicorn app:app --host 127.0.0.1 --port 19100
 ```
@@ -200,6 +201,7 @@ export CUDA_VISIBLE_DEVICES=1
 export ASR_MODEL=/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh
 export ASR_DEVICE=cuda:0
 which python3.11
+uv pip list | grep -E 'torch|torchaudio|nvidia|triton'
 python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
 uvicorn app:app --host 127.0.0.1 --port 19100
 ```
@@ -222,6 +224,7 @@ export VISION_MODEL=/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
 export CUDA_VISIBLE_DEVICES=2
 export VISION_DEVICE=cuda:0
 which python3.11
+uv pip list | grep -E 'torch|nvidia|triton'
 python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
 uvicorn app:app --host 127.0.0.1 --port 19200
 ```
@@ -241,6 +244,7 @@ export VISION_MODEL=/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
 export CUDA_VISIBLE_DEVICES=2
 export VISION_DEVICE=cuda:0
 which python3.11
+uv pip list | grep -E 'torch|nvidia|triton'
 python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
 uvicorn app:app --host 127.0.0.1 --port 19200
 ```
@@ -271,6 +275,7 @@ export CUDA_VISIBLE_DEVICES=1
 export TTS_DEVICE=cuda:0
 export TTS_REPO_PATH=/data/zifeng/siyuan/A22/models/CosyVoice
 which python3.11
+uv pip list | grep -E 'torch|torchaudio|nvidia|triton|onnxruntime'
 python -c "import torch, torchaudio; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available()); print(torchaudio.__version__)"
 uvicorn app:app --host 127.0.0.1 --port 19300
 ```
@@ -291,6 +296,7 @@ export CUDA_VISIBLE_DEVICES=1
 export TTS_DEVICE=cuda:0
 export TTS_REPO_PATH=/data/zifeng/siyuan/A22/models/CosyVoice
 which python3.11
+uv pip list | grep -E 'torch|torchaudio|nvidia|triton|onnxruntime'
 python -c "import torch, torchaudio; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available()); print(torchaudio.__version__)"
 uvicorn app:app --host 127.0.0.1 --port 19300
 ```
