@@ -10,6 +10,16 @@ class AudioMetaSchema(BaseModel):
     frame_count: int | None = Field(default=None, ge=0)
 
 
+class AudioChunkSchema(BaseModel):
+    chunk_id: str | None = None
+    sequence_id: int | None = Field(default=None, ge=0)
+    audio_base64: str | None = None
+    audio_format: str | None = None
+    audio_duration_ms: int | None = Field(default=None, ge=0)
+    audio_sample_rate_hz: int | None = Field(default=None, ge=1)
+    audio_channels: int | None = Field(default=None, ge=1)
+
+
 class SpeechFeaturesSchema(BaseModel):
     transcript_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     speaking_rate: float | None = Field(default=None, ge=0.0)
@@ -75,6 +85,42 @@ class TurnTimeWindowSchema(BaseModel):
     window_duration_ms: int | None = Field(default=None, ge=0)
 
 
+
+class MultimodalSignalSchema(BaseModel):
+    modality: str = Field(..., min_length=1)
+    source: str | None = None
+    summary: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class EmotionInferenceSchema(BaseModel):
+    dominant_emotion: str | None = None
+    emotion_tags: list[str] = Field(default_factory=list)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    source: str | None = None
+    model_ref: str | None = None
+
+
+class MultimodalEvidenceSchema(BaseModel):
+    canonical_user_text: str | None = None
+    speech_context: str | None = None
+    vision_context: str | None = None
+    speech_emotion_tags: list[str] = Field(default_factory=list)
+    vision_emotion_tags: list[str] = Field(default_factory=list)
+    emotion_inference: EmotionInferenceSchema | None = None
+    audio_duration_ms: int | None = Field(default=None, ge=0)
+    video_frame_count: int | None = Field(default=None, ge=0)
+
+
+class MultimodalResultSchema(BaseModel):
+    contract_version: str = Field(default="m5-v1")
+    alignment_mode: str = Field(..., min_length=1)
+    modalities: list[MultimodalSignalSchema] = Field(default_factory=list)
+    dominant_emotion: str | None = None
+    fusion_summary: str | None = None
+    evidence: MultimodalEvidenceSchema | None = None
+
 class ChatRequestSchema(BaseModel):
     session_id: str = Field(..., min_length=1)
     turn_id: int = Field(..., ge=1)
@@ -89,6 +135,10 @@ class ChatRequestSchema(BaseModel):
     audio_duration_ms: int | None = Field(default=None, ge=0)
     audio_sample_rate_hz: int | None = Field(default=None, ge=1)
     audio_channels: int | None = Field(default=None, ge=1)
+    audio_stream_id: str | None = None
+    audio_stream_event: str | None = None
+    audio_stream_sequence_id: int | None = Field(default=None, ge=0)
+    audio_chunks: list[AudioChunkSchema] = Field(default_factory=list)
     audio_meta: AudioMetaSchema | None = None
     video_frames: list[VideoFrameSchema] = Field(default_factory=list)
     video_meta: VideoMetaSchema | None = None
@@ -160,7 +210,9 @@ class ChatResponseSchema(BaseModel):
     reasoning_hint: str | None = None
     turn_time_window: TurnTimeWindowSchema | None = None
     alignment_mode: str | None = None
+    multimodal_result: MultimodalResultSchema | None = None
 
 
 class ErrorResponseSchema(BaseModel):
     detail: str
+

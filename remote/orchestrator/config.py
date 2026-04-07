@@ -48,6 +48,17 @@ class Settings:
             or "http://127.0.0.1:19300"
         )
         self.avatar_service_timeout_seconds = float(os.getenv("AVATAR_SERVICE_TIMEOUT_SECONDS", "20"))
+        self.emotion_service_enabled = os.getenv("EMOTION_SERVICE_ENABLED", "false").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.emotion_service_base = (
+            os.getenv("EMOTION_SERVICE_BASE", "http://127.0.0.1:19400").strip().rstrip("/")
+            or "http://127.0.0.1:19400"
+        )
+        self.emotion_service_timeout_seconds = float(os.getenv("EMOTION_SERVICE_TIMEOUT_SECONDS", "15"))
         self.system_prompt = os.getenv(
             "LLM_SYSTEM_PROMPT",
             (

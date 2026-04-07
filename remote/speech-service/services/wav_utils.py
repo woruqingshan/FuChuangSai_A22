@@ -62,3 +62,31 @@ def _normalize_pcm_sample(sample_bytes: bytes, sample_width_bytes: int) -> float
     raw_value = int.from_bytes(sample_bytes, byteorder="little", signed=True)
     scale = float(1 << ((sample_width_bytes * 8) - 1))
     return raw_value / scale
+
+
+def encode_wav_audio(decoded_audio: DecodedAudio, *, sample_width_bytes: int = 2) -> bytes:
+    if sample_width_bytes != 2:
+        raise ValueError("Only 16-bit WAV encoding is currently supported.")
+    if decoded_audio.channels <= 0:
+        raise ValueError("Decoded audio must contain at least one channel.")
+
+    channel_lengths = [len(channel_samples) for channel_samples in decoded_audio.samples_by_channel]
+    if not channel_lengths:
+        raise ValueError("Decoded audio contains no sample data.")
+    frame_count = min(channel_lengths)
+
+    pcm_bytes = bytearray()
+    for frame_index in range(frame_count):
+        for channel_index in range(decoded_audio.channels):
+            sample_value = decoded_audio.samples_by_channel[channel_index][frame_index]
+            sample_value = max(-1.0, min(1.0, sample_value))
+            quantized = int(sample_value * 32767.0) if sample_value >= 0 else int(sample_value * 32768.0)
+            pcm_bytes.extend(int(quantized).to_bytes(2, byteorder="little", signed=True))
+
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav_file:
+        wav_file.setnchannels(decoded_audio.channels)
+        wav_file.setsampwidth(sample_width_bytes)
+        wav_file.setframerate(decoded_audio.sample_rate_hz)
+        wav_file.writeframes(bytes(pcm_bytes))
+    return buffer.getvalue()

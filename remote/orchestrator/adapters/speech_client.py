@@ -19,7 +19,8 @@ class SpeechAnalysisResult:
 
 class SpeechClient:
     async def analyze_turn(self, request: ChatRequest) -> SpeechAnalysisResult:
-        if settings.speech_service_enabled and request.audio_base64:
+        has_audio_payload = bool(request.audio_base64 or request.audio_chunks or request.audio_stream_event)
+        if settings.speech_service_enabled and has_audio_payload:
             try:
                 return await self._call_service(request)
             except httpx.HTTPError:
@@ -29,7 +30,7 @@ class SpeechClient:
         if not fallback_text:
             fallback_text = (request.client_asr_text or "").strip()
 
-        if not fallback_text and request.audio_base64:
+        if not fallback_text and has_audio_payload:
             fallback_text = "Audio input received from the remote speech fallback."
 
         return SpeechAnalysisResult(
@@ -52,6 +53,13 @@ class SpeechClient:
             "audio_duration_ms": request.audio_duration_ms,
             "audio_sample_rate_hz": request.audio_sample_rate_hz,
             "audio_channels": request.audio_channels,
+            "audio_stream_id": request.audio_stream_id,
+            "audio_stream_event": request.audio_stream_event,
+            "audio_stream_sequence_id": request.audio_stream_sequence_id,
+            "audio_chunks": [
+                chunk.model_dump() if hasattr(chunk, "model_dump") else chunk.dict()
+                for chunk in request.audio_chunks
+            ],
             "audio_meta": (
                 request.audio_meta.model_dump() if request.audio_meta and hasattr(request.audio_meta, "model_dump")
                 else request.audio_meta.dict() if request.audio_meta

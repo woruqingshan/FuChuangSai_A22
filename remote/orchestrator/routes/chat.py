@@ -13,8 +13,12 @@ router = APIRouter()
     responses={400: {"model": ErrorResponse}},
 )
 async def chat(request: ChatRequest) -> ChatResponse:
+    return await process_chat_request(request)
+
+
+async def process_chat_request(request: ChatRequest) -> ChatResponse:
     has_text = bool(request.user_text.strip())
-    has_audio = bool(request.audio_base64)
+    has_audio = bool(request.audio_base64 or request.audio_chunks or request.audio_stream_event)
     if not has_text and not has_audio:
         raise HTTPException(status_code=400, detail="Either user_text or audio input is required.")
 

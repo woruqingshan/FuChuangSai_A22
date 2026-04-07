@@ -19,6 +19,16 @@ class AudioMeta(AudioMetaSchema):
     pass
 
 
+class AudioChunk(BaseModel):
+    chunk_id: str | None = None
+    sequence_id: int | None = Field(default=None, ge=0)
+    audio_base64: str | None = None
+    audio_format: str | None = None
+    audio_duration_ms: int | None = Field(default=None, ge=0)
+    audio_sample_rate_hz: int | None = Field(default=None, ge=1)
+    audio_channels: int | None = Field(default=None, ge=1)
+
+
 class SpeechFeatures(SpeechFeaturesSchema):
     pass
 
@@ -38,6 +48,10 @@ class TranscribeRequest(BaseModel):
     audio_duration_ms: int | None = Field(default=None, ge=0)
     audio_sample_rate_hz: int | None = Field(default=None, ge=1)
     audio_channels: int | None = Field(default=None, ge=1)
+    audio_stream_id: str | None = None
+    audio_stream_event: str | None = None
+    audio_stream_sequence_id: int | None = Field(default=None, ge=0)
+    audio_chunks: list[AudioChunk] = Field(default_factory=list)
     audio_meta: AudioMeta | None = None
     turn_time_window: TurnTimeWindow | None = None
 

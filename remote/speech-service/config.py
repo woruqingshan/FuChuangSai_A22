@@ -19,6 +19,18 @@ class Settings:
             "yes",
             "on",
         }
+        self.qwen_asr_use_flash_attn = os.getenv("QWEN_ASR_USE_FLASH_ATTN", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.qwen_asr_use_itn = os.getenv("QWEN_ASR_USE_ITN", "false").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
         self.tmp_dir = os.getenv("TMP_DIR", "/data/zifeng/siyuan/A22/tmp/speech").strip() or "/data/zifeng/siyuan/A22/tmp/speech"
 
 

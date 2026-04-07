@@ -116,4 +116,6 @@ class ErrorResponse(ErrorResponseSchema):
 class HealthResponse(BaseModel):
     status: str
     cloud_api_base: str
+    cloud_ws_chat_endpoint: str | None = None
+    remote_transport: str
     request_timeout_seconds: float

@@ -22,6 +22,22 @@ class Settings:
             "yes",
             "on",
         }
+        self.ring_buffer_enabled = os.getenv("VISION_RING_BUFFER_ENABLED", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.ring_buffer_max_frames = max(16, int(os.getenv("VISION_RING_BUFFER_MAX_FRAMES", "120")))
+        self.ring_buffer_max_age_ms = max(1000, int(os.getenv("VISION_RING_BUFFER_MAX_AGE_MS", "30000")))
+        self.ring_buffer_window_default_ms = max(
+            500,
+            int(os.getenv("VISION_RING_BUFFER_WINDOW_DEFAULT_MS", "6000")),
+        )
+        self.ring_buffer_window_max_frames = max(
+            1,
+            int(os.getenv("VISION_RING_BUFFER_WINDOW_MAX_FRAMES", "10")),
+        )
 
 
 settings = Settings()

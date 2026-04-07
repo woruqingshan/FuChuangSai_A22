@@ -40,6 +40,8 @@ class OrchestratorObservability:
                 "vision_service_base": settings.vision_service_base,
                 "avatar_service_enabled": settings.avatar_service_enabled,
                 "avatar_service_base": settings.avatar_service_base,
+                "emotion_service_enabled": settings.emotion_service_enabled,
+                "emotion_service_base": settings.emotion_service_base,
                 "log_dir": settings.log_dir,
             },
         )

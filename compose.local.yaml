@@ -27,6 +27,8 @@ services:
       - "8000:8000"
     environment:
       CLOUD_API_BASE: http://host.docker.internal:19000
+      CLOUD_WS_CHAT_ENDPOINT: ws://host.docker.internal:19000/ws/chat
+      REMOTE_TRANSPORT: auto
       LOG_DIR: /workspace-logs/edge-backend
       DATA_DIR: /data
       AUDIO_PIPELINE_ROLE: remote_forward_only

@@ -18,7 +18,11 @@ from contracts.schemas import (  # noqa: E402
     AvatarOutputSchema,
     ChatRequestSchema,
     ChatResponseSchema,
+    EmotionInferenceSchema,
     ErrorResponseSchema,
+    MultimodalEvidenceSchema,
+    MultimodalResultSchema,
+    MultimodalSignalSchema,
     SpeechFeaturesSchema,
     TurnTimeWindowSchema,
     VideoFrameSchema,
@@ -75,9 +79,27 @@ class AvatarOutput(AvatarOutputSchema):
     pass
 
 
+class MultimodalSignal(MultimodalSignalSchema):
+    pass
+
+
+class EmotionInference(EmotionInferenceSchema):
+    pass
+
+
+class MultimodalEvidence(MultimodalEvidenceSchema):
+    pass
+
+
+class MultimodalResult(MultimodalResultSchema):
+    modalities: list[MultimodalSignal] = Field(default_factory=list)
+    evidence: MultimodalEvidence | None = None
+
+
 class ChatResponse(ChatResponseSchema):
     avatar_action: AvatarAction
     avatar_output: AvatarOutput | None = None
+    multimodal_result: MultimodalResult | None = None
     reply_audio_url: str | None = None
 
 
@@ -87,6 +109,8 @@ class HealthResponse(BaseModel):
     orchestrator_mode: str
     llm_provider: str
     llm_model: str
+    emotion_service_enabled: bool
+    emotion_service_base: str | None = None
 
 
 class ErrorResponse(ErrorResponseSchema):

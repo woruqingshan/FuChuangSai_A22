@@ -16,4 +16,6 @@ async def health() -> HealthResponse:
         orchestrator_mode="multimodal-audio-alignment-ready",
         llm_provider=settings.llm_provider,
         llm_model=settings.llm_model,
+        emotion_service_enabled=settings.emotion_service_enabled,
+        emotion_service_base=settings.emotion_service_base if settings.emotion_service_enabled else None,
     )

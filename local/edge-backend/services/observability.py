@@ -39,6 +39,8 @@ class EdgeObservability:
             "run_start",
             {
                 "cloud_api_base": settings.cloud_api_base,
+                "cloud_ws_chat_endpoint": settings.cloud_ws_chat_endpoint,
+                "remote_transport": settings.remote_transport,
                 "request_timeout_seconds": settings.request_timeout_seconds,
                 "audio_pipeline_role": settings.audio_pipeline_role,
                 "local_video_frame_limit": settings.local_video_frame_limit,

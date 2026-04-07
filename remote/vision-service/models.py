@@ -54,3 +54,8 @@ class HealthResponse(BaseModel):
     vision_device: str
     frame_input_mode: str
     vision_dtype: str
+    ring_buffer_enabled: bool
+    ring_buffer_max_frames: int
+    ring_buffer_max_age_ms: int
+    ring_buffer_window_default_ms: int
+    ring_buffer_window_max_frames: int

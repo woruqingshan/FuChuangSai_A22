@@ -15,4 +15,9 @@ async def health() -> HealthResponse:
         vision_device=settings.vision_device,
         frame_input_mode=settings.frame_input_mode,
         vision_dtype=settings.vision_dtype,
+        ring_buffer_enabled=settings.ring_buffer_enabled,
+        ring_buffer_max_frames=settings.ring_buffer_max_frames,
+        ring_buffer_max_age_ms=settings.ring_buffer_max_age_ms,
+        ring_buffer_window_default_ms=settings.ring_buffer_window_default_ms,
+        ring_buffer_window_max_frames=settings.ring_buffer_window_max_frames,
     )
