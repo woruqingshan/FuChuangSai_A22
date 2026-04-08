@@ -263,15 +263,25 @@ class AvatarRenderBridge:
         if not outputs_dir.exists():
             return None
 
-        candidates = [
+        preferred_candidates = [
             path for path in outputs_dir.rglob("*_sig.mp4")
             if path.is_file() and path.stat().st_mtime >= after_ts
         ]
-        if not candidates:
+        if preferred_candidates:
+            preferred_candidates.sort(key=lambda item: item.stat().st_mtime, reverse=True)
+            return preferred_candidates[0]
+
+        fallback_candidates = [
+            path for path in outputs_dir.rglob("*.mp4")
+            if path.is_file()
+            and path.stat().st_mtime >= after_ts
+            and not path.name.endswith("_sig.mp4")
+        ]
+        if not fallback_candidates:
             return None
 
-        candidates.sort(key=lambda item: item.stat().st_mtime, reverse=True)
-        return candidates[0]
+        fallback_candidates.sort(key=lambda item: item.stat().st_mtime, reverse=True)
+        return fallback_candidates[0]
 
 
 avatar_render_bridge = AvatarRenderBridge()
