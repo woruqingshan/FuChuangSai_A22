@@ -27,7 +27,14 @@ class TTSRuntime:
             # Keep avatar-service available even before the CosyVoice runtime is fully ready.
             pass
 
-    def synthesize(self, *, session_id: str, turn_id: int, text: str) -> str | None:
+    def synthesize(
+        self,
+        *,
+        session_id: str,
+        turn_id: int,
+        text: str,
+        instruct_text: str | None = None,
+    ) -> str | None:
         if not text.strip():
             return None
         if settings.tts_mode == "placeholder":
@@ -35,7 +42,7 @@ class TTSRuntime:
 
         try:
             model = self._ensure_model()
-            waveform, sample_rate = self._run_inference(model, text)
+            waveform, sample_rate = self._run_inference(model, text, instruct_text=instruct_text)
             audio_bytes = self._to_wav_bytes(waveform, sample_rate)
             avatar_storage.persist_audio(session_id=session_id, turn_id=turn_id, audio_bytes=audio_bytes)
             encoded = base64.b64encode(audio_bytes).decode("ascii")
@@ -83,9 +90,9 @@ class TTSRuntime:
             if candidate.exists() and str(candidate) not in sys.path:
                 sys.path.append(str(candidate))
 
-    def _run_inference(self, model, text: str) -> tuple[np.ndarray, int]:
+    def _run_inference(self, model, text: str, *, instruct_text: str | None = None) -> tuple[np.ndarray, int]:
         sample_rate = int(getattr(model, "sample_rate", 22050))
-        outputs = self._invoke_tts(model, text)
+        outputs = self._invoke_tts(model, text, instruct_text=instruct_text)
 
         chunks: list[np.ndarray] = []
         for item in outputs:
@@ -104,7 +111,7 @@ class TTSRuntime:
 
         return np.concatenate(chunks, axis=0), sample_rate
 
-    def _invoke_tts(self, model, text: str):
+    def _invoke_tts(self, model, text: str, *, instruct_text: str | None = None):
         mode = settings.tts_mode
         if mode == "cosyvoice2_sft":
             return self._invoke_sft(model, text)
@@ -118,7 +125,7 @@ class TTSRuntime:
             "cosyvoice_instruct",
             "cosyvoice_300m_instruct",
         }:
-            return self._invoke_instruct(model, text)
+            return self._invoke_instruct(model, text, instruct_text=instruct_text)
 
         raise RuntimeError(
             f"Unsupported TTS_MODE={mode!r}. "
@@ -194,9 +201,10 @@ class TTSRuntime:
             speed=settings.tts_speed,
         )
 
-    def _invoke_instruct(self, model, text: str):
+    def _invoke_instruct(self, model, text: str, *, instruct_text: str | None = None):
         normalized_text = self._normalize_cosyvoice3_text(text)
-        normalized_instruct = self._normalize_cosyvoice3_prompt(settings.tts_instruct_text)
+        effective_instruct_text = instruct_text if instruct_text is not None else settings.tts_instruct_text
+        normalized_instruct = self._normalize_cosyvoice3_prompt(effective_instruct_text)
         prompt_wav = settings.tts_prompt_wav_path
         speaker_id = settings.tts_speaker_id or self._resolve_speaker_id(model)
 

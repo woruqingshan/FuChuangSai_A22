@@ -18,6 +18,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         session_id=request.session_id,
         turn_id=request.turn_id,
         text=request.reply_text,
+        instruct_text=request.tts_instruct_text,
     )
 
     avatar_output = {

@@ -32,6 +32,7 @@ class GenerateRequest(BaseModel):
     turn_id: int = Field(..., ge=1)
     reply_text: str = Field(..., min_length=1)
     emotion_style: str = Field(default="supportive")
+    tts_instruct_text: str | None = Field(default=None)
     avatar_action: AvatarAction
     turn_time_window: TurnTimeWindow | None = None
 
