@@ -337,17 +337,17 @@ class TTSRuntime:
         return requested_speed
 
     def _resolve_speaker_id(self, model, *, requested_speaker_id: str | None = None) -> str | None:
-        spk2info = getattr(model, "spk2info", None)
-        if not isinstance(spk2info, dict) or not spk2info:
-            return None
-
-        if requested_speaker_id and requested_speaker_id in spk2info:
+        if requested_speaker_id:
             return requested_speaker_id
 
-        if settings.tts_speaker_id in spk2info:
+        if settings.tts_speaker_id:
             return settings.tts_speaker_id
 
-        return next(iter(spk2info.keys()))
+        spk2info = getattr(model, "spk2info", None)
+        if isinstance(spk2info, dict) and spk2info:
+            return next(iter(spk2info.keys()))
+
+        return None
 
     def _normalize_cosyvoice3_prompt(self, text: str) -> str:
         cleaned = text.strip()
