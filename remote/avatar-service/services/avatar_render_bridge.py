@@ -21,10 +21,10 @@ class AvatarRenderRequest:
     emotion_style: str = "supportive"
     width: int = 768
     height: int = 768
-    length: int = 48
-    steps: int = 6
+    length: int = 96
+    steps: int = 12
     sample_rate: int = 16000
-    cfg: float = 1.0
+    cfg: float = 1.5
     fps: int = 24
     context_frames: int = 12
     context_overlap: int = 3
@@ -102,10 +102,10 @@ class AvatarRenderBridge:
         pose_dir: str | None = None,
         width: int = 768,
         height: int = 768,
-        length: int = 48,
-        steps: int = 6,
+        length: int = 96,
+        steps: int = 12,
         sample_rate: int = 16000,
-        cfg: float = 1.0,
+        cfg: float = 1.5,
         fps: int = 24,
         context_frames: int = 12,
         context_overlap: int = 3,
