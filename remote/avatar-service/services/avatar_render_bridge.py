@@ -143,6 +143,7 @@ class AvatarRenderBridge:
         ref_image_path = Path(request.ref_image_path)
         audio_path = Path(request.audio_path)
         pose_dir = Path(request.pose_dir)
+        ref_images_dir, refimg_name = self._split_ref_image_cli_args(ref_image_path)
 
         return [
             "python",
@@ -168,13 +169,13 @@ class AvatarRenderBridge:
             "--seed",
             str(request.seed),
             "--ref_images_dir",
-            str(ref_image_path.parent),
+            ref_images_dir,
             "--audio_dir",
             str(audio_path.parent),
             "--pose_dir",
             str(pose_dir.parent),
             "--refimg_name",
-            ref_image_path.name,
+            refimg_name,
             "--audio_name",
             audio_path.name,
             "--pose_name",
@@ -248,6 +249,14 @@ class AvatarRenderBridge:
         if normalized in self._pose_presets:
             return normalized
         return self._default_style
+
+    def _split_ref_image_cli_args(self, ref_image_path: Path) -> tuple[str, str]:
+        if ref_image_path.parent == ref_image_path.parent.parent:
+            return str(ref_image_path.parent), ref_image_path.name
+
+        ref_images_dir = str(ref_image_path.parent.parent)
+        refimg_name = f"{ref_image_path.parent.name}/{ref_image_path.name}"
+        return ref_images_dir, refimg_name
 
     def _resolve_output_video_path(self, workdir: Path, *, after_ts: float) -> Path | None:
         outputs_dir = workdir / "outputs"
