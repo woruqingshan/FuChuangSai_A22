@@ -237,7 +237,7 @@ class AvatarRenderBridge:
 
         video_path = self._resolve_output_video_path(workdir_path, after_ts=before_started_at)
         if video_path is None:
-            raise RuntimeError("EchoMimic render finished but no *_sig.mp4 output was found.")
+            raise RuntimeError("EchoMimic render finished but no new mp4 output was found.")
 
         return self.build_expected_result(
             request=request,
@@ -259,24 +259,30 @@ class AvatarRenderBridge:
         return ref_images_dir, refimg_name
 
     def _resolve_output_video_path(self, workdir: Path, *, after_ts: float) -> Path | None:
-        outputs_dir = workdir / "outputs"
-        if not outputs_dir.exists():
+        output_roots = [
+            root for root in (workdir / "output", workdir / "outputs")
+            if root.exists()
+        ]
+        if not output_roots:
             return None
 
-        preferred_candidates = [
-            path for path in outputs_dir.rglob("*_sig.mp4")
-            if path.is_file() and path.stat().st_mtime >= after_ts
-        ]
+        preferred_candidates: list[Path] = []
+        fallback_candidates: list[Path] = []
+        for root in output_roots:
+            preferred_candidates.extend(
+                path for path in root.rglob("*_sig.mp4")
+                if path.is_file() and path.stat().st_mtime >= after_ts
+            )
+            fallback_candidates.extend(
+                path for path in root.rglob("*.mp4")
+                if path.is_file()
+                and path.stat().st_mtime >= after_ts
+                and not path.name.endswith("_sig.mp4")
+            )
+
         if preferred_candidates:
             preferred_candidates.sort(key=lambda item: item.stat().st_mtime, reverse=True)
             return preferred_candidates[0]
-
-        fallback_candidates = [
-            path for path in outputs_dir.rglob("*.mp4")
-            if path.is_file()
-            and path.stat().st_mtime >= after_ts
-            and not path.name.endswith("_sig.mp4")
-        ]
         if not fallback_candidates:
             return None
 

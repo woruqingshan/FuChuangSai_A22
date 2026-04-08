@@ -13,7 +13,7 @@ class Settings:
             os.getenv("AVATAR_RENDERER_BACKEND", "echomimic_v2").strip().lower() or "echomimic_v2"
         )
         self.echomimic_root = os.getenv("ECHOMIMIC_ROOT", "").strip()
-        self.echomimic_infer_script = os.getenv("ECHOMIMIC_INFER_SCRIPT", "infer_acc.py").strip() or "infer_acc.py"
+        self.echomimic_infer_script = os.getenv("ECHOMIMIC_INFER_SCRIPT", "infer.py").strip() or "infer.py"
         self.echomimic_ref_image_path = os.getenv("ECHOMIMIC_REF_IMAGE_PATH", "").strip()
         self.echomimic_pose_dir = os.getenv("ECHOMIMIC_POSE_DIR", "").strip()
         self.echomimic_timeout_seconds = float(os.getenv("ECHOMIMIC_TIMEOUT_SECONDS", "1800"))
