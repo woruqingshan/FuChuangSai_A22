@@ -174,7 +174,7 @@ class AvatarRenderBridge:
             "--pose_dir",
             str(pose_dir.parent),
             "--refimg_name",
-            ref_image_path.name if not ref_image_path.parent.name else f"{ref_image_path.parent.name}/{ref_image_path.name}",
+            ref_image_path.name,
             "--audio_name",
             audio_path.name,
             "--pose_name",
