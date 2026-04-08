@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from models import GenerateRequest, GenerateResponse
+from services.avatar_render_bridge import avatar_render_bridge
 from services.expression_generator import expression_generator
 from services.motion_generator import motion_generator
 from services.storage import avatar_storage
@@ -22,6 +23,25 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         speed=request.tts_speed,
         speaker_id=request.tts_speaker_id,
     )
+    reply_video_path = None
+
+    if settings.avatar_renderer_backend == "echomimic_v2" and settings.echomimic_root and reply_audio_url:
+        audio_path = avatar_storage.get_audio_path(session_id=request.session_id, turn_id=request.turn_id)
+        render_request = avatar_render_bridge.build_request(
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            audio_path=str(audio_path),
+            ref_image_path=request.ref_image_path or settings.echomimic_ref_image_path,
+            emotion_style=request.emotion_style,
+            pose_dir=request.pose_dir or settings.echomimic_pose_dir or None,
+        )
+        render_result = avatar_render_bridge.render_video(
+            render_request,
+            workdir=settings.echomimic_root,
+            infer_script=settings.echomimic_infer_script,
+            timeout_seconds=settings.echomimic_timeout_seconds,
+        )
+        reply_video_path = render_result.video_path
 
     avatar_output = {
         "contract_version": "v1",
@@ -61,4 +81,5 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
     return GenerateResponse(
         avatar_output=avatar_output,
         reply_audio_url=reply_audio_url,
+        reply_video_path=reply_video_path,
     )

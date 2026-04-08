@@ -24,6 +24,9 @@ class AvatarStorage:
         output_path.write_bytes(audio_bytes)
         return output_path
 
+    def get_audio_path(self, *, session_id: str, turn_id: int) -> Path:
+        return self._turn_dir(session_id, turn_id) / "reply.wav"
+
     def persist_runtime_error(self, *, session_id: str, turn_id: int, payload: dict) -> Path:
         output_path = self._turn_dir(session_id, turn_id) / "tts_runtime_error.json"
         output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

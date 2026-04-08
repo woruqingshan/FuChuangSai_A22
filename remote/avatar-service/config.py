@@ -9,6 +9,14 @@ class Settings:
         self.transport_mode = os.getenv("AVATAR_TRANSPORT_MODE", "http_poll").strip() or "http_poll"
         self.websocket_endpoint = os.getenv("AVATAR_WEBSOCKET_ENDPOINT", "/ws/avatar").strip() or "/ws/avatar"
         self.tmp_dir = os.getenv("TMP_DIR", "/data/zifeng/siyuan/A22/tmp/avatar").strip() or "/data/zifeng/siyuan/A22/tmp/avatar"
+        self.avatar_renderer_backend = (
+            os.getenv("AVATAR_RENDERER_BACKEND", "echomimic_v2").strip().lower() or "echomimic_v2"
+        )
+        self.echomimic_root = os.getenv("ECHOMIMIC_ROOT", "").strip()
+        self.echomimic_infer_script = os.getenv("ECHOMIMIC_INFER_SCRIPT", "infer.py").strip() or "infer.py"
+        self.echomimic_ref_image_path = os.getenv("ECHOMIMIC_REF_IMAGE_PATH", "").strip()
+        self.echomimic_pose_dir = os.getenv("ECHOMIMIC_POSE_DIR", "").strip()
+        self.echomimic_timeout_seconds = float(os.getenv("ECHOMIMIC_TIMEOUT_SECONDS", "1800"))
         self.tts_mode = os.getenv("TTS_MODE", "cosyvoice2_sft").strip().lower() or "cosyvoice2_sft"
         self.tts_model = (
             os.getenv(

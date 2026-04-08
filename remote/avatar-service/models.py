@@ -35,6 +35,8 @@ class GenerateRequest(BaseModel):
     tts_instruct_text: str | None = Field(default=None)
     tts_speed: float | None = Field(default=None, gt=0.0)
     tts_speaker_id: str | None = Field(default=None, min_length=1)
+    ref_image_path: str | None = Field(default=None, min_length=1)
+    pose_dir: str | None = Field(default=None, min_length=1)
     avatar_action: AvatarAction
     turn_time_window: TurnTimeWindow | None = None
 
@@ -42,6 +44,7 @@ class GenerateRequest(BaseModel):
 class GenerateResponse(BaseModel):
     avatar_output: AvatarOutput
     reply_audio_url: str | None = None
+    reply_video_path: str | None = None
 
 
 class HealthResponse(BaseModel):
