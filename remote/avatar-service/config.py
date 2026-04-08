@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 
 class Settings:
@@ -19,6 +20,15 @@ class Settings:
         self.tts_device = os.getenv("TTS_DEVICE", "cuda:0").strip() or "cuda:0"
         self.tts_repo_path = os.getenv("TTS_REPO_PATH", "").strip()
         self.tts_speaker_id = os.getenv("TTS_SPEAKER_ID", "中文女").strip() or "中文女"
+        self.tts_prompt_wav = os.getenv("TTS_PROMPT_WAV", "").strip()
+        self.tts_prompt_text = (
+            os.getenv("TTS_PROMPT_TEXT", "以下是一段中文语音提示。<|endofprompt|>").strip()
+            or "以下是一段中文语音提示。<|endofprompt|>"
+        )
+        self.tts_instruct_text = (
+            os.getenv("TTS_INSTRUCT_TEXT", "请用标准普通话女声自然朗读。<|endofprompt|>").strip()
+            or "请用标准普通话女声自然朗读。<|endofprompt|>"
+        )
         self.tts_speed = float(os.getenv("TTS_SPEED", "1.0"))
         self.tts_warmup_enabled = os.getenv("TTS_WARMUP_ENABLED", "true").strip().lower() in {
             "1",
@@ -26,6 +36,18 @@ class Settings:
             "yes",
             "on",
         }
+
+    @property
+    def tts_prompt_wav_path(self) -> str:
+        if self.tts_prompt_wav:
+            return self.tts_prompt_wav
+
+        repo = Path(self.tts_repo_path).expanduser() if self.tts_repo_path else None
+        if repo:
+            candidate = repo / "asset" / "zero_shot_prompt.wav"
+            if candidate.exists():
+                return str(candidate)
+        return ""
 
 
 settings = Settings()
