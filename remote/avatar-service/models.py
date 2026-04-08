@@ -33,6 +33,8 @@ class GenerateRequest(BaseModel):
     reply_text: str = Field(..., min_length=1)
     emotion_style: str = Field(default="supportive")
     tts_instruct_text: str | None = Field(default=None)
+    tts_speed: float | None = Field(default=None, gt=0.0)
+    tts_speaker_id: str | None = Field(default=None, min_length=1)
     avatar_action: AvatarAction
     turn_time_window: TurnTimeWindow | None = None
 

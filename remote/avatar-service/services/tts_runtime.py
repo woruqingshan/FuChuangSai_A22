@@ -34,6 +34,8 @@ class TTSRuntime:
         turn_id: int,
         text: str,
         instruct_text: str | None = None,
+        speed: float | None = None,
+        speaker_id: str | None = None,
     ) -> str | None:
         if not text.strip():
             return None
@@ -42,7 +44,13 @@ class TTSRuntime:
 
         try:
             model = self._ensure_model()
-            waveform, sample_rate = self._run_inference(model, text, instruct_text=instruct_text)
+            waveform, sample_rate = self._run_inference(
+                model,
+                text,
+                instruct_text=instruct_text,
+                speed=speed,
+                speaker_id=speaker_id,
+            )
             audio_bytes = self._to_wav_bytes(waveform, sample_rate)
             avatar_storage.persist_audio(session_id=session_id, turn_id=turn_id, audio_bytes=audio_bytes)
             encoded = base64.b64encode(audio_bytes).decode("ascii")
@@ -90,9 +98,23 @@ class TTSRuntime:
             if candidate.exists() and str(candidate) not in sys.path:
                 sys.path.append(str(candidate))
 
-    def _run_inference(self, model, text: str, *, instruct_text: str | None = None) -> tuple[np.ndarray, int]:
+    def _run_inference(
+        self,
+        model,
+        text: str,
+        *,
+        instruct_text: str | None = None,
+        speed: float | None = None,
+        speaker_id: str | None = None,
+    ) -> tuple[np.ndarray, int]:
         sample_rate = int(getattr(model, "sample_rate", 22050))
-        outputs = self._invoke_tts(model, text, instruct_text=instruct_text)
+        outputs = self._invoke_tts(
+            model,
+            text,
+            instruct_text=instruct_text,
+            speed=speed,
+            speaker_id=speaker_id,
+        )
 
         chunks: list[np.ndarray] = []
         for item in outputs:
@@ -111,21 +133,35 @@ class TTSRuntime:
 
         return np.concatenate(chunks, axis=0), sample_rate
 
-    def _invoke_tts(self, model, text: str, *, instruct_text: str | None = None):
+    def _invoke_tts(
+        self,
+        model,
+        text: str,
+        *,
+        instruct_text: str | None = None,
+        speed: float | None = None,
+        speaker_id: str | None = None,
+    ):
         mode = settings.tts_mode
         if mode == "cosyvoice2_sft":
-            return self._invoke_sft(model, text)
+            return self._invoke_sft(model, text, speed=speed, speaker_id=speaker_id)
         if mode in {"cosyvoice_text", "cosyvoice_inference"}:
-            return self._invoke_plain_text(model, text)
+            return self._invoke_plain_text(model, text, speed=speed)
         if mode == "cosyvoice3_zero_shot":
-            return self._invoke_zero_shot(model, text)
+            return self._invoke_zero_shot(model, text, speed=speed)
         if mode in {
             "cosyvoice3_instruct2",
             "cosyvoice_instruct2",
             "cosyvoice_instruct",
             "cosyvoice_300m_instruct",
         }:
-            return self._invoke_instruct(model, text, instruct_text=instruct_text)
+            return self._invoke_instruct(
+                model,
+                text,
+                instruct_text=instruct_text,
+                speed=speed,
+                speaker_id=speaker_id,
+            )
 
         raise RuntimeError(
             f"Unsupported TTS_MODE={mode!r}. "
@@ -134,13 +170,13 @@ class TTSRuntime:
             "'cosyvoice_instruct', 'cosyvoice_300m_instruct'."
         )
 
-    def _invoke_sft(self, model, text: str):
+    def _invoke_sft(self, model, text: str, *, speed: float | None = None, speaker_id: str | None = None):
         method = getattr(model, "inference_sft", None)
         if not callable(method):
             raise RuntimeError("TTS_MODE='cosyvoice2_sft' requires model.inference_sft, but it is unavailable.")
 
-        speaker_id = self._resolve_speaker_id(model)
-        if not speaker_id:
+        effective_speaker_id = self._resolve_speaker_id(model, requested_speaker_id=speaker_id)
+        if not effective_speaker_id:
             raise RuntimeError(
                 "TTS_MODE='cosyvoice2_sft' requires a preset speaker, "
                 "but the loaded model exposes no available speaker_id."
@@ -148,19 +184,19 @@ class TTSRuntime:
 
         return method(
             text,
-            speaker_id,
+            effective_speaker_id,
             stream=False,
-            speed=settings.tts_speed,
+            speed=self._resolve_speed(speed),
         )
 
-    def _invoke_plain_text(self, model, text: str):
+    def _invoke_plain_text(self, model, text: str, *, speed: float | None = None):
         errors: list[str] = []
         fallback_methods = ("inference", "inference_tts")
         fallback_kwargs = {
             "text": text,
             "tts_text": text,
             "stream": False,
-            "speed": settings.tts_speed,
+            "speed": self._resolve_speed(speed),
         }
 
         for method_name in fallback_methods:
@@ -179,7 +215,7 @@ class TTSRuntime:
             + " | ".join(errors)
         )
 
-    def _invoke_zero_shot(self, model, text: str):
+    def _invoke_zero_shot(self, model, text: str, *, speed: float | None = None):
         method = getattr(model, "inference_zero_shot", None)
         if not callable(method):
             raise RuntimeError(
@@ -198,15 +234,24 @@ class TTSRuntime:
             prompt_text=self._normalize_cosyvoice3_prompt(settings.tts_prompt_text),
             prompt_wav=prompt_wav,
             stream=False,
-            speed=settings.tts_speed,
+            speed=self._resolve_speed(speed),
         )
 
-    def _invoke_instruct(self, model, text: str, *, instruct_text: str | None = None):
+    def _invoke_instruct(
+        self,
+        model,
+        text: str,
+        *,
+        instruct_text: str | None = None,
+        speed: float | None = None,
+        speaker_id: str | None = None,
+    ):
         normalized_text = self._normalize_cosyvoice3_text(text)
         effective_instruct_text = instruct_text if instruct_text is not None else settings.tts_instruct_text
         normalized_instruct = self._normalize_cosyvoice3_prompt(effective_instruct_text)
         prompt_wav = settings.tts_prompt_wav_path
-        speaker_id = settings.tts_speaker_id or self._resolve_speaker_id(model)
+        effective_speaker_id = self._resolve_speaker_id(model, requested_speaker_id=speaker_id)
+        effective_speed = self._resolve_speed(speed)
 
         candidates = []
         for method_name in ("inference_instruct2", "inference_instruct"):
@@ -222,20 +267,20 @@ class TTSRuntime:
                             "tts_text": normalized_text,
                             "text": normalized_text,
                             "instruct_text": normalized_instruct,
-                            "spk_id": speaker_id,
-                            "speaker_id": speaker_id,
+                            "spk_id": effective_speaker_id,
+                            "speaker_id": effective_speaker_id,
                             "prompt_wav": prompt_wav,
                             "stream": False,
-                            "speed": settings.tts_speed,
+                            "speed": effective_speed,
                         },
                         {
                             "tts_text": normalized_text,
                             "text": normalized_text,
                             "instruct_text": normalized_instruct,
-                            "spk_id": speaker_id,
-                            "speaker_id": speaker_id,
+                            "spk_id": effective_speaker_id,
+                            "speaker_id": effective_speaker_id,
                             "stream": False,
-                            "speed": settings.tts_speed,
+                            "speed": effective_speed,
                         },
                     ],
                 )
@@ -286,10 +331,18 @@ class TTSRuntime:
 
         raise RuntimeError(" | ".join(errors) or "No compatible call signature matched the loaded model method.")
 
-    def _resolve_speaker_id(self, model) -> str | None:
+    def _resolve_speed(self, requested_speed: float | None) -> float:
+        if requested_speed is None:
+            return settings.tts_speed
+        return requested_speed
+
+    def _resolve_speaker_id(self, model, *, requested_speaker_id: str | None = None) -> str | None:
         spk2info = getattr(model, "spk2info", None)
         if not isinstance(spk2info, dict) or not spk2info:
             return None
+
+        if requested_speaker_id and requested_speaker_id in spk2info:
+            return requested_speaker_id
 
         if settings.tts_speaker_id in spk2info:
             return settings.tts_speaker_id
