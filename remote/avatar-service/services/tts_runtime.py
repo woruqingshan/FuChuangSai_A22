@@ -198,6 +198,7 @@ class TTSRuntime:
         normalized_text = self._normalize_cosyvoice3_text(text)
         normalized_instruct = self._normalize_cosyvoice3_prompt(settings.tts_instruct_text)
         prompt_wav = settings.tts_prompt_wav_path
+        speaker_id = settings.tts_speaker_id or self._resolve_speaker_id(model)
 
         candidates = []
         for method_name in ("inference_instruct2", "inference_instruct"):
@@ -213,6 +214,8 @@ class TTSRuntime:
                             "tts_text": normalized_text,
                             "text": normalized_text,
                             "instruct_text": normalized_instruct,
+                            "spk_id": speaker_id,
+                            "speaker_id": speaker_id,
                             "prompt_wav": prompt_wav,
                             "stream": False,
                             "speed": settings.tts_speed,
@@ -221,6 +224,8 @@ class TTSRuntime:
                             "tts_text": normalized_text,
                             "text": normalized_text,
                             "instruct_text": normalized_instruct,
+                            "spk_id": speaker_id,
+                            "speaker_id": speaker_id,
                             "stream": False,
                             "speed": settings.tts_speed,
                         },
