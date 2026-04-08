@@ -1,4 +1,5 @@
 from dataclasses import asdict, dataclass, field
+import json
 from pathlib import Path
 import subprocess
 import time
@@ -139,7 +140,39 @@ class AvatarRenderBridge:
         request: AvatarRenderRequest,
         *,
         infer_script: str = "infer.py",
+        workdir: str | None = None,
     ) -> list[str]:
+        if Path(infer_script).name == "infer_acc.py":
+            if workdir is None:
+                raise ValueError("workdir is required when using infer_acc.py")
+            config_path = self._write_infer_acc_config(Path(workdir), request)
+            return [
+                "python",
+                infer_script,
+                "--config",
+                str(config_path),
+                "-W",
+                str(request.width),
+                "-H",
+                str(request.height),
+                "-L",
+                str(request.length),
+                "--steps",
+                str(request.steps),
+                "--cfg",
+                str(request.cfg),
+                "--sample_rate",
+                str(request.sample_rate),
+                "--fps",
+                str(request.fps),
+                "--context_frames",
+                str(request.context_frames),
+                "--context_overlap",
+                str(request.context_overlap),
+                "--seed",
+                str(request.seed),
+            ]
+
         ref_image_path = Path(request.ref_image_path)
         audio_path = Path(request.audio_path)
         pose_dir = Path(request.pose_dir)
@@ -218,7 +251,7 @@ class AvatarRenderBridge:
             raise FileNotFoundError(f"EchoMimic root does not exist: {workdir}")
 
         before_started_at = time.time()
-        cli_args = self.build_cli_args(request, infer_script=infer_script)
+        cli_args = self.build_cli_args(request, infer_script=infer_script, workdir=str(workdir_path))
         completed = subprocess.run(  # noqa: S603
             cli_args,
             cwd=str(workdir_path),
@@ -257,6 +290,36 @@ class AvatarRenderBridge:
         ref_images_dir = str(ref_image_path.parent.parent)
         refimg_name = f"{ref_image_path.parent.name}/{ref_image_path.name}"
         return ref_images_dir, refimg_name
+
+    def _write_infer_acc_config(self, workdir: Path, request: AvatarRenderRequest) -> Path:
+        runtime_dir = workdir / "tmp" / "runtime_configs"
+        runtime_dir.mkdir(parents=True, exist_ok=True)
+        config_path = runtime_dir / f"{request.session_id}-{request.turn_id}.yaml"
+        config_payload = {
+            "pretrained_base_model_path": "./pretrained_weights/sd-image-variations-diffusers",
+            "pretrained_vae_path": "./pretrained_weights/sd-vae-ft-mse",
+            "denoising_unet_path": "./pretrained_weights/denoising_unet_acc.pth",
+            "reference_unet_path": "./pretrained_weights/reference_unet.pth",
+            "pose_encoder_path": "./pretrained_weights/pose_encoder.pth",
+            "motion_module_path": "./pretrained_weights/motion_module_acc.pth",
+            "audio_mapper_path": "./pretrained_weights/audio_mapper-50000.pth",
+            "auido_guider_path": "./pretrained_weights/wav2vec2-base-960h",
+            "auto_flow_path": "./pretrained_weights/AutoFlow",
+            "audio_model_path": "./pretrained_weights/audio_processor/tiny.pt",
+            "inference_config": "./configs/inference/inference_v2.yaml",
+            "weight_dtype": "fp16",
+            "test_cases": {
+                request.ref_image_path: [
+                    request.audio_path,
+                    request.pose_dir,
+                ]
+            },
+        }
+        config_path.write_text(
+            json.dumps(config_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return config_path
 
     def _resolve_output_video_path(self, workdir: Path, *, after_ts: float) -> Path | None:
         output_roots = [
