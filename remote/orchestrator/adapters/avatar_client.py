@@ -4,6 +4,7 @@ import httpx
 
 from config import settings
 from models import AvatarAction, AvatarOutput, ChatRequest
+from services.tts_style_mapper import TTSRenderPlan
 
 
 @dataclass
@@ -20,6 +21,7 @@ class AvatarClient:
         reply_text: str,
         emotion_style: str,
         avatar_action: AvatarAction,
+        tts_plan: TTSRenderPlan | None = None,
     ) -> AvatarGenerationResult:
         if settings.avatar_service_enabled:
             try:
@@ -28,6 +30,7 @@ class AvatarClient:
                     reply_text=reply_text,
                     emotion_style=emotion_style,
                     avatar_action=avatar_action,
+                    tts_plan=tts_plan,
                 )
             except httpx.HTTPError:
                 pass
@@ -46,12 +49,16 @@ class AvatarClient:
         reply_text: str,
         emotion_style: str,
         avatar_action: AvatarAction,
+        tts_plan: TTSRenderPlan | None = None,
     ) -> AvatarGenerationResult:
         payload = {
             "session_id": request.session_id,
             "turn_id": request.turn_id,
             "reply_text": reply_text,
             "emotion_style": emotion_style,
+            "tts_instruct_text": tts_plan.tts_instruct_text if tts_plan else None,
+            "tts_speed": tts_plan.tts_speed if tts_plan else None,
+            "tts_speaker_id": tts_plan.tts_speaker_id if tts_plan else None,
             "avatar_action": avatar_action.model_dump() if hasattr(avatar_action, "model_dump") else avatar_action.dict(),
             "turn_time_window": (
                 request.turn_time_window.model_dump()

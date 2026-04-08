@@ -14,6 +14,7 @@ from services.observability import orchestrator_observability
 from services.policy_service import policy_service
 from services.prompt_builder import prompt_builder
 from services.session_state import session_state
+from services.tts_style_mapper import tts_style_mapper
 
 
 class DialogService:
@@ -69,11 +70,16 @@ class DialogService:
                 context_summary=memory_summary,
             )
         )
+        tts_plan = tts_style_mapper.build_plan(
+            emotion_style=emotion_style,
+            reply_text=llm_result.reply_text,
+        )
         avatar_generation = await avatar_client.generate(
             request=enriched_request,
             reply_text=llm_result.reply_text,
             emotion_style=emotion_style,
             avatar_action=avatar_action,
+            tts_plan=tts_plan,
         )
 
         session_state.append_message(
@@ -117,6 +123,8 @@ class DialogService:
                 "response_source": response.response_source,
                 "alignment_mode": response.alignment_mode,
                 "emotion_style": response.emotion_style,
+                "tts_speed": tts_plan.tts_speed,
+                "tts_speaker_id": tts_plan.tts_speaker_id,
                 "reply_text_preview": response.reply_text[:200],
                 "dominant_emotion": (
                     response.multimodal_result.dominant_emotion if response.multimodal_result else None
