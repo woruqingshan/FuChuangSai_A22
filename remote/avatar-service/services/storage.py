@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shutil
 
 from config import settings
 
@@ -26,6 +27,14 @@ class AvatarStorage:
 
     def get_audio_path(self, *, session_id: str, turn_id: int) -> Path:
         return self._turn_dir(session_id, turn_id) / "reply.wav"
+
+    def persist_video(self, *, session_id: str, turn_id: int, source_path: str | Path) -> Path:
+        output_path = self._turn_dir(session_id, turn_id) / "reply.mp4"
+        shutil.copy2(Path(source_path), output_path)
+        return output_path
+
+    def get_video_path(self, *, session_id: str, turn_id: int) -> Path:
+        return self._turn_dir(session_id, turn_id) / "reply.mp4"
 
     def persist_runtime_error(self, *, session_id: str, turn_id: int, payload: dict) -> Path:
         output_path = self._turn_dir(session_id, turn_id) / "tts_runtime_error.json"

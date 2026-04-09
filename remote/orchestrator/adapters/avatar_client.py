@@ -11,6 +11,7 @@ from services.tts_style_mapper import TTSRenderPlan
 class AvatarGenerationResult:
     avatar_output: AvatarOutput
     reply_audio_url: str | None
+    reply_video_url: str | None
 
 
 class AvatarClient:
@@ -76,6 +77,7 @@ class AvatarClient:
         return AvatarGenerationResult(
             avatar_output=AvatarOutput(**body["avatar_output"]),
             reply_audio_url=body.get("reply_audio_url"),
+            reply_video_url=body.get("reply_video_url"),
         )
 
     def _build_fallback(
@@ -130,7 +132,7 @@ class AvatarClient:
                 }
             ],
         )
-        return AvatarGenerationResult(avatar_output=avatar_output, reply_audio_url=None)
+        return AvatarGenerationResult(avatar_output=avatar_output, reply_audio_url=None, reply_video_url=None)
 
 
 avatar_client = AvatarClient()

@@ -107,6 +107,11 @@ class DialogService:
             server_ts=int(datetime.now(timezone.utc).timestamp()),
             input_mode=enriched_request.input_type,
             reply_audio_url=avatar_generation.reply_audio_url,
+            reply_video_url=(
+                f"/api/media/video/{request.session_id}/{request.turn_id}"
+                if avatar_generation.reply_video_url
+                else None
+            ),
             response_source=llm_result.response_source,
             context_summary=memory_summary or None,
             reasoning_hint=llm_result.reasoning_hint

@@ -4,52 +4,31 @@ export function createAvatarPanel() {
   const element = document.createElement("section");
   element.className = "avatar-panel";
   element.innerHTML = `
-    <div class="panel-heading">
-      <div>
-        <p class="eyebrow">A · Avatar</p>
-        <h2>Digital Human Render Panel</h2>
-      </div>
-      <span class="chip">2D renderer scaffold</span>
-    </div>
-      <div class="avatar-stage">
-      <div class="avatar-face" data-expression="neutral" data-motion="steady" data-viseme="sil">
+    <div class="avatar-stage avatar-stage--portrait-only">
+      <div class="avatar-face avatar-face--portrait" data-expression="neutral" data-motion="steady" data-viseme="sil">
         <div class="avatar-halo"></div>
-        <div class="avatar-head">
-          <div class="avatar-eyes">
-            <span></span>
-            <span></span>
-          </div>
-          <div class="avatar-mouth"></div>
-        </div>
-      </div>
-      <div class="avatar-readout">
-        <div>
-          <span class="readout-label">Emotion</span>
-          <strong data-role="emotion-style">supportive</strong>
-        </div>
-        <div>
-          <span class="readout-label">Expression</span>
-          <strong data-role="facial-expression">neutral</strong>
-        </div>
-        <div>
-          <span class="readout-label">Head motion</span>
-          <strong data-role="head-motion">steady</strong>
+        <div class="avatar-portrait-shell">
+          <img
+            class="avatar-portrait-image"
+            src="./avatar-portrait.png"
+            alt="Digital human portrait"
+          />
+          <video
+            class="avatar-video hidden"
+            muted
+            playsinline
+            autoplay
+            loop
+          ></video>
         </div>
       </div>
     </div>
   `;
 
   const face = element.querySelector(".avatar-face");
-  const emotionStyle = element.querySelector('[data-role="emotion-style"]');
-  const facialExpression = element.querySelector('[data-role="facial-expression"]');
-  const headMotion = element.querySelector('[data-role="head-motion"]');
   const renderer = createAvatarRenderer({
     faceElement: face,
-    readouts: {
-      emotionStyle,
-      facialExpression,
-      headMotion,
-    },
+    readouts: null,
   });
 
   const api = {

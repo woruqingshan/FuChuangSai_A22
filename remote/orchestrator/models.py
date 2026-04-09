@@ -101,6 +101,7 @@ class ChatResponse(ChatResponseSchema):
     avatar_output: AvatarOutput | None = None
     multimodal_result: MultimodalResult | None = None
     reply_audio_url: str | None = None
+    reply_video_url: str | None = None
 
 
 class HealthResponse(BaseModel):

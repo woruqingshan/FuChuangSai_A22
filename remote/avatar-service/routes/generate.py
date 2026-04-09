@@ -41,7 +41,12 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
             infer_script=settings.echomimic_infer_script,
             timeout_seconds=settings.echomimic_timeout_seconds,
         )
-        reply_video_path = render_result.video_path
+        persisted_video_path = avatar_storage.persist_video(
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            source_path=render_result.video_path,
+        )
+        reply_video_path = str(persisted_video_path)
 
     avatar_output = {
         "contract_version": "v1",
@@ -82,4 +87,9 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         avatar_output=avatar_output,
         reply_audio_url=reply_audio_url,
         reply_video_path=reply_video_path,
+        reply_video_url=(
+            f"/media/video/{request.session_id}/{request.turn_id}"
+            if reply_video_path
+            else None
+        ),
     )
