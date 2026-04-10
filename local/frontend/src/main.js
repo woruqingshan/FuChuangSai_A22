@@ -64,7 +64,7 @@ app.innerHTML = `
         <section class="control-column panel"></section>
       </section>
       <section class="right-column">
-        <section class="avatar-column panel"></section>
+        <section class="avatar-column"></section>
         <section class="status-column panel"></section>
       </section>
     </main>
@@ -75,7 +75,7 @@ leftTopStack = app.querySelector(".left-top-stack");
 leftTopStack.append(inputBar.mediaElement, chatPanel.element);
 app.querySelector(".control-column").append(inputBar.controlsElement);
 app.querySelector(".avatar-column").appendChild(avatarPanel.element);
-app.querySelector(".status-column").append(statusBar.element);
+app.querySelector(".status-column").appendChild(statusBar.element);
 
 chatPanel.addSystemMessage("Local UI is ready. Send text or record a short audio clip to start.");
 syncStatus({
@@ -205,7 +205,6 @@ function syncStatus(nextState) {
   state.headMotion = nextState.headMotion || state.headMotion;
   state.audioStatus = nextState.audioStatus || state.audioStatus;
   state.videoStatus = nextState.videoStatus || state.videoStatus;
-
   statusBar.update({
     sessionId: state.sessionId,
     nextTurnId: state.nextTurnId,
