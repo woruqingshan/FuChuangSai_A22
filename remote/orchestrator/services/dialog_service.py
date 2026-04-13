@@ -108,7 +108,7 @@ class DialogService:
             input_mode=enriched_request.input_type,
             reply_audio_url=avatar_generation.reply_audio_url,
             reply_video_url=(
-                f"/api/media/video/{request.session_id}/{request.turn_id}"
+                f"/media/video/{request.session_id}/{request.turn_id}"
                 if avatar_generation.reply_video_url
                 else None
             ),
