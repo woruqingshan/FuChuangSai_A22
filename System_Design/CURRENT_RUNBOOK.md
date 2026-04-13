@@ -667,3 +667,64 @@ pkill -f "ssh -N -L 19000:127.0.0.1:19000"
 ```
 
 Stop remote services by interrupting their running terminals.
+
+## AutoDL custom service single-port proxy
+
+When the remote host runs on AutoDL and only one external custom-service
+entrypoint is available, expose the app through `6008` and proxy to the
+internal orchestrator `19000`.
+
+Reference config:
+
+- [autodl-6008-proxy.conf](D:\a22\FuChuangSai_A22\infra\nginx\autodl-6008-proxy.conf)
+
+Recommended remote layout:
+
+```text
+/root/autodl-tmp/a22/code/FuChuangSai_A22/infra/nginx/autodl-6008-proxy.conf
+```
+
+Install nginx if needed:
+
+```bash
+apt-get update
+apt-get install -y nginx
+```
+
+Start orchestrator on the internal port first:
+
+```bash
+curl http://127.0.0.1:19000/health
+```
+
+Then start the AutoDL-facing nginx proxy:
+
+```bash
+tmux kill-session -t autodl-nginx 2>/dev/null || true
+tmux new-session -d -s autodl-nginx \
+  "nginx -c /root/autodl-tmp/a22/code/FuChuangSai_A22/infra/nginx/autodl-6008-proxy.conf -g 'daemon off;'"
+```
+
+Verify inside the server:
+
+```bash
+curl http://127.0.0.1:6008/health
+curl -o /tmp/demo-test-1.mp4 http://127.0.0.1:6008/media/video/demo-test/1
+ls -lh /tmp/demo-test-1.mp4
+```
+
+Then use the AutoDL custom-service URL that maps to `6008` and access:
+
+```text
+https://<autodl-custom-service-host>:8443/health
+https://<autodl-custom-service-host>:8443/media/video/demo-test/1
+```
+
+Important constraints:
+
+1. Keep `orchestrator` on `127.0.0.1:19000`.
+2. Let nginx own `0.0.0.0:6008`.
+3. Do not run both `socat` and nginx on `6008` at the same time.
+4. If external `8443` still returns a platform 404, the AutoDL custom-service
+   mapping itself is not targeting the current instance port and must be fixed
+   in the panel.
