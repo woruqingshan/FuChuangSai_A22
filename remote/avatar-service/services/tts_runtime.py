@@ -246,9 +246,9 @@ class TTSRuntime:
         speed: float | None = None,
         speaker_id: str | None = None,
     ):
-        normalized_text = self._normalize_cosyvoice3_text(text)
+        normalized_text = self._normalize_instruct_text_for_mode(text)
         effective_instruct_text = instruct_text if instruct_text is not None else settings.tts_instruct_text
-        normalized_instruct = self._normalize_cosyvoice3_prompt(effective_instruct_text)
+        normalized_instruct = self._normalize_instruct_prompt_for_mode(effective_instruct_text)
         prompt_wav = settings.tts_prompt_wav_path
         effective_speaker_id = self._resolve_speaker_id(model, requested_speaker_id=speaker_id)
         effective_speed = self._resolve_speed(speed)
@@ -303,6 +303,18 @@ class TTSRuntime:
             "Instruct TTS inference failed for all known CosyVoice entrypoints. "
             + " | ".join(errors)
         )
+
+    def _normalize_instruct_prompt_for_mode(self, text: str) -> str:
+        mode = settings.tts_mode
+        if mode in {"cosyvoice3_instruct2"}:
+            return self._normalize_cosyvoice3_prompt(text)
+        return self._normalize_plain_prompt(text)
+
+    def _normalize_instruct_text_for_mode(self, text: str) -> str:
+        mode = settings.tts_mode
+        if mode in {"cosyvoice3_instruct2"}:
+            return self._normalize_cosyvoice3_text(text)
+        return self._normalize_plain_text(text)
 
     def _call_with_compatible_kwargs(self, method, kwargs_candidates: list[dict]):
         signature = inspect.signature(method)
@@ -364,6 +376,18 @@ class TTSRuntime:
         if "<|endofprompt|>" not in cleaned:
             cleaned = f"<|endofprompt|>{cleaned}"
         return cleaned
+
+    def _normalize_plain_prompt(self, text: str) -> str:
+        cleaned = text.strip()
+        if not cleaned:
+            raise RuntimeError("Instruct prompt text is empty.")
+        return cleaned.replace("<|endofprompt|>", "").strip()
+
+    def _normalize_plain_text(self, text: str) -> str:
+        cleaned = text.strip()
+        if not cleaned:
+            raise RuntimeError("Instruct tts_text is empty.")
+        return cleaned.replace("<|endofprompt|>", "").strip()
 
     def _to_wav_bytes(self, waveform: np.ndarray, sample_rate: int) -> bytes:
         normalized = np.clip(waveform, -1.0, 1.0)
