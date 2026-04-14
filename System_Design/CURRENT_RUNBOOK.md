@@ -671,16 +671,24 @@ Stop remote services by interrupting their running terminals.
 ## AutoDL custom service single-port proxy
 
 When the remote host runs on AutoDL and only one external custom-service
-entrypoint is available, expose the app through `6008` and proxy to the
-internal orchestrator `19000`.
+entrypoint is available, the working setup is:
 
-Reference config:
+- `orchestrator` on `127.0.0.1:19000`
+- `proxy_in_instance` on `127.0.0.1:6006`
+- `nginx` on `0.0.0.0:6008`
+- AutoDL custom-service URL `8443 -> 6008`
 
+Reference configs:
+
+- [proxy-config.yaml](D:\a22\FuChuangSai_A22\infra\autodl\proxy-config.yaml)
 - [autodl-6008-proxy.conf](D:\a22\FuChuangSai_A22\infra\nginx\autodl-6008-proxy.conf)
 
 Recommended remote layout:
 
 ```text
+/root/autodl-tmp/a22/config.yaml
+/root/autodl-tmp/a22/proxy_in_instance
+/root/autodl-tmp/a22/code/FuChuangSai_A22/infra/autodl/proxy-config.yaml
 /root/autodl-tmp/a22/code/FuChuangSai_A22/infra/nginx/autodl-6008-proxy.conf
 ```
 
@@ -691,15 +699,40 @@ apt-get update
 apt-get install -y nginx
 ```
 
-Start orchestrator on the internal port first:
+Start the core backend services first:
 
 ```bash
+curl http://127.0.0.1:8000/v1/models
+curl http://127.0.0.1:19300/health
 curl http://127.0.0.1:19000/health
 ```
 
-Then start the AutoDL-facing nginx proxy:
+Prepare and start `proxy_in_instance` on `6006`:
 
 ```bash
+cd /root/autodl-tmp/a22
+wget https://autodl-public.ks3-cn-beijing.ksyuncs.com/tool/api-proxy/proxy_in_instance
+chmod +x proxy_in_instance
+cp /root/autodl-tmp/a22/code/FuChuangSai_A22/infra/autodl/proxy-config.yaml /root/autodl-tmp/a22/config.yaml
+tmux kill-session -t autodl-proxy 2>/dev/null || true
+tmux new-session -d -s autodl-proxy "cd /root/autodl-tmp/a22 && ./proxy_in_instance"
+```
+
+Verify the internal AutoDL proxy:
+
+```bash
+tmux capture-pane -pt autodl-proxy -S -50
+curl http://127.0.0.1:6006/health
+curl -X POST http://127.0.0.1:6006/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"session_id":"debug-chat","turn_id":1,"user_text":"你好","input_type":"text","client_ts":1234567890,"turn_time_window":{"window_id":"debug-chat-turn-1","source_clock":"browser_epoch_ms","transport_mode":"http_turn","sequence_id":1,"capture_started_at_ms":1234567890,"capture_ended_at_ms":1234567890,"window_duration_ms":0}}'
+```
+
+Then start the AutoDL-facing nginx proxy on `6008`. This nginx should proxy all
+paths to `127.0.0.1:6006`, not directly to `19000`.
+
+```bash
+nginx -s stop 2>/dev/null || true
 tmux kill-session -t autodl-nginx 2>/dev/null || true
 tmux new-session -d -s autodl-nginx \
   "nginx -c /root/autodl-tmp/a22/code/FuChuangSai_A22/infra/nginx/autodl-6008-proxy.conf -g 'daemon off;'"
@@ -709,22 +742,53 @@ Verify inside the server:
 
 ```bash
 curl http://127.0.0.1:6008/health
-curl -o /tmp/demo-test-1.mp4 http://127.0.0.1:6008/media/video/demo-test/1
-ls -lh /tmp/demo-test-1.mp4
+curl -X POST http://127.0.0.1:6008/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"session_id":"debug-chat","turn_id":2,"user_text":"你好","input_type":"text","client_ts":1234567890,"turn_time_window":{"window_id":"debug-chat-turn-2","source_clock":"browser_epoch_ms","transport_mode":"http_turn","sequence_id":2,"capture_started_at_ms":1234567890,"capture_ended_at_ms":1234567890,"window_duration_ms":0}}'
 ```
 
 Then use the AutoDL custom-service URL that maps to `6008` and access:
 
 ```text
 https://<autodl-custom-service-host>:8443/health
-https://<autodl-custom-service-host>:8443/media/video/demo-test/1
+https://<autodl-custom-service-host>:8443/chat
+https://<autodl-custom-service-host>:8443/media/video/<session_id>/<turn_id>
+```
+
+Verify from the local machine:
+
+```powershell
+curl.exe -k https://<autodl-custom-service-host>:8443/health
+```
+
+```powershell
+Invoke-RestMethod `
+  -Uri "https://<autodl-custom-service-host>:8443/chat" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body (@{
+    session_id = "debug-chat"
+    turn_id = 3
+    user_text = "你好"
+    input_type = "text"
+    client_ts = 1234567890
+    turn_time_window = @{
+      window_id = "debug-chat-turn-3"
+      source_clock = "browser_epoch_ms"
+      transport_mode = "http_turn"
+      sequence_id = 3
+      capture_started_at_ms = 1234567890
+      capture_ended_at_ms = 1234567890
+      window_duration_ms = 0
+    }
+  } | ConvertTo-Json -Depth 5)
 ```
 
 Important constraints:
 
 1. Keep `orchestrator` on `127.0.0.1:19000`.
-2. Let nginx own `0.0.0.0:6008`.
-3. Do not run both `socat` and nginx on `6008` at the same time.
-4. If external `8443` still returns a platform 404, the AutoDL custom-service
-   mapping itself is not targeting the current instance port and must be fixed
-   in the panel.
+2. Let `proxy_in_instance` own `127.0.0.1:6006`.
+3. Let `nginx` own `0.0.0.0:6008`.
+4. Do not let both `nginx` and another process bind the same `6008`.
+5. Keep the frontend target on the AutoDL public URL. Do not point the browser
+   directly at internal `127.0.0.1:6006`.
