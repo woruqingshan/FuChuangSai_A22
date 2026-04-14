@@ -149,11 +149,17 @@ class TTSRuntime:
             return self._invoke_plain_text(model, text, speed=speed)
         if mode == "cosyvoice3_zero_shot":
             return self._invoke_zero_shot(model, text, speed=speed)
+        if mode == "cosyvoice_300m_instruct":
+            return self._invoke_300m_safe(
+                model,
+                text,
+                speed=speed,
+                speaker_id=speaker_id,
+            )
         if mode in {
             "cosyvoice3_instruct2",
             "cosyvoice_instruct2",
             "cosyvoice_instruct",
-            "cosyvoice_300m_instruct",
         }:
             return self._invoke_instruct(
                 model,
@@ -236,6 +242,20 @@ class TTSRuntime:
             stream=False,
             speed=self._resolve_speed(speed),
         )
+
+    def _invoke_300m_safe(
+        self,
+        model,
+        text: str,
+        *,
+        speed: float | None = None,
+        speaker_id: str | None = None,
+    ):
+        # The 300M instruct branch has been observed to read the control prompt
+        # itself. Prefer non-instruct paths so only reply_text is synthesized.
+        if callable(getattr(model, "inference_sft", None)):
+            return self._invoke_sft(model, text, speed=speed, speaker_id=speaker_id)
+        return self._invoke_plain_text(model, text, speed=speed)
 
     def _invoke_instruct(
         self,
