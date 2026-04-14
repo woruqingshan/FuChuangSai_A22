@@ -11,6 +11,19 @@ export function createAvatarRenderer({ faceElement, readouts }) {
   let stopMotion = () => {};
   let stopViseme = () => {};
   let renderToken = 0;
+  let detachVideoListeners = () => {};
+
+  function resetVideoElement() {
+    if (!videoElement) {
+      return;
+    }
+    detachVideoListeners();
+    videoElement.pause();
+    videoElement.currentTime = 0;
+    videoElement.removeAttribute("src");
+    videoElement.load();
+    videoElement.classList.add("hidden");
+  }
 
   function cleanup() {
     renderToken += 1;
@@ -18,16 +31,57 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     stopMotion();
     stopViseme();
     audioPlayer.stop();
-    if (videoElement) {
-      videoElement.pause();
-      videoElement.currentTime = 0;
-      videoElement.removeAttribute("src");
-      videoElement.load();
-      videoElement.classList.add("hidden");
-    }
+    resetVideoElement();
     if (portraitImage) {
       portraitImage.classList.remove("hidden");
     }
+  }
+
+  function armVideoTransition(currentToken) {
+    if (!videoElement) {
+      return;
+    }
+
+    const revealVideo = () => {
+      if (renderToken !== currentToken) {
+        return;
+      }
+      videoElement.classList.remove("hidden");
+      portraitImage?.classList.add("hidden");
+    };
+
+    const handleReady = () => {
+      cleanupListeners();
+      revealVideo();
+      void videoElement.play().catch(() => {
+        if (renderToken !== currentToken) {
+          return;
+        }
+        resetVideoElement();
+        portraitImage?.classList.remove("hidden");
+      });
+    };
+
+    const handleError = () => {
+      cleanupListeners();
+      if (renderToken !== currentToken) {
+        return;
+      }
+      resetVideoElement();
+      portraitImage?.classList.remove("hidden");
+    };
+
+    const cleanupListeners = () => {
+      videoElement.removeEventListener("loadeddata", handleReady);
+      videoElement.removeEventListener("canplay", handleReady);
+      videoElement.removeEventListener("error", handleError);
+      detachVideoListeners = () => {};
+    };
+
+    detachVideoListeners = cleanupListeners;
+    videoElement.addEventListener("loadeddata", handleReady, { once: true });
+    videoElement.addEventListener("canplay", handleReady, { once: true });
+    videoElement.addEventListener("error", handleError, { once: true });
   }
 
   return {
@@ -59,17 +113,13 @@ export function createAvatarRenderer({ faceElement, readouts }) {
         videoElement.muted = false;
         videoElement.playsInline = true;
         videoElement.loop = false;
+        videoElement.preload = "auto";
         videoElement.currentTime = 0;
+        videoElement.classList.add("hidden");
+        portraitImage?.classList.remove("hidden");
+        armVideoTransition(currentToken);
         videoElement.src = response.reply_video_url;
-        videoElement.classList.remove("hidden");
-        portraitImage?.classList.add("hidden");
-        void videoElement.play().catch(() => {
-          if (renderToken !== currentToken) {
-            return;
-          }
-          videoElement.classList.add("hidden");
-          portraitImage?.classList.remove("hidden");
-        });
+        videoElement.load();
         return;
       }
 
