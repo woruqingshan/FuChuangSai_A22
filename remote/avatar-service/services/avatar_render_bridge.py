@@ -103,7 +103,7 @@ class AvatarRenderBridge:
         width: int = 768,
         height: int = 768,
         length: int = 48,
-        steps: int = 6,
+        steps: int = 4,
         sample_rate: int = 16000,
         cfg: float = 1.0,
         fps: int = 16,
