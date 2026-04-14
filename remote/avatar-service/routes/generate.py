@@ -32,7 +32,9 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         audio_path = avatar_storage.get_audio_path(session_id=request.session_id, turn_id=request.turn_id)
         estimated_duration_ms = _resolve_audio_duration_ms(audio_path, fallback_ms=estimated_duration_ms)
         render_fps = 24
-        render_length = max(48, math.ceil((estimated_duration_ms / 1000.0) * render_fps) + 12)
+        settle_tail_ms = 900
+        render_duration_ms = estimated_duration_ms + settle_tail_ms
+        render_length = max(60, math.ceil((render_duration_ms / 1000.0) * render_fps) + 6)
         render_request = avatar_render_bridge.build_request(
             session_id=request.session_id,
             turn_id=request.turn_id,

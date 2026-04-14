@@ -7,11 +7,44 @@ export function createAvatarRenderer({ faceElement, readouts }) {
   const audioPlayer = createAudioPlayer();
   const portraitImage = faceElement.querySelector(".avatar-portrait-image");
   const videoElement = faceElement.querySelector(".avatar-video");
+  const portraitDefaultSrc = portraitImage?.getAttribute("src") || "";
   let stopExpression = () => {};
   let stopMotion = () => {};
   let stopViseme = () => {};
   let renderToken = 0;
   let detachVideoListeners = () => {};
+
+  function freezeCurrentVideoFrame() {
+    if (!portraitImage || !videoElement) {
+      return;
+    }
+    if (videoElement.classList.contains("hidden")) {
+      if (portraitDefaultSrc && !portraitImage.getAttribute("src")) {
+        portraitImage.setAttribute("src", portraitDefaultSrc);
+      }
+      return;
+    }
+    const width = videoElement.videoWidth;
+    const height = videoElement.videoHeight;
+    if (!width || !height) {
+      return;
+    }
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        return;
+      }
+      context.drawImage(videoElement, 0, 0, width, height);
+      portraitImage.setAttribute("src", canvas.toDataURL("image/jpeg", 0.92));
+    } catch {
+      if (portraitDefaultSrc) {
+        portraitImage.setAttribute("src", portraitDefaultSrc);
+      }
+    }
+  }
 
   function resetVideoElement() {
     if (!videoElement) {
@@ -31,6 +64,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     stopMotion();
     stopViseme();
     audioPlayer.stop();
+    freezeCurrentVideoFrame();
     resetVideoElement();
     if (portraitImage) {
       portraitImage.classList.remove("hidden");
