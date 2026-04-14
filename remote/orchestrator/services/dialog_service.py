@@ -120,6 +120,8 @@ class DialogService:
             turn_time_window=enriched_request.turn_time_window,
             alignment_mode=aligned_turn.alignment_mode,
         )
+        if response.reply_video_url:
+            response.reply_video_url = f"{response.reply_video_url}?ts={response.server_ts}"
         orchestrator_observability.log_chat_response(
             request.session_id,
             request.turn_id,

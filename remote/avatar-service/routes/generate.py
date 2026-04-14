@@ -1,3 +1,6 @@
+import math
+import wave
+
 from fastapi import APIRouter
 
 from models import GenerateRequest, GenerateResponse
@@ -27,6 +30,9 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
 
     if settings.avatar_renderer_backend == "echomimic_v2" and settings.echomimic_root and reply_audio_url:
         audio_path = avatar_storage.get_audio_path(session_id=request.session_id, turn_id=request.turn_id)
+        estimated_duration_ms = _resolve_audio_duration_ms(audio_path, fallback_ms=estimated_duration_ms)
+        render_fps = 24
+        render_length = max(48, math.ceil((estimated_duration_ms / 1000.0) * render_fps) + 12)
         render_request = avatar_render_bridge.build_request(
             session_id=request.session_id,
             turn_id=request.turn_id,
@@ -34,6 +40,8 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
             ref_image_path=request.ref_image_path or settings.echomimic_ref_image_path,
             emotion_style=request.emotion_style,
             pose_dir=request.pose_dir or settings.echomimic_pose_dir or None,
+            fps=render_fps,
+            length=render_length,
         )
         render_result = avatar_render_bridge.render_video(
             render_request,
@@ -93,3 +101,15 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
             else None
         ),
     )
+
+
+def _resolve_audio_duration_ms(audio_path, *, fallback_ms: int) -> int:
+    try:
+        with wave.open(str(audio_path), "rb") as wav_file:
+            sample_rate = wav_file.getframerate()
+            frame_count = wav_file.getnframes()
+        if sample_rate <= 0:
+            return fallback_ms
+        return max(fallback_ms, math.ceil((frame_count / sample_rate) * 1000))
+    except Exception:
+        return fallback_ms

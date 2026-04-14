@@ -24,6 +24,9 @@ async def proxy_turn_video(session_id: str, turn_id: int) -> Response:
     content_length = upstream.headers.get("content-length")
     if content_length:
         headers["content-length"] = content_length
+    headers["cache-control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    headers["pragma"] = "no-cache"
+    headers["expires"] = "0"
 
     return Response(
         content=upstream.content,

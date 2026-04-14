@@ -18,7 +18,6 @@ export function createAvatarPanel() {
             muted
             playsinline
             autoplay
-            loop
           ></video>
         </div>
       </div>

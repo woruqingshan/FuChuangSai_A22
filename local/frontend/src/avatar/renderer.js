@@ -10,14 +10,17 @@ export function createAvatarRenderer({ faceElement, readouts }) {
   let stopExpression = () => {};
   let stopMotion = () => {};
   let stopViseme = () => {};
+  let renderToken = 0;
 
   function cleanup() {
+    renderToken += 1;
     stopExpression();
     stopMotion();
     stopViseme();
     audioPlayer.stop();
     if (videoElement) {
       videoElement.pause();
+      videoElement.currentTime = 0;
       videoElement.removeAttribute("src");
       videoElement.load();
       videoElement.classList.add("hidden");
@@ -29,6 +32,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
 
   return {
     render(response) {
+      const currentToken = renderToken + 1;
       cleanup();
 
       const fallbackExpression = response.avatar_action?.facial_expression || "neutral";
@@ -49,17 +53,27 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       stopExpression = applyExpressionSequence(faceElement, expressionSeq, fallbackExpression);
       stopMotion = applyMotionSequence(faceElement, motionSeq, fallbackMotion);
       stopViseme = applyVisemeSequence(faceElement, visemeSeq);
-      audioPlayer.play(avatarOutput?.audio);
 
       if (videoElement && response.reply_video_url) {
+        renderToken = currentToken;
+        videoElement.muted = false;
+        videoElement.playsInline = true;
+        videoElement.loop = false;
+        videoElement.currentTime = 0;
         videoElement.src = response.reply_video_url;
         videoElement.classList.remove("hidden");
         portraitImage?.classList.add("hidden");
         void videoElement.play().catch(() => {
+          if (renderToken !== currentToken) {
+            return;
+          }
           videoElement.classList.add("hidden");
           portraitImage?.classList.remove("hidden");
         });
+        return;
       }
+
+      audioPlayer.play(avatarOutput?.audio);
     },
     cleanup,
   };
