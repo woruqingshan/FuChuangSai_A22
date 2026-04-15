@@ -74,9 +74,11 @@ class DialogService:
             emotion_style=emotion_style,
             reply_text=llm_result.reply_text,
         )
+        video_reply_text = self._select_video_reply_text(llm_result.reply_text)
+        video_is_partial = video_reply_text != llm_result.reply_text.strip()
         avatar_generation = await avatar_client.generate(
             request=enriched_request,
-            reply_text=llm_result.reply_text,
+            reply_text=video_reply_text or llm_result.reply_text,
             emotion_style=emotion_style,
             avatar_action=avatar_action,
             tts_plan=tts_plan,
@@ -112,6 +114,8 @@ class DialogService:
                 if avatar_generation.reply_video_url
                 else None
             ),
+            video_text=video_reply_text or None,
+            video_is_partial=video_is_partial,
             response_source=llm_result.response_source,
             context_summary=memory_summary or None,
             reasoning_hint=llm_result.reasoning_hint
@@ -133,6 +137,8 @@ class DialogService:
                 "tts_speed": tts_plan.tts_speed,
                 "tts_speaker_id": tts_plan.tts_speaker_id,
                 "reply_text_preview": response.reply_text[:200],
+                "video_text_preview": (response.video_text or "")[:200],
+                "video_is_partial": response.video_is_partial,
                 "dominant_emotion": (
                     response.multimodal_result.dominant_emotion if response.multimodal_result else None
                 ),
@@ -142,6 +148,42 @@ class DialogService:
             },
         )
         return response
+
+    def _select_video_reply_text(self, reply_text: str) -> str:
+        normalized = " ".join((reply_text or "").split()).strip()
+        if not normalized:
+            return normalized
+
+        sentence_endings = "。！？!?；;"
+        min_chars = 12
+        max_chars = 46
+        segments: list[str] = []
+        start = 0
+        for index, char in enumerate(normalized):
+            if char in sentence_endings:
+                segment = normalized[start : index + 1].strip()
+                if segment:
+                    segments.append(segment)
+                start = index + 1
+
+        tail = normalized[start:].strip()
+        if tail:
+            segments.append(tail)
+
+        if not segments:
+            return normalized[:max_chars].strip()
+
+        selected = segments[0]
+        if len(selected) < min_chars and len(segments) > 1:
+            selected = f"{selected}{segments[1]}"
+
+        if len(selected) <= max_chars:
+            return selected.strip()
+
+        cut_at = max(selected.rfind(mark, 0, max_chars + 1) for mark in "，,、 ")
+        if cut_at >= min_chars:
+            return selected[:cut_at].strip()
+        return selected[:max_chars].strip()
 
     def _build_multimodal_result(
         self,
