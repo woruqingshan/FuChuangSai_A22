@@ -246,7 +246,8 @@ class AvatarWsBridge:
         if not self.args.udp_host or self.args.udp_port <= 0:
             return
         try:
-            payload = json.dumps(packet, ensure_ascii=False).encode("utf-8")
+            udp_packet = self._to_udp_packet(packet)
+            payload = json.dumps(udp_packet, ensure_ascii=False).encode("utf-8")
             self.udp_socket.sendto(payload, (self.args.udp_host, self.args.udp_port))
         except Exception as exc:  # pragma: no cover - runtime path
             print(f"[bridge] udp push failed: {type(exc).__name__}: {exc}", flush=True)
@@ -266,6 +267,55 @@ class AvatarWsBridge:
                 pass
         except Exception as exc:  # pragma: no cover - runtime path
             print(f"[bridge] http push failed: {type(exc).__name__}: {exc}", flush=True)
+
+    def _to_udp_packet(self, packet: dict[str, Any]) -> dict[str, Any]:
+        event = str(packet.get("event", ""))
+        payload = packet.get("payload")
+        if not isinstance(payload, dict):
+            payload = {}
+
+        slim_payload: dict[str, Any] = {
+            "event": payload.get("event"),
+            "session_id": payload.get("session_id"),
+            "turn_id": payload.get("turn_id"),
+            "stream_id": payload.get("stream_id"),
+        }
+
+        if event == "turn_start":
+            slim_payload["contract_version"] = payload.get("contract_version")
+            slim_payload["emotion_style"] = payload.get("emotion_style")
+            slim_payload["renderer_mode"] = payload.get("renderer_mode")
+        elif event == "audio_ready":
+            audio = payload.get("audio")
+            if isinstance(audio, dict):
+                slim_audio = dict(audio)
+                audio_url = slim_audio.get("audio_url")
+                if isinstance(audio_url, str) and audio_url.startswith("data:"):
+                    # Remove inline base64 from UDP packets to keep payload under datagram limit.
+                    slim_audio.pop("audio_url", None)
+                    slim_audio["audio_url_inline"] = True
+                slim_payload["audio"] = slim_audio
+        elif event == "motion_plan":
+            slim_payload["viseme_seq"] = payload.get("viseme_seq", [])
+            slim_payload["expression_seq"] = payload.get("expression_seq", [])
+            slim_payload["motion_seq"] = payload.get("motion_seq", [])
+        elif event == "turn_end":
+            slim_payload["status"] = payload.get("status")
+        elif event in {"turn_error", "turn_abort"}:
+            slim_payload["error_code"] = payload.get("error_code")
+            slim_payload["error_message"] = payload.get("error_message")
+
+        udp_packet = {
+            "bridge_ts_ms": packet.get("bridge_ts_ms"),
+            "event": event,
+            "session_id": packet.get("session_id"),
+            "turn_id": packet.get("turn_id"),
+            "stream_id": packet.get("stream_id"),
+            "payload": slim_payload,
+        }
+        if isinstance(packet.get("audio"), dict):
+            udp_packet["audio"] = packet["audio"]
+        return udp_packet
 
 
 async def _main_async(args: argparse.Namespace) -> int:
