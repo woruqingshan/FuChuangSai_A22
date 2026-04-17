@@ -2,43 +2,43 @@ import os
 from pathlib import Path
 
 
+def _env_str(name: str, default: str = "") -> str:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip()
+
+
 class Settings:
     def __init__(self) -> None:
-        self.avatar_id = os.getenv("AVATAR_ID", "default-2d").strip() or "default-2d"
-        self.renderer_mode = os.getenv("AVATAR_RENDERER_MODE", "parameterized_2d").strip() or "parameterized_2d"
-        self.transport_mode = os.getenv("AVATAR_TRANSPORT_MODE", "http_poll").strip() or "http_poll"
-        self.websocket_endpoint = os.getenv("AVATAR_WEBSOCKET_ENDPOINT", "/ws/avatar").strip() or "/ws/avatar"
-        self.tmp_dir = os.getenv("TMP_DIR", "/data/zifeng/siyuan/A22/tmp/avatar").strip() or "/data/zifeng/siyuan/A22/tmp/avatar"
+        self.avatar_id = _env_str("AVATAR_ID", "default-2d") or "default-2d"
+        self.renderer_mode = _env_str("AVATAR_RENDERER_MODE", "parameterized_2d") or "parameterized_2d"
+        self.transport_mode = _env_str("AVATAR_TRANSPORT_MODE", "http_poll") or "http_poll"
+        self.websocket_endpoint = _env_str("AVATAR_WEBSOCKET_ENDPOINT", "/ws/avatar") or "/ws/avatar"
+        self.tmp_dir = _env_str("TMP_DIR", "/root/autodl-tmp/a22/tmp/avatar") or "/root/autodl-tmp/a22/tmp/avatar"
         self.avatar_renderer_backend = (
-            os.getenv("AVATAR_RENDERER_BACKEND", "echomimic_v2").strip().lower() or "echomimic_v2"
+            _env_str("AVATAR_RENDERER_BACKEND", "echomimic_v2").lower() or "echomimic_v2"
         )
-        self.echomimic_root = os.getenv("ECHOMIMIC_ROOT", "").strip()
-        self.echomimic_infer_script = os.getenv("ECHOMIMIC_INFER_SCRIPT", "infer_acc.py").strip() or "infer_acc.py"
-        self.echomimic_ref_image_path = os.getenv("ECHOMIMIC_REF_IMAGE_PATH", "").strip()
-        self.echomimic_pose_dir = os.getenv("ECHOMIMIC_POSE_DIR", "").strip()
-        self.echomimic_timeout_seconds = float(os.getenv("ECHOMIMIC_TIMEOUT_SECONDS", "1800"))
-        self.tts_mode = os.getenv("TTS_MODE", "cosyvoice2_sft").strip().lower() or "cosyvoice2_sft"
+        self.echomimic_root = _env_str("ECHOMIMIC_ROOT", "")
+        self.echomimic_infer_script = _env_str("ECHOMIMIC_INFER_SCRIPT", "infer_acc.py") or "infer_acc.py"
+        self.echomimic_ref_image_path = _env_str("ECHOMIMIC_REF_IMAGE_PATH", "")
+        self.echomimic_pose_dir = _env_str("ECHOMIMIC_POSE_DIR", "")
+        self.echomimic_timeout_seconds = float(_env_str("ECHOMIMIC_TIMEOUT_SECONDS", "1800"))
+
+        self.tts_mode = _env_str("TTS_MODE", "cosyvoice2_sft").lower() or "cosyvoice2_sft"
         self.tts_model = (
-            os.getenv(
-                "TTS_MODEL",
-                "/data/zifeng/siyuan/A22/models/CosyVoice2-0.5B",
-            ).strip()
-            or "/data/zifeng/siyuan/A22/models/CosyVoice2-0.5B"
+            _env_str("TTS_MODEL", "/root/autodl-tmp/a22/models/CosyVoice2-0.5B")
+            or "/root/autodl-tmp/a22/models/CosyVoice2-0.5B"
         )
-        self.tts_device = os.getenv("TTS_DEVICE", "cuda:0").strip() or "cuda:0"
-        self.tts_repo_path = os.getenv("TTS_REPO_PATH", "").strip()
-        self.tts_speaker_id = os.getenv("TTS_SPEAKER_ID", "中文女").strip() or "中文女"
-        self.tts_prompt_wav = os.getenv("TTS_PROMPT_WAV", "").strip()
-        self.tts_prompt_text = (
-            os.getenv("TTS_PROMPT_TEXT", "以下是一段中文语音提示。<|endofprompt|>").strip()
-            or "以下是一段中文语音提示。<|endofprompt|>"
-        )
-        self.tts_instruct_text = (
-            os.getenv("TTS_INSTRUCT_TEXT", "请用标准普通话女声自然朗读。<|endofprompt|>").strip()
-            or "请用标准普通话女声自然朗读。<|endofprompt|>"
-        )
-        self.tts_speed = float(os.getenv("TTS_SPEED", "1.0"))
-        self.tts_warmup_enabled = os.getenv("TTS_WARMUP_ENABLED", "true").strip().lower() in {
+        self.tts_device = _env_str("TTS_DEVICE", "cuda:0") or "cuda:0"
+        self.tts_repo_path = _env_str("TTS_REPO_PATH", "/root/autodl-tmp/a22/models/CosyVoice")
+        # Keep default empty and let runtime pick model speaker fallback safely.
+        self.tts_speaker_id = _env_str("TTS_SPEAKER_ID", "")
+        self.tts_prompt_wav = _env_str("TTS_PROMPT_WAV", "")
+        self.tts_prompt_text = _env_str("TTS_PROMPT_TEXT", "YOUR_PROMPT_TEXT|endofprompt|>")
+        self.tts_instruct_text = _env_str("TTS_INSTRUCT_TEXT", "YOUR_INSTRUCT_TEXT|endofprompt|>")
+        self.tts_speed = float(_env_str("TTS_SPEED", "1.0"))
+        self.tts_warmup_enabled = _env_str("TTS_WARMUP_ENABLED", "true").lower() in {
             "1",
             "true",
             "yes",

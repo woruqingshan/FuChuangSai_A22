@@ -369,15 +369,37 @@ class TTSRuntime:
         return requested_speed
 
     def _resolve_speaker_id(self, model, *, requested_speaker_id: str | None = None) -> str | None:
+        spk2info = self._get_speaker_map(model)
+        available_speakers = (
+            list(spk2info.keys())
+            if isinstance(spk2info, dict) and spk2info
+            else []
+        )
+
         if requested_speaker_id:
-            return requested_speaker_id
+            if not available_speakers or requested_speaker_id in available_speakers:
+                return requested_speaker_id
 
         if settings.tts_speaker_id:
-            return settings.tts_speaker_id
+            if not available_speakers or settings.tts_speaker_id in available_speakers:
+                return settings.tts_speaker_id
 
-        spk2info = getattr(model, "spk2info", None)
-        if isinstance(spk2info, dict) and spk2info:
-            return next(iter(spk2info.keys()))
+        if available_speakers:
+            return available_speakers[0]
+
+        return None
+
+    def _get_speaker_map(self, model) -> dict | None:
+        # CosyVoice variants may expose speakers either on model.spk2info
+        # or on model.frontend.spk2info.
+        direct = getattr(model, "spk2info", None)
+        if isinstance(direct, dict) and direct:
+            return direct
+
+        frontend = getattr(model, "frontend", None)
+        via_frontend = getattr(frontend, "spk2info", None) if frontend is not None else None
+        if isinstance(via_frontend, dict) and via_frontend:
+            return via_frontend
 
         return None
 
