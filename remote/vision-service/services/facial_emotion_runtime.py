@@ -110,11 +110,20 @@ class FacialEmotionRuntime:
             return None, None
 
         confidence = None
-        if isinstance(scores, (list, tuple)) and scores:
-            try:
-                confidence = max(float(score) for score in scores)
-            except (TypeError, ValueError):
-                confidence = None
+        try:
+            if isinstance(scores, np.ndarray):
+                if scores.size > 0:
+                    confidence = float(np.max(scores))
+            elif isinstance(scores, dict):
+                if scores:
+                    confidence = max(float(score) for score in scores.values())
+            elif isinstance(scores, (list, tuple)):
+                if scores:
+                    confidence = max(float(score) for score in scores)
+            elif scores is not None:
+                confidence = float(scores)
+        except (TypeError, ValueError):
+            confidence = None
         return normalized_label, confidence
 
     def _extract_face(self, image_rgb: np.ndarray) -> np.ndarray | None:
