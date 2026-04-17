@@ -56,6 +56,9 @@ class Settings:
             "yes",
             "on",
         }
+        self.fer_force_no_weights_only_load = (
+            os.getenv("FER_FORCE_NO_WEIGHTS_ONLY_LOAD", "true").strip().lower() in {"1", "true", "yes", "on"}
+        )
 
 
 settings = Settings()

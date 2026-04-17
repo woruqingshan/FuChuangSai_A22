@@ -1,4 +1,5 @@
 import base64
+import os
 from dataclasses import dataclass
 from io import BytesIO
 
@@ -57,7 +58,11 @@ class FacialEmotionRuntime:
             if face_rgb is None:
                 face_rgb = image_rgb
 
-            raw_label, confidence = self._predict_single(recognizer, face_rgb)
+            try:
+                raw_label, confidence = self._predict_single(recognizer, face_rgb)
+            except Exception:
+                # Keep /extract resilient on single-frame FER inference failure.
+                continue
             if raw_label is None or confidence is None or confidence < settings.fer_min_confidence:
                 continue
             weighted_scores[raw_label] = weighted_scores.get(raw_label, 0.0) + confidence
@@ -83,6 +88,9 @@ class FacialEmotionRuntime:
             return self._recognizer
         if settings.fer_provider != "hsemotion":
             raise RuntimeError(f"Unsupported FER_PROVIDER={settings.fer_provider}")
+        if settings.fer_force_no_weights_only_load:
+            # hsemotion checkpoints require legacy torch.load behavior on torch>=2.6.
+            os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
 
         try:
             from hsemotion.facial_emotions import HSEmotionRecognizer
