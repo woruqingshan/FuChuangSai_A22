@@ -71,3 +71,7 @@ class HealthResponse(BaseModel):
     asr_provider: str
     asr_model: str
     asr_device: str
+    ser_enabled: bool
+    ser_provider: str
+    ser_model: str
+    ser_device: str

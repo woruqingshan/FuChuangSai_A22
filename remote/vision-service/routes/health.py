@@ -20,4 +20,8 @@ async def health() -> HealthResponse:
         ring_buffer_max_age_ms=settings.ring_buffer_max_age_ms,
         ring_buffer_window_default_ms=settings.ring_buffer_window_default_ms,
         ring_buffer_window_max_frames=settings.ring_buffer_window_max_frames,
+        fer_enabled=settings.fer_enabled,
+        fer_provider=settings.fer_provider,
+        fer_model_name=settings.fer_model_name,
+        fer_device=settings.fer_device,
     )

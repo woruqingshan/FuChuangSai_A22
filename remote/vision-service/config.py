@@ -38,6 +38,24 @@ class Settings:
             1,
             int(os.getenv("VISION_RING_BUFFER_WINDOW_MAX_FRAMES", "10")),
         )
+        self.fer_enabled = os.getenv("FER_ENABLED", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.fer_provider = os.getenv("FER_PROVIDER", "hsemotion").strip().lower() or "hsemotion"
+        self.fer_model_name = os.getenv("FER_MODEL_NAME", "enet_b2_7").strip() or "enet_b2_7"
+        self.fer_device = os.getenv("FER_DEVICE", "cpu").strip() or "cpu"
+        self.fer_detector = os.getenv("FER_DETECTOR", "haar").strip().lower() or "haar"
+        self.fer_max_frames = max(1, int(os.getenv("FER_MAX_FRAMES", "4")))
+        self.fer_min_confidence = min(max(float(os.getenv("FER_MIN_CONFIDENCE", "0.2")), 0.0), 1.0)
+        self.fer_warmup_enabled = os.getenv("FER_WARMUP_ENABLED", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
 
 
 settings = Settings()

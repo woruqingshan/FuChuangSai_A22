@@ -6,6 +6,7 @@ from config import settings
 from models import AudioMeta, SpeechFeatures, TranscribeRequest, TranscribeResponse
 from services.audio_stream_buffer import BufferedAudioChunk, audio_stream_buffer
 from services.feature_extractor import audio_feature_extractor
+from services.speech_emotion_runtime import speech_emotion_runtime
 from services.storage import speech_storage
 from services.wav_utils import DecodedAudio, decode_audio_base64, decode_wav_audio, encode_wav_audio
 
@@ -89,27 +90,26 @@ class SpeechRuntime:
         return settings.asr_provider in {"qwen3_asr", "qwen_asr", "qwen3"}
 
     def warmup(self) -> None:
-        if not settings.asr_warmup_enabled:
-            return
+        if settings.asr_warmup_enabled:
+            if self._is_qwen_provider():
+                # Qwen3-ASR warmup is intentionally skipped by default to reduce cold-start memory spikes.
+                self._ensure_pipeline()
+            else:
+                try:
+                    import numpy as np
+                except ImportError as exc:  # pragma: no cover
+                    raise RuntimeError("Speech service requires numpy.") from exc
 
-        if self._is_qwen_provider():
-            # Qwen3-ASR warmup is intentionally skipped by default to reduce cold-start memory spikes.
-            self._ensure_pipeline()
-            return
+                pipeline_instance = self._ensure_pipeline()
+                pipeline_instance(
+                    {
+                        "raw": np.zeros(48000, dtype=np.float32),
+                        "sampling_rate": 48000,
+                    },
+                    generate_kwargs={"language": settings.asr_language, "task": "transcribe"},
+                )
 
-        try:
-            import numpy as np
-        except ImportError as exc:  # pragma: no cover
-            raise RuntimeError("Speech service requires numpy.") from exc
-
-        pipeline_instance = self._ensure_pipeline()
-        pipeline_instance(
-            {
-                "raw": np.zeros(48000, dtype=np.float32),
-                "sampling_rate": 48000,
-            },
-            generate_kwargs={"language": settings.asr_language, "task": "transcribe"},
-        )
+        speech_emotion_runtime.warmup()
 
     def transcribe(self, request: TranscribeRequest) -> TranscribeResponse:
         stream_event = (request.audio_stream_event or "").strip().lower()
@@ -168,7 +168,7 @@ class SpeechRuntime:
 
         audio_bytes, base_audio_meta, decoded_audio = audio_payload
 
-        speech_storage.persist_audio(
+        audio_path = speech_storage.persist_audio(
             session_id=request.session_id,
             turn_id=request.turn_id,
             audio_bytes=audio_bytes,
@@ -197,6 +197,17 @@ class SpeechRuntime:
                 emotion_tags=["steady"],
                 source="remote_speech_service_metadata_only",
             )
+
+        emotion_result = speech_emotion_runtime.infer(audio_path=audio_path)
+        if emotion_result and speech_features:
+            speech_features.emotion_tags = _merge_unique_tags(
+                emotion_result.emotion_tags,
+                speech_features.emotion_tags,
+            )
+            if speech_features.source:
+                speech_features.source = f"{speech_features.source}+{emotion_result.source}"
+            else:
+                speech_features.source = emotion_result.source
 
         response = TranscribeResponse(
             transcript_text=transcript_text,
@@ -503,6 +514,15 @@ class SpeechRuntime:
             "raw": np.asarray(waveform, dtype=np.float32),
             "sampling_rate": decoded_audio.sample_rate_hz,
         }
+
+
+def _merge_unique_tags(primary: list[str], secondary: list[str]) -> list[str]:
+    merged: list[str] = []
+    for item in (primary or []) + (secondary or []):
+        text = (item or "").strip()
+        if text and text not in merged:
+            merged.append(text)
+    return merged
 
 
 speech_runtime = SpeechRuntime()

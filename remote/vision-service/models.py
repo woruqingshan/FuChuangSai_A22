@@ -59,3 +59,7 @@ class HealthResponse(BaseModel):
     ring_buffer_max_age_ms: int
     ring_buffer_window_default_ms: int
     ring_buffer_window_max_frames: int
+    fer_enabled: bool
+    fer_provider: str
+    fer_model_name: str
+    fer_device: str

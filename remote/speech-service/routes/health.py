@@ -13,4 +13,8 @@ async def health() -> HealthResponse:
         asr_provider=settings.asr_provider,
         asr_model=settings.asr_model,
         asr_device=settings.asr_device,
+        ser_enabled=settings.ser_enabled,
+        ser_provider=settings.ser_provider,
+        ser_model=settings.ser_model,
+        ser_device=settings.ser_device,
     )

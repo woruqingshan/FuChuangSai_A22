@@ -2,6 +2,7 @@ import json
 
 from config import settings
 from models import ExtractRequest, ExtractResponse, VideoMeta, VisionFeatures
+from services.facial_emotion_runtime import facial_emotion_runtime
 from services.qwen_vl_runtime import qwen_vl_runtime
 from services.storage import vision_storage
 from services.video_ring_buffer import video_ring_buffer
@@ -84,12 +85,37 @@ class FrameFeatureExtractor:
                 frame_count=processed_frame_count or (normalized_video_meta.sampled_frame_count if normalized_video_meta else 0),
             )
 
-        if vision_features:
-            vision_features.source = (
-                "remote_qwen2_5_vl:ring_window"
-                if settings.extractor_mode == "qwen2_5_vl"
-                else vision_features.source
+        fer_result = facial_emotion_runtime.infer(selected_frames)
+        if fer_result:
+            merged_emotion_tags = _merge_unique_tags(
+                fer_result.emotion_tags,
+                vision_features.emotion_tags if vision_features else [],
             )
+            if vision_features:
+                vision_features.emotion_tags = merged_emotion_tags
+                if vision_features.source:
+                    vision_features.source = f"{vision_features.source}+{fer_result.source}"
+                else:
+                    vision_features.source = fer_result.source
+            vision_storage.persist_payload(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                file_name="face_emotion.json",
+                payload={
+                    "dominant_emotion": fer_result.dominant_emotion,
+                    "emotion_tags": fer_result.emotion_tags,
+                    "confidence": fer_result.confidence,
+                    "source": fer_result.source,
+                    "model_ref": fer_result.model_ref,
+                },
+            )
+
+        if vision_features:
+            base_source = "remote_qwen2_5_vl:ring_window" if settings.extractor_mode == "qwen2_5_vl" else vision_features.source
+            if fer_result and fer_result.source and base_source and fer_result.source not in base_source:
+                vision_features.source = f"{base_source}+{fer_result.source}"
+            else:
+                vision_features.source = base_source
 
         if normalized_video_meta:
             serialized_video_meta = (
@@ -131,6 +157,15 @@ class FrameFeatureExtractor:
             processed_frame_count=processed_frame_count,
             extractor_mode=settings.extractor_mode,
         )
+
+
+def _merge_unique_tags(primary: list[str], secondary: list[str]) -> list[str]:
+    merged: list[str] = []
+    for item in (primary or []) + (secondary or []):
+        text = (item or "").strip()
+        if text and text not in merged:
+            merged.append(text)
+    return merged
 
 
 frame_feature_extractor = FrameFeatureExtractor()
