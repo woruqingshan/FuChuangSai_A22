@@ -132,4 +132,5 @@ Optional extensions:
 - `turn_time_window.capture_strategy` can distinguish the current `event_window_keyframes` path from future clip or WebSocket streaming paths.
 - `avatar_output.websocket_endpoint` and `avatar_output.stream_id` are reserved for future WebSocket-based avatar playback.
 - M5 adds `multimodal_result` as a stable cross-service contract so future emotion/avatar models can consume aligned multimodal evidence without changing base chat fields.
+- Real-time A2F split-work contract for service/renderer collaboration is documented in `shared/contracts/a2f_ab_contract_v1.md` with streaming examples in `shared/contracts/a2f_ab_events.example.jsonl`.
 
