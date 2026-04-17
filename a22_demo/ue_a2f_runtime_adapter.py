@@ -15,6 +15,7 @@ Primary goals:
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import socket
 import time
@@ -215,6 +216,7 @@ class RuntimeAdapter:
     def _flush_state(self, state: TurnState) -> None:
         turn_dir = self.output_dir / state.session_id / state.stream_id / str(state.turn_id)
         turn_dir.mkdir(parents=True, exist_ok=True)
+        self._ensure_local_audio_path(state, turn_dir)
 
         bundle = {
             "contract_version": "a2f-ab-v1",
@@ -256,6 +258,41 @@ class RuntimeAdapter:
                 print(f"[adapter] a2f push ok: {self.args.a2f_http_target}", flush=True)
             except Exception as exc:
                 print(f"[adapter] a2f push failed: {type(exc).__name__}: {exc}", flush=True)
+
+    def _ensure_local_audio_path(self, state: TurnState, turn_dir: Path) -> None:
+        if not isinstance(state.audio, dict):
+            state.audio = {}
+        if state.audio.get("local_path"):
+            return
+
+        audio_url = state.audio.get("audio_url")
+        if not isinstance(audio_url, str):
+            return
+
+        if audio_url.startswith("data:"):
+            parts = audio_url.split(",", 1)
+            if len(parts) != 2:
+                return
+            meta = parts[0].lower()
+            if ";base64" not in meta:
+                return
+            try:
+                audio_bytes = base64.b64decode(parts[1])
+            except Exception:
+                return
+            suffix = ".wav"
+            if "audio/mp3" in meta:
+                suffix = ".mp3"
+            elif "audio/ogg" in meta:
+                suffix = ".ogg"
+            audio_path = turn_dir / f"turn-{state.turn_id}{suffix}"
+            audio_path.write_bytes(audio_bytes)
+            state.audio["local_path"] = str(audio_path)
+            state.audio.setdefault("source", "adapter_data_url")
+            return
+
+        # Keep remote URL as fallback when payload is not data URL.
+        state.audio.setdefault("remote_url", audio_url)
 
     def _build_ue_tracks(self, state: TurnState) -> dict[str, Any]:
         viseme_to_curve = {
