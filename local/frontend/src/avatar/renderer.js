@@ -13,6 +13,11 @@ export function createAvatarRenderer({ faceElement, readouts }) {
   let stopViseme = () => {};
   let renderToken = 0;
   let detachVideoListeners = () => {};
+  let pinnedVideoSource = "";
+
+  function setExternalStreamFlag(enabled) {
+    faceElement.dataset.externalStream = enabled ? "on" : "off";
+  }
 
   function freezeCurrentVideoFrame() {
     if (!portraitImage || !videoElement) {
@@ -46,28 +51,34 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     }
   }
 
-  function resetVideoElement() {
+  function resetVideoElement({ removeSource = true } = {}) {
     if (!videoElement) {
       return;
     }
     detachVideoListeners();
     videoElement.pause();
     videoElement.currentTime = 0;
-    videoElement.removeAttribute("src");
-    videoElement.load();
+    if (removeSource) {
+      videoElement.removeAttribute("src");
+      videoElement.removeAttribute("data-source-url");
+      videoElement.removeAttribute("data-source-type");
+      videoElement.load();
+    }
     videoElement.classList.add("hidden");
   }
 
-  function cleanup() {
+  function cleanup({ preserveVideo = false } = {}) {
     renderToken += 1;
     stopExpression();
     stopMotion();
     stopViseme();
     audioPlayer.stop();
-    freezeCurrentVideoFrame();
-    resetVideoElement();
-    if (portraitImage) {
-      portraitImage.classList.remove("hidden");
+    if (!preserveVideo) {
+      freezeCurrentVideoFrame();
+      resetVideoElement();
+      if (portraitImage) {
+        portraitImage.classList.remove("hidden");
+      }
     }
   }
 
@@ -118,10 +129,84 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     videoElement.addEventListener("error", handleError, { once: true });
   }
 
+  function startVideoSource({ url, currentToken, muted, loop, sourceType }) {
+    if (!videoElement || !url) {
+      return false;
+    }
+    renderToken = currentToken;
+    videoElement.muted = Boolean(muted);
+    videoElement.playsInline = true;
+    videoElement.loop = Boolean(loop);
+    videoElement.preload = "auto";
+    videoElement.currentTime = 0;
+    videoElement.classList.add("hidden");
+    portraitImage?.classList.remove("hidden");
+    armVideoTransition(currentToken);
+    videoElement.dataset.sourceUrl = url;
+    videoElement.dataset.sourceType = sourceType;
+    videoElement.src = url;
+    videoElement.load();
+    return true;
+  }
+
+  function ensurePinnedVideoPlaying(currentToken) {
+    if (!videoElement || !pinnedVideoSource) {
+      return false;
+    }
+    const currentSource = videoElement.dataset.sourceUrl || "";
+    const currentType = videoElement.dataset.sourceType || "";
+    const visible = !videoElement.classList.contains("hidden");
+    if (visible && currentType === "external" && currentSource === pinnedVideoSource) {
+      return true;
+    }
+    return startVideoSource({
+      url: pinnedVideoSource,
+      currentToken,
+      muted: true,
+      loop: true,
+      sourceType: "external",
+    });
+  }
+
+  setExternalStreamFlag(false);
+
   return {
-    render(response) {
+    setPinnedVideoSource(url) {
+      const next = String(url || "").trim();
+      if (!next) {
+        pinnedVideoSource = "";
+        setExternalStreamFlag(false);
+        cleanup();
+        return false;
+      }
+
+      pinnedVideoSource = next;
+      setExternalStreamFlag(true);
       const currentToken = renderToken + 1;
       cleanup();
+      return startVideoSource({
+        url: pinnedVideoSource,
+        currentToken,
+        muted: true,
+        loop: true,
+        sourceType: "external",
+      });
+    },
+    clearPinnedVideoSource() {
+      pinnedVideoSource = "";
+      setExternalStreamFlag(false);
+      cleanup();
+    },
+    getPinnedVideoSource() {
+      return pinnedVideoSource;
+    },
+    hasPinnedVideoSource() {
+      return Boolean(pinnedVideoSource);
+    },
+    render(response) {
+      const externalStreamPinned = Boolean(pinnedVideoSource);
+      const currentToken = renderToken + 1;
+      cleanup({ preserveVideo: externalStreamPinned });
 
       const fallbackExpression = response.avatar_action?.facial_expression || "neutral";
       const fallbackMotion = response.avatar_action?.head_motion || "steady";
@@ -131,6 +216,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       const expressionSeq = avatarOutput?.expression_seq || [];
       const motionSeq = avatarOutput?.motion_seq || [];
       const visemeSeq = avatarOutput?.viseme_seq || [];
+      faceElement.dataset.emotionStyle = String(emotionStyle).toLowerCase();
 
       if (readouts) {
         readouts.emotionStyle.textContent = emotionStyle;
@@ -138,22 +224,29 @@ export function createAvatarRenderer({ faceElement, readouts }) {
         readouts.headMotion.textContent = motionSeq[0]?.motion || fallbackMotion;
       }
 
+      if (externalStreamPinned) {
+        setExternalStreamFlag(true);
+        stopExpression = () => {};
+        stopMotion = () => {};
+        stopViseme = () => {};
+        ensurePinnedVideoPlaying(currentToken);
+        audioPlayer.play(avatarOutput?.audio);
+        return;
+      }
+
+      setExternalStreamFlag(false);
       stopExpression = applyExpressionSequence(faceElement, expressionSeq, fallbackExpression);
       stopMotion = applyMotionSequence(faceElement, motionSeq, fallbackMotion);
       stopViseme = applyVisemeSequence(faceElement, visemeSeq);
 
       if (videoElement && response.reply_video_url) {
-        renderToken = currentToken;
-        videoElement.muted = false;
-        videoElement.playsInline = true;
-        videoElement.loop = false;
-        videoElement.preload = "auto";
-        videoElement.currentTime = 0;
-        videoElement.classList.add("hidden");
-        portraitImage?.classList.remove("hidden");
-        armVideoTransition(currentToken);
-        videoElement.src = response.reply_video_url;
-        videoElement.load();
+        startVideoSource({
+          url: response.reply_video_url,
+          currentToken,
+          muted: false,
+          loop: false,
+          sourceType: "reply",
+        });
         return;
       }
 

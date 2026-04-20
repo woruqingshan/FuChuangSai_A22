@@ -97,6 +97,17 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
+def _clamp(value: float, min_value: float, max_value: float) -> float:
+    return max(min_value, min(value, max_value))
+
+
 def _json_post(url: str, payload: dict[str, Any], timeout_seconds: float) -> None:
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = Request(
@@ -238,6 +249,7 @@ class RuntimeAdapter:
 
         bundle_path = turn_dir / "runtime_bundle.json"
         bundle_path.write_text(json.dumps(bundle, ensure_ascii=False, indent=2), encoding="utf-8")
+        self._write_latest_files(state, bundle)
 
         print(
             f"[adapter] bundle ready: {bundle_path} "
@@ -258,6 +270,25 @@ class RuntimeAdapter:
                 print(f"[adapter] a2f push ok: {self.args.a2f_http_target}", flush=True)
             except Exception as exc:
                 print(f"[adapter] a2f push failed: {type(exc).__name__}: {exc}", flush=True)
+
+    def _write_latest_files(self, state: TurnState, bundle: dict[str, Any]) -> None:
+        stream_dir = self.output_dir / state.session_id / state.stream_id
+        stream_dir.mkdir(parents=True, exist_ok=True)
+
+        latest_bundle_path = stream_dir / "latest_runtime_bundle.json"
+        latest_bundle_path.write_text(
+            json.dumps(bundle, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        latest_ue_path = stream_dir / "latest_ue_tracks.json"
+        latest_ue_path.write_text(
+            json.dumps(bundle.get("ue_tracks", {}), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        latest_turn_path = stream_dir / "latest_turn_id.txt"
+        latest_turn_path.write_text(str(state.turn_id), encoding="utf-8")
 
     def _ensure_local_audio_path(self, state: TurnState, turn_dir: Path) -> None:
         if not isinstance(state.audio, dict):
@@ -304,15 +335,33 @@ class RuntimeAdapter:
             "m": "Mouth_Closed",
             "sil": "Mouth_Closed",
         }
+        # Empirical gains to make lip motion more visible in UE runtime.
+        viseme_gain = {
+            "a": 0.94,
+            "e": 0.87,
+            "i": 0.78,
+            "o": 0.92,
+            "u": 0.94,
+            "m": 0.70,
+            "sil": 0.36,
+        }
         viseme_curves = []
         for item in state.viseme_seq:
             label = str(item.get("label", "sil")).lower()
+            raw_weight = _safe_float(item.get("weight", 0.5), 0.5)
+            scaled_weight = raw_weight * viseme_gain.get(label, 0.94)
+            if label in {"m", "sil"}:
+                scaled_weight = _clamp(scaled_weight, 0.0, 0.50)
+            else:
+                # Keep a small floor so lip movement is perceivable.
+                scaled_weight = max(scaled_weight, 0.08)
+                scaled_weight = min(scaled_weight, 0.60)
             viseme_curves.append(
                 {
                     "start_ms": _safe_int(item.get("start_ms"), 0),
                     "end_ms": _safe_int(item.get("end_ms"), 0),
                     "curve": viseme_to_curve.get(label, "Mouth_Closed"),
-                    "weight": float(item.get("weight", 0.5)),
+                    "weight": _clamp(scaled_weight, 0.0, 1.0),
                 }
             )
 
@@ -331,7 +380,8 @@ class RuntimeAdapter:
             "session_id": state.session_id,
             "stream_id": state.stream_id,
             "turn_id": state.turn_id,
-            "audio_path": state.audio.get("local_path"),
+            # Prefer per-turn concrete file to avoid stale playback when latest.wav is locked on Windows.
+            "audio_path": state.audio.get("local_path") or state.audio.get("latest_local_path"),
             "audio_remote_url": state.audio.get("remote_url"),
             "emotion_style": state.emotion_style,
             "viseme_curves": viseme_curves,

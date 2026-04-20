@@ -8,8 +8,15 @@ import { createStatusBar } from "./ui/StatusBar";
 
 const app = document.getElementById("app");
 
+const DEFAULT_AVATAR_SESSION_ID = "demo_s1";
+const DEFAULT_AVATAR_STREAM_ID = "demo_stream_1";
+
+const configuredSessionId = (import.meta.env.VITE_AVATAR_SESSION_ID || "").trim();
+const configuredStreamId = (import.meta.env.VITE_AVATAR_STREAM_ID || "").trim();
+
 const state = {
-  sessionId: `demo-${crypto.randomUUID().slice(0, 8)}`,
+  sessionId: configuredSessionId || DEFAULT_AVATAR_SESSION_ID,
+  streamId: configuredStreamId || DEFAULT_AVATAR_STREAM_ID,
   nextTurnId: 1,
   transport: "Waiting for first message",
   remoteStatus: "Remote link pending",
@@ -91,6 +98,7 @@ function buildTextTurnTimeWindow(turnId) {
     window_id: `${state.sessionId}-turn-${turnId}`,
     source_clock: "browser_epoch_ms",
     transport_mode: "http_turn",
+    stream_id: state.streamId,
     sequence_id: turnId,
     capture_started_at_ms: now,
     capture_ended_at_ms: now,
@@ -137,7 +145,16 @@ async function handleSend({ text, audio, video }) {
   });
 
   try {
-    const turnTimeWindow = video?.turn_time_window || (hasAudio ? audio.turn_time_window : buildTextTurnTimeWindow(turnId));
+    const baseTurnTimeWindow = video?.turn_time_window
+      || (hasAudio ? audio.turn_time_window : buildTextTurnTimeWindow(turnId));
+    const turnTimeWindow = {
+      ...(baseTurnTimeWindow || {}),
+      window_id: baseTurnTimeWindow?.window_id || `${state.sessionId}-turn-${turnId}`,
+      source_clock: baseTurnTimeWindow?.source_clock || "browser_epoch_ms",
+      transport_mode: baseTurnTimeWindow?.transport_mode || "http_turn",
+      stream_id: state.streamId,
+      sequence_id: turnId,
+    };
     const requestPayload = {
       session_id: state.sessionId,
       turn_id: turnId,
@@ -207,6 +224,7 @@ function syncStatus(nextState) {
   state.videoStatus = nextState.videoStatus || state.videoStatus;
   statusBar.update({
     sessionId: state.sessionId,
+    streamId: state.streamId,
     nextTurnId: state.nextTurnId,
     transport: state.transport,
     remoteStatus: state.remoteStatus,

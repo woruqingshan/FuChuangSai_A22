@@ -24,6 +24,14 @@ class Settings:
         self.echomimic_ref_image_path = _env_str("ECHOMIMIC_REF_IMAGE_PATH", "")
         self.echomimic_pose_dir = _env_str("ECHOMIMIC_POSE_DIR", "")
         self.echomimic_timeout_seconds = float(_env_str("ECHOMIMIC_TIMEOUT_SECONDS", "1800"))
+        self.soulx_root = _env_str("SOULX_ROOT", "")
+        self.soulx_infer_script = _env_str("SOULX_INFER_SCRIPT", "infer_stream.py") or "infer_stream.py"
+        self.soulx_ref_image_path = _env_str("SOULX_REF_IMAGE_PATH", "")
+        self.soulx_timeout_seconds = float(_env_str("SOULX_TIMEOUT_SECONDS", "1200"))
+        self.soulx_chunk_seconds = float(_env_str("SOULX_CHUNK_SECONDS", "2.0"))
+        self.soulx_fps = int(_env_str("SOULX_FPS", "25"))
+        self.soulx_command_template = _env_str("SOULX_COMMAND_TEMPLATE", "")
+        self.soulx_extra_args = _env_str("SOULX_EXTRA_ARGS", "")
 
         self.tts_mode = _env_str("TTS_MODE", "cosyvoice2_sft").lower() or "cosyvoice2_sft"
         self.tts_model = (

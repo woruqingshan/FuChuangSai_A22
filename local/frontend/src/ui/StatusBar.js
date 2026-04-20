@@ -12,6 +12,7 @@ export function createStatusBar() {
     <div class="status-scroll-shell">
       <dl class="status-grid">
         <div><dt>Session</dt><dd data-role="session-id"></dd></div>
+        <div><dt>Stream</dt><dd data-role="stream-id"></dd></div>
         <div><dt>Next turn</dt><dd data-role="next-turn"></dd></div>
         <div><dt>Transport</dt><dd data-role="transport"></dd></div>
         <div><dt>Remote</dt><dd data-role="remote-status"></dd></div>
@@ -27,6 +28,7 @@ export function createStatusBar() {
 
   const refs = {
     sessionId: element.querySelector('[data-role="session-id"]'),
+    streamId: element.querySelector('[data-role="stream-id"]'),
     nextTurnId: element.querySelector('[data-role="next-turn"]'),
     transport: element.querySelector('[data-role="transport"]'),
     remoteStatus: element.querySelector('[data-role="remote-status"]'),
@@ -42,6 +44,7 @@ export function createStatusBar() {
     element,
     update(snapshot) {
       refs.sessionId.textContent = snapshot.sessionId;
+      refs.streamId.textContent = snapshot.streamId;
       refs.nextTurnId.textContent = snapshot.nextTurnId;
       refs.transport.textContent = snapshot.transport;
       refs.remoteStatus.textContent = snapshot.remoteStatus;

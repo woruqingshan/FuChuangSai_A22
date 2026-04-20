@@ -203,6 +203,11 @@ class ChatResponseSchema(BaseModel):
     emotion_style: str
     avatar_action: AvatarActionSchema
     avatar_output: AvatarOutputSchema | None = None
+    reply_audio_url: str | None = None
+    reply_video_url: str | None = None
+    reply_video_stream_url: str | None = None
+    video_text: str | None = None
+    video_is_partial: bool = False
     server_ts: int | None = None
     input_mode: str | None = None
     response_source: str | None = None

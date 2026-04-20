@@ -19,6 +19,7 @@ import asyncio
 import base64
 import json
 import mimetypes
+import shutil
 import socket
 import sys
 import time
@@ -88,6 +89,14 @@ def parse_args() -> argparse.Namespace:
         help="If set, do not download remote audio URLs; only persist data URLs.",
     )
     parser.add_argument(
+        "--latest-audio-name",
+        default="latest.wav",
+        help=(
+            "If non-empty, mirror each received audio payload to this stable filename under "
+            "<output-dir>/<session>/<stream>/ for easier UE playback."
+        ),
+    )
+    parser.add_argument(
         "--ping-interval-seconds",
         type=float,
         default=20.0,
@@ -104,6 +113,9 @@ class AvatarWsBridge:
         self.session_dir = self.output_dir / args.session_id / args.stream_id
         self.session_dir.mkdir(parents=True, exist_ok=True)
         self.events_path = self.session_dir / f"events-{int(time.time())}.jsonl"
+        self.latest_audio_path = (
+            self.session_dir / args.latest_audio_name if args.latest_audio_name else None
+        )
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     async def run(self) -> None:
@@ -187,13 +199,15 @@ class AvatarWsBridge:
                 return None
             audio_bytes = base64.b64decode(payload[1])
             local_audio_path.write_bytes(audio_bytes)
-            return {
+            audio_packet = {
                 "local_path": str(local_audio_path),
                 "source": "data_url",
                 "mime_type": mime_type,
                 "duration_ms": audio.get("duration_ms"),
                 "sample_rate_hz": audio.get("sample_rate_hz"),
             }
+            self._mirror_latest_audio(local_audio_path, audio_packet)
+            return audio_packet
 
         if self.args.no_audio_download:
             return {
@@ -210,7 +224,7 @@ class AvatarWsBridge:
             with urlopen(request, timeout=8) as response:
                 audio_bytes = response.read()
             local_audio_path.write_bytes(audio_bytes)
-            return {
+            audio_packet = {
                 "local_path": str(local_audio_path),
                 "remote_url": resolved_url,
                 "source": "downloaded_url",
@@ -218,6 +232,8 @@ class AvatarWsBridge:
                 "duration_ms": audio.get("duration_ms"),
                 "sample_rate_hz": audio.get("sample_rate_hz"),
             }
+            self._mirror_latest_audio(local_audio_path, audio_packet)
+            return audio_packet
         except Exception as exc:  # pragma: no cover - runtime path
             return {
                 "remote_url": resolved_url,
@@ -227,6 +243,16 @@ class AvatarWsBridge:
                 "duration_ms": audio.get("duration_ms"),
                 "sample_rate_hz": audio.get("sample_rate_hz"),
             }
+
+    def _mirror_latest_audio(self, local_audio_path: Path, audio_packet: dict[str, Any]) -> None:
+        if self.latest_audio_path is None:
+            return
+        try:
+            self.latest_audio_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(local_audio_path, self.latest_audio_path)
+            audio_packet["latest_local_path"] = str(self.latest_audio_path)
+        except Exception as exc:  # pragma: no cover - runtime path
+            print(f"[bridge] latest audio mirror failed: {type(exc).__name__}: {exc}", flush=True)
 
     def _resolve_audio_url(self, value: str) -> str:
         if value.startswith("http://") or value.startswith("https://"):
