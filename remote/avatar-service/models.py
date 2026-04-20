@@ -46,6 +46,7 @@ class GenerateResponse(BaseModel):
     reply_audio_url: str | None = None
     reply_video_path: str | None = None
     reply_video_url: str | None = None
+    reply_video_stream_url: str | None = None
 
 
 class HealthResponse(BaseModel):

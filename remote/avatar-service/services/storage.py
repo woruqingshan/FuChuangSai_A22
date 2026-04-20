@@ -36,6 +36,25 @@ class AvatarStorage:
     def get_video_path(self, *, session_id: str, turn_id: int) -> Path:
         return self._turn_dir(session_id, turn_id) / "reply.mp4"
 
+    def persist_video_chunk(self, *, session_id: str, turn_id: int, chunk_index: int, source_path: str | Path) -> Path:
+        chunk_dir = self._turn_dir(session_id, turn_id) / "video_chunks"
+        chunk_dir.mkdir(parents=True, exist_ok=True)
+        output_path = chunk_dir / f"chunk-{chunk_index:04d}.mp4"
+        shutil.copy2(Path(source_path), output_path)
+        return output_path
+
+    def get_video_chunk_path(self, *, session_id: str, turn_id: int, chunk_index: int) -> Path:
+        chunk_dir = self._turn_dir(session_id, turn_id) / "video_chunks"
+        return chunk_dir / f"chunk-{chunk_index:04d}.mp4"
+
+    def persist_video_manifest(self, *, session_id: str, turn_id: int, payload: dict) -> Path:
+        output_path = self._turn_dir(session_id, turn_id) / "video_manifest.json"
+        output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return output_path
+
+    def get_video_manifest_path(self, *, session_id: str, turn_id: int) -> Path:
+        return self._turn_dir(session_id, turn_id) / "video_manifest.json"
+
     def persist_runtime_error(self, *, session_id: str, turn_id: int, payload: dict) -> Path:
         output_path = self._turn_dir(session_id, turn_id) / "tts_runtime_error.json"
         output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

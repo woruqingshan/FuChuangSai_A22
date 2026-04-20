@@ -114,6 +114,11 @@ class DialogService:
                 if avatar_generation.reply_video_url
                 else None
             ),
+            reply_video_stream_url=(
+                f"/media/video-stream/{request.session_id}/{request.turn_id}/manifest"
+                if avatar_generation.reply_video_stream_url
+                else None
+            ),
             video_text=video_reply_text or None,
             video_is_partial=video_is_partial,
             response_source=llm_result.response_source,
@@ -126,6 +131,8 @@ class DialogService:
         )
         if response.reply_video_url:
             response.reply_video_url = f"{response.reply_video_url}?ts={response.server_ts}"
+        if response.reply_video_stream_url:
+            response.reply_video_stream_url = f"{response.reply_video_stream_url}?ts={response.server_ts}"
         orchestrator_observability.log_chat_response(
             request.session_id,
             request.turn_id,

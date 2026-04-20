@@ -9,6 +9,7 @@ from services.avatar_event_bus import avatar_event_bus
 from services.avatar_render_bridge import avatar_render_bridge
 from services.expression_generator import expression_generator
 from services.motion_generator import motion_generator
+from services.soulxflashhead_render_bridge import soulxflashhead_render_bridge
 from services.storage import avatar_storage
 from services.tts_runtime import tts_runtime
 from services.viseme_generator import viseme_generator
@@ -45,6 +46,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
             speaker_id=request.tts_speaker_id,
         )
         reply_video_path = None
+        reply_video_stream_url = None
         audio_path = avatar_storage.get_audio_path(session_id=request.session_id, turn_id=request.turn_id)
         estimated_duration_ms, audio_sample_rate_hz = _resolve_audio_meta(
             audio_path,
@@ -78,6 +80,48 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
                 source_path=render_result.video_path,
             )
             reply_video_path = str(persisted_video_path)
+            reply_video_stream_url = _persist_single_chunk_manifest(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                chunk_seconds=render_result.duration_ms / 1000.0 if render_result.duration_ms else None,
+            )
+
+        if settings.avatar_renderer_backend == "soulxflashhead" and settings.soulx_root and reply_audio_url:
+            render_request = soulxflashhead_render_bridge.build_request(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                audio_path=str(audio_path),
+                ref_image_path=request.ref_image_path or settings.soulx_ref_image_path,
+                emotion_style=request.emotion_style,
+                fps=settings.soulx_fps,
+                chunk_seconds=settings.soulx_chunk_seconds,
+                metadata={"stream_id": stream_id},
+            )
+            render_result = soulxflashhead_render_bridge.render_video(
+                render_request,
+                workdir=settings.soulx_root,
+                infer_script=settings.soulx_infer_script,
+                timeout_seconds=settings.soulx_timeout_seconds,
+                command_template=settings.soulx_command_template,
+                extra_args=settings.soulx_extra_args,
+            )
+            persisted_video_path = avatar_storage.persist_video(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                source_path=render_result.video_path,
+            )
+            avatar_storage.persist_video_chunk(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                chunk_index=1,
+                source_path=render_result.video_path,
+            )
+            reply_video_path = str(persisted_video_path)
+            reply_video_stream_url = _persist_single_chunk_manifest(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                chunk_seconds=settings.soulx_chunk_seconds,
+            )
 
         avatar_output = {
             "contract_version": "v1",
@@ -176,6 +220,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
             if reply_video_path
             else None
         ),
+        reply_video_stream_url=reply_video_stream_url,
     )
 
 
@@ -198,3 +243,24 @@ def _resolve_audio_meta(audio_path, *, fallback_ms: int) -> tuple[int, int | Non
         return duration_ms, sample_rate
     except Exception:
         return fallback_ms, None
+
+
+def _persist_single_chunk_manifest(*, session_id: str, turn_id: int, chunk_seconds: float | None) -> str:
+    manifest_payload = {
+        "session_id": session_id,
+        "turn_id": turn_id,
+        "chunk_seconds": chunk_seconds,
+        "complete": True,
+        "chunks": [
+            {
+                "index": 1,
+                "url": f"/media/video-chunk/{session_id}/{turn_id}/1",
+            }
+        ],
+    }
+    avatar_storage.persist_video_manifest(
+        session_id=session_id,
+        turn_id=turn_id,
+        payload=manifest_payload,
+    )
+    return f"/media/video-stream/{session_id}/{turn_id}/manifest"

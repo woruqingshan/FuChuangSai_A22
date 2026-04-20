@@ -102,6 +102,7 @@ class ChatResponse(ChatResponseSchema):
     multimodal_result: MultimodalResult | None = None
     reply_audio_url: str | None = None
     reply_video_url: str | None = None
+    reply_video_stream_url: str | None = None
     video_text: str | None = None
     video_is_partial: bool = False
 
