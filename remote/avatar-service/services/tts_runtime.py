@@ -1,6 +1,7 @@
 import base64
 import inspect
 import importlib
+import re
 import sys
 import traceback
 import wave
@@ -37,7 +38,8 @@ class TTSRuntime:
         speed: float | None = None,
         speaker_id: str | None = None,
     ) -> str | None:
-        if not text.strip():
+        normalized_text = self._sanitize_tts_text(text)
+        if not normalized_text:
             return None
         if settings.tts_mode == "placeholder":
             return None
@@ -46,7 +48,7 @@ class TTSRuntime:
             model = self._ensure_model()
             waveform, sample_rate = self._run_inference(
                 model,
-                text,
+                normalized_text,
                 instruct_text=instruct_text,
                 speed=speed,
                 speaker_id=speaker_id,
@@ -70,6 +72,19 @@ class TTSRuntime:
                 },
             )
             return None
+
+    def _sanitize_tts_text(self, text: str) -> str:
+        cleaned = (text or "").strip()
+        if not cleaned:
+            return ""
+
+        # Keep sanitizer minimal and stable:
+        # 1) remove markdown emphasis marker '*'
+        # 2) remove markdown bullet '-' only when it appears at line start
+        cleaned = cleaned.replace("*", "")
+        cleaned = re.sub(r"(?m)^\s*-\s+", "", cleaned)
+
+        return cleaned.strip()
 
     def _ensure_model(self):
         if self._model is not None:
