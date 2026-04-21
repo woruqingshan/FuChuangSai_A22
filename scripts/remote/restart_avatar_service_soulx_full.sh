@@ -29,7 +29,8 @@ export SOULX_COMMAND_TEMPLATE="${SOULX_COMMAND_TEMPLATE:-$DEFAULT_SOULX_COMMAND_
 export TTS_MODE="${TTS_MODE:-cosyvoice_300m_instruct}"
 export TTS_MODEL="${TTS_MODEL:-$A22_MODEL_ROOT/CosyVoice-300M-Instruct}"
 export TTS_REPO_PATH="${TTS_REPO_PATH:-$A22_MODEL_ROOT/CosyVoice}"
-export TTS_SPEAKER_ID="${TTS_SPEAKER_ID:-中文女}"
+# Keep empty by default and let avatar-service resolve to a stable preferred speaker.
+export TTS_SPEAKER_ID="${TTS_SPEAKER_ID:-}"
 export TTS_DEVICE="${TTS_DEVICE:-cuda:0}"
 export PYTHONPATH="${PYTHONPATH:-$TTS_REPO_PATH:$TTS_REPO_PATH/third_party/Matcha-TTS}"
 
@@ -63,3 +64,4 @@ done
 echo "[error] avatar-service did not become healthy in 40s" >&2
 tail -n 120 "$A22_LOG_ROOT/avatar-service.log" || true
 exit 1
+

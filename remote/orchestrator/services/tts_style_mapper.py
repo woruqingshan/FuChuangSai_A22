@@ -1,6 +1,11 @@
 from dataclasses import asdict, dataclass
 
 
+PROMPT_END = "<|endofprompt|>"
+DEFAULT_STYLE = "supportive"
+DEFAULT_SPEAKER_ID = "\u4e2d\u6587\u5973"  # 中文女
+
+
 @dataclass(frozen=True)
 class TTSStylePreset:
     instruct_text: str
@@ -27,54 +32,60 @@ class TTSRenderPlan:
         return asdict(self)
 
 
+def _ensure_prompt_end(text: str) -> str:
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return ""
+    if PROMPT_END not in cleaned:
+        return f"{cleaned}{PROMPT_END}"
+    return cleaned
+
+
 DEFAULT_TTS_STYLE_PRESETS: dict[str, TTSStylePreset] = {
     "gentle": TTSStylePreset(
-        instruct_text=(
-            "请用温柔、低刺激、带安抚感的女声朗读，语速明显放慢，"
-            "句间停顿更充分，像在耐心安慰情绪低落的人。<|endofprompt|>"
+        instruct_text=_ensure_prompt_end(
+            "\u8bf7\u7528\u6e29\u67d4\u3001\u4f4e\u523a\u6fc0\u3001\u5e26\u5b89\u629a\u611f\u7684\u5973\u58f0\u6717\u8bfb\u3002"
+            "\u8bed\u901f\u653e\u6162\uff0c\u505c\u987f\u66f4\u5145\u5206\u3002"
         ),
         speed=0.82,
-        speaker_id="中文女",
+        speaker_id=DEFAULT_SPEAKER_ID,
     ),
     "supportive": TTSStylePreset(
-        instruct_text=(
-            "请用温暖、真诚、带陪伴感的女声朗读，语气轻柔但有力量，"
-            "让人感到被支持和鼓励。<|endofprompt|>"
+        instruct_text=_ensure_prompt_end(
+            "\u8bf7\u7528\u6e29\u6696\u3001\u771f\u8bda\u3001\u5e26\u966a\u4f34\u611f\u7684\u5973\u58f0\u6717\u8bfb\u3002"
+            "\u8bed\u6c14\u8f7b\u67d4\u4f46\u6709\u529b\u91cf\uff0c\u8ba9\u4eba\u611f\u5230\u88ab\u652f\u6301\u3002"
         ),
         speed=0.95,
-        speaker_id="中文女",
+        speaker_id=DEFAULT_SPEAKER_ID,
     ),
     "neutral": TTSStylePreset(
-        instruct_text=(
-            "请用平静、自然、标准普通话女声朗读，保持正常语速，"
-            "语气客观中性，不加入明显情绪色彩。<|endofprompt|>"
+        instruct_text=_ensure_prompt_end(
+            "\u8bf7\u7528\u5e73\u9759\u3001\u81ea\u7136\u7684\u4e2d\u6587\u5973\u58f0\u6717\u8bfb\uff0c\u4fdd\u6301\u4e2d\u6027\u5ba2\u89c2\u3002"
         ),
         speed=1.0,
-        speaker_id="中文女",
+        speaker_id=DEFAULT_SPEAKER_ID,
     ),
     "attentive": TTSStylePreset(
-        instruct_text=(
-            "请用认真、专注、带关切感但不过分夸张的女声朗读，"
-            "语速略慢，表达出稳定和耐心。<|endofprompt|>"
+        instruct_text=_ensure_prompt_end(
+            "\u8bf7\u7528\u8ba4\u771f\u3001\u4e13\u6ce8\u3001\u6709\u5173\u5207\u611f\u7684\u5973\u58f0\u6717\u8bfb\u3002"
+            "\u8bed\u901f\u7565\u6162\uff0c\u8868\u8fbe\u7a33\u5b9a\u548c\u8010\u5fc3\u3002"
         ),
         speed=0.93,
-        speaker_id="中文女",
+        speaker_id=DEFAULT_SPEAKER_ID,
     ),
     "listening": TTSStylePreset(
-        instruct_text=(
-            "请用轻柔、耐心、认真倾听的女声朗读，语速略慢，"
-            "停顿自然，表达出专注陪伴感。<|endofprompt|>"
+        instruct_text=_ensure_prompt_end(
+            "\u8bf7\u7528\u8f7b\u67d4\u3001\u8010\u5fc3\u3001\u503e\u542c\u611f\u660e\u663e\u7684\u5973\u58f0\u6717\u8bfb\u3002"
         ),
         speed=0.9,
-        speaker_id="中文女",
+        speaker_id=DEFAULT_SPEAKER_ID,
     ),
     "encouraging": TTSStylePreset(
-        instruct_text=(
-            "请用积极、明亮、真诚的女声朗读，语速略快，"
-            "整体情绪向上但不要显得夸张。<|endofprompt|>"
+        instruct_text=_ensure_prompt_end(
+            "\u8bf7\u7528\u79ef\u6781\u3001\u660e\u4eae\u3001\u771f\u8bda\u7684\u5973\u58f0\u6717\u8bfb\uff0c\u6574\u4f53\u60c5\u7eea\u5411\u4e0a\u3002"
         ),
         speed=1.05,
-        speaker_id="中文女",
+        speaker_id=DEFAULT_SPEAKER_ID,
     ),
 }
 
@@ -84,7 +95,7 @@ class TTSStyleMapper:
         self,
         presets: dict[str, TTSStylePreset] | None = None,
         *,
-        default_style: str = "supportive",
+        default_style: str = DEFAULT_STYLE,
     ) -> None:
         self._presets = presets or DEFAULT_TTS_STYLE_PRESETS
         self._default_style = default_style
@@ -131,18 +142,14 @@ class TTSStyleMapper:
     ) -> str:
         instruct_text = (override_instruct_text or "").strip()
         if instruct_text:
-            if "<|endofprompt|>" not in instruct_text:
-                return f"{instruct_text}<|endofprompt|>"
-            return instruct_text
+            return _ensure_prompt_end(instruct_text)
 
-        # Keep a defensive default so the mapper remains usable even if the
-        # preset table is accidentally trimmed in later iterations.
         if preset.instruct_text.strip():
             return preset.instruct_text
 
-        return (
-            "请用自然、清晰、标准普通话女声朗读以下内容，"
-            f"保持语义完整：{reply_text[:120]}<|endofprompt|>"
+        return _ensure_prompt_end(
+            "\u8bf7\u7528\u81ea\u7136\u3001\u6807\u51c6\u7684\u4e2d\u6587\u5973\u58f0\u6717\u8bfb\u4ee5\u4e0b\u5185\u5bb9\uff1a"
+            f"{reply_text[:120]}"
         )
 
 

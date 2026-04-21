@@ -48,7 +48,8 @@ export HSEMOTION_CACHE_DIR="${HSEMOTION_CACHE_DIR:-$A22_MODEL_ROOT/hsemotion}"
 export TTS_MODE="${TTS_MODE:-cosyvoice_300m_instruct}"
 export TTS_MODEL_PATH="${TTS_MODEL_PATH:-$A22_MODEL_ROOT/CosyVoice-300M-Instruct}"
 export TTS_REPO_PATH="${TTS_REPO_PATH:-$A22_MODEL_ROOT/CosyVoice}"
-export TTS_SPEAKER_ID="${TTS_SPEAKER_ID:-中文女}"
+# Keep empty by default and let avatar-service resolve to a stable preferred speaker.
+export TTS_SPEAKER_ID="${TTS_SPEAKER_ID:-}"
 export AVATAR_SERVICE_TIMEOUT_SECONDS="${AVATAR_SERVICE_TIMEOUT_SECONDS:-600}"
 
 if [ -z "${SOULX_ROOT:-}" ]; then
@@ -233,3 +234,4 @@ exec python -m uvicorn app:app --host 127.0.0.1 --port 19000
 echo "[ok] tmux sessions started:"
 tmux ls | grep -E '^(qwen|speech|vision|avatar|orchestrator):'
 echo "[hint] check health: curl -s http://127.0.0.1:19000/health | python -m json.tool"
+

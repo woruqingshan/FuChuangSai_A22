@@ -370,24 +370,103 @@ class TTSRuntime:
 
     def _resolve_speaker_id(self, model, *, requested_speaker_id: str | None = None) -> str | None:
         spk2info = self._get_speaker_map(model)
-        available_speakers = (
-            list(spk2info.keys())
-            if isinstance(spk2info, dict) and spk2info
-            else []
+        available_speakers = list(spk2info.keys()) if isinstance(spk2info, dict) and spk2info else []
+
+        resolved_requested = self._match_available_speaker(
+            requested_speaker_id,
+            available_speakers,
         )
+        if resolved_requested:
+            return resolved_requested
 
-        if requested_speaker_id:
-            if not available_speakers or requested_speaker_id in available_speakers:
-                return requested_speaker_id
-
-        if settings.tts_speaker_id:
-            if not available_speakers or settings.tts_speaker_id in available_speakers:
-                return settings.tts_speaker_id
+        resolved_setting = self._match_available_speaker(
+            settings.tts_speaker_id,
+            available_speakers,
+        )
+        if resolved_setting:
+            return resolved_setting
 
         if available_speakers:
+            preferred = self._pick_preferred_speaker(available_speakers)
+            if preferred:
+                return preferred
             return available_speakers[0]
 
         return None
+
+    def _match_available_speaker(
+        self,
+        speaker_id: str | None,
+        available_speakers: list[str],
+    ) -> str | None:
+        normalized = self._normalize_speaker_token(speaker_id)
+        if not normalized:
+            return None
+
+        # If model does not expose speaker map, keep explicit request.
+        if not available_speakers:
+            return speaker_id.strip() if speaker_id else None
+
+        normalized_to_actual = {
+            self._normalize_speaker_token(name): name
+            for name in available_speakers
+        }
+        direct_match = normalized_to_actual.get(normalized)
+        if direct_match:
+            return direct_match
+
+        for alias in self._speaker_aliases(normalized):
+            matched = normalized_to_actual.get(alias)
+            if matched:
+                return matched
+        return None
+
+    def _pick_preferred_speaker(self, available_speakers: list[str]) -> str | None:
+        normalized_to_actual = {
+            self._normalize_speaker_token(name): name
+            for name in available_speakers
+        }
+        # Stable female-first fallback for emotional companion scenario.
+        preferred_keys = (
+            "\u4e2d\u6587\u5973",
+            "zhongwennu",
+            "cnfemale",
+            "chinesefemale",
+            "female",
+            "zhfemale",
+        )
+        for key in preferred_keys:
+            matched = normalized_to_actual.get(self._normalize_speaker_token(key))
+            if matched:
+                return matched
+        return None
+
+    def _speaker_aliases(self, normalized: str) -> set[str]:
+        aliases: set[str] = {normalized}
+        female_aliases = {
+            self._normalize_speaker_token("\u4e2d\u6587\u5973"),
+            "zhongwennu",
+            "chinesefemale",
+            "cnfemale",
+            "zhfemale",
+        }
+        male_aliases = {
+            self._normalize_speaker_token("\u4e2d\u6587\u7537"),
+            "zhongwennan",
+            "chinesemale",
+            "cnmale",
+            "zhmale",
+        }
+        if normalized in female_aliases:
+            aliases.update(female_aliases)
+        if normalized in male_aliases:
+            aliases.update(male_aliases)
+        return aliases
+
+    def _normalize_speaker_token(self, value: str | None) -> str:
+        if not value:
+            return ""
+        return "".join(ch.lower() for ch in value.strip() if ch.isalnum())
 
     def _get_speaker_map(self, model) -> dict | None:
         # CosyVoice variants may expose speakers either on model.spk2info
@@ -445,3 +524,4 @@ class TTSRuntime:
 
 
 tts_runtime = TTSRuntime()
+
