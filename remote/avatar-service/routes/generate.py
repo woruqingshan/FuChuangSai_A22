@@ -1,7 +1,9 @@
+import asyncio
+import logging
 import math
 import wave
 
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 
 from config import settings
 from models import GenerateRequest, GenerateResponse
@@ -9,17 +11,21 @@ from services.avatar_event_bus import avatar_event_bus
 from services.avatar_render_bridge import avatar_render_bridge
 from services.expression_generator import expression_generator
 from services.motion_generator import motion_generator
-from services.soulxflashhead_render_bridge import soulxflashhead_render_bridge
+from services.soulxflashhead_render_bridge import (
+    SoulXFlashHeadRenderRequest,
+    soulxflashhead_render_bridge,
+)
 from services.storage import avatar_storage
 from services.tts_runtime import tts_runtime
 from services.viseme_generator import viseme_generator
 
 router = APIRouter()
 A2F_EVENT_CONTRACT_VERSION = "a2f-ab-v1"
+logger = logging.getLogger(__name__)
 
 
 @router.post("/generate", response_model=GenerateResponse)
-async def generate(request: GenerateRequest) -> GenerateResponse:
+async def generate(request: GenerateRequest, background_tasks: BackgroundTasks) -> GenerateResponse:
     stream_id = _resolve_stream_id(request)
     await avatar_event_bus.publish(
         payload={
@@ -37,6 +43,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
 
     estimated_duration_ms = min(max(len(request.reply_text) * 180, 1200), 8000)
     try:
+        render_in_background = False
         reply_audio_url = tts_runtime.synthesize(
             session_id=request.session_id,
             turn_id=request.turn_id,
@@ -46,6 +53,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
             speaker_id=request.tts_speaker_id,
         )
         reply_video_path = None
+        reply_video_url = None
         reply_video_stream_url = None
         audio_path = avatar_storage.get_audio_path(session_id=request.session_id, turn_id=request.turn_id)
         estimated_duration_ms, audio_sample_rate_hz = _resolve_audio_meta(
@@ -80,6 +88,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
                 source_path=render_result.video_path,
             )
             reply_video_path = str(persisted_video_path)
+            reply_video_url = f"/media/video/{request.session_id}/{request.turn_id}"
             reply_video_stream_url = _persist_single_chunk_manifest(
                 session_id=request.session_id,
                 turn_id=request.turn_id,
@@ -97,30 +106,17 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
                 chunk_seconds=settings.soulx_chunk_seconds,
                 metadata={"stream_id": stream_id},
             )
-            render_result = soulxflashhead_render_bridge.render_video(
-                render_request,
-                workdir=settings.soulx_root,
-                infer_script=settings.soulx_infer_script,
-                timeout_seconds=settings.soulx_timeout_seconds,
-                command_template=settings.soulx_command_template,
-                extra_args=settings.soulx_extra_args,
-            )
-            persisted_video_path = avatar_storage.persist_video(
-                session_id=request.session_id,
-                turn_id=request.turn_id,
-                source_path=render_result.video_path,
-            )
-            avatar_storage.persist_video_chunk(
-                session_id=request.session_id,
-                turn_id=request.turn_id,
-                chunk_index=1,
-                source_path=render_result.video_path,
-            )
-            reply_video_path = str(persisted_video_path)
-            reply_video_stream_url = _persist_single_chunk_manifest(
+            reply_video_stream_url = _persist_pending_manifest(
                 session_id=request.session_id,
                 turn_id=request.turn_id,
                 chunk_seconds=settings.soulx_chunk_seconds,
+            )
+            render_in_background = True
+            background_tasks.add_task(
+                _render_soulx_video_in_background,
+                request=request,
+                render_request=render_request,
+                stream_id=stream_id,
             )
 
         avatar_output = {
@@ -185,13 +181,14 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
             session_id=request.session_id,
             stream_id=stream_id,
         )
+        turn_end_status = "rendering" if render_in_background else "ok"
         await avatar_event_bus.publish(
             payload={
                 "event": "turn_end",
                 "session_id": request.session_id,
                 "turn_id": request.turn_id,
                 "stream_id": stream_id,
-                "status": "ok",
+                "status": turn_end_status,
             },
             session_id=request.session_id,
             stream_id=stream_id,
@@ -215,11 +212,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         avatar_output=avatar_output,
         reply_audio_url=reply_audio_url,
         reply_video_path=reply_video_path,
-        reply_video_url=(
-            f"/media/video/{request.session_id}/{request.turn_id}"
-            if reply_video_path
-            else None
-        ),
+        reply_video_url=reply_video_url,
         reply_video_stream_url=reply_video_stream_url,
     )
 
@@ -264,3 +257,108 @@ def _persist_single_chunk_manifest(*, session_id: str, turn_id: int, chunk_secon
         payload=manifest_payload,
     )
     return f"/media/video-stream/{session_id}/{turn_id}/manifest"
+
+
+def _persist_pending_manifest(*, session_id: str, turn_id: int, chunk_seconds: float | None) -> str:
+    manifest_payload = {
+        "session_id": session_id,
+        "turn_id": turn_id,
+        "chunk_seconds": chunk_seconds,
+        "complete": False,
+        "chunks": [],
+    }
+    avatar_storage.persist_video_manifest(
+        session_id=session_id,
+        turn_id=turn_id,
+        payload=manifest_payload,
+    )
+    return f"/media/video-stream/{session_id}/{turn_id}/manifest"
+
+
+async def _render_soulx_video_in_background(
+    *,
+    request: GenerateRequest,
+    render_request: SoulXFlashHeadRenderRequest,
+    stream_id: str,
+) -> None:
+    try:
+        render_result = await asyncio.to_thread(
+            soulxflashhead_render_bridge.render_video,
+            render_request,
+            workdir=settings.soulx_root,
+            infer_script=settings.soulx_infer_script,
+            timeout_seconds=settings.soulx_timeout_seconds,
+            command_template=settings.soulx_command_template,
+            extra_args=settings.soulx_extra_args,
+        )
+        persisted_video_path = await asyncio.to_thread(
+            avatar_storage.persist_video,
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            source_path=render_result.video_path,
+        )
+        await asyncio.to_thread(
+            avatar_storage.persist_video_chunk,
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            chunk_index=1,
+            source_path=render_result.video_path,
+        )
+        await asyncio.to_thread(
+            _persist_single_chunk_manifest,
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            chunk_seconds=settings.soulx_chunk_seconds,
+        )
+        await avatar_event_bus.publish(
+            payload={
+                "event": "video_ready",
+                "session_id": request.session_id,
+                "turn_id": request.turn_id,
+                "stream_id": stream_id,
+                "reply_video_path": str(persisted_video_path),
+                "reply_video_url": f"/media/video/{request.session_id}/{request.turn_id}",
+                "reply_video_stream_url": f"/media/video-stream/{request.session_id}/{request.turn_id}/manifest",
+            },
+            session_id=request.session_id,
+            stream_id=stream_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "SoulX background render failed for session=%s turn=%s",
+            request.session_id,
+            request.turn_id,
+        )
+        await asyncio.to_thread(
+            avatar_storage.persist_runtime_error,
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            payload={
+                "error_code": "SOULX_RENDER_FAILED",
+                "error_message": str(exc),
+            },
+        )
+        await asyncio.to_thread(
+            avatar_storage.persist_video_manifest,
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            payload={
+                "session_id": request.session_id,
+                "turn_id": request.turn_id,
+                "chunk_seconds": settings.soulx_chunk_seconds,
+                "complete": True,
+                "chunks": [],
+            },
+        )
+        await avatar_event_bus.publish(
+            payload={
+                "event": "turn_error",
+                "session_id": request.session_id,
+                "turn_id": request.turn_id,
+                "stream_id": stream_id,
+                "error_code": "AVATAR_RENDER_FAILED",
+                "error_message": str(exc),
+            },
+            session_id=request.session_id,
+            stream_id=stream_id,
+        )

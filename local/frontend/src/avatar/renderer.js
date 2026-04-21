@@ -29,21 +29,38 @@ function resolveBackendMediaUrl(rawUrl) {
 }
 
 async function resolveStreamFirstChunkUrl(streamManifestUrl) {
-  const manifestResponse = await fetch(streamManifestUrl, {
-    cache: "no-store",
+  const startedAt = Date.now();
+  const timeoutMs = 120000;
+  const pollIntervalMs = 600;
+
+  while (Date.now() - startedAt <= timeoutMs) {
+    const manifestResponse = await fetch(streamManifestUrl, {
+      cache: "no-store",
+    }).catch(() => null);
+    if (!manifestResponse || !manifestResponse.ok) {
+      await waitFor(pollIntervalMs);
+      continue;
+    }
+
+    const manifest = await manifestResponse.json().catch(() => null);
+    const chunks = Array.isArray(manifest?.chunks) ? manifest.chunks : [];
+    if (chunks.length) {
+      const firstChunkUrl = typeof chunks[0]?.url === "string" ? chunks[0].url : "";
+      return resolveBackendMediaUrl(firstChunkUrl);
+    }
+    if (manifest?.complete) {
+      return "";
+    }
+    await waitFor(pollIntervalMs);
+  }
+
+  return "";
+}
+
+function waitFor(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
   });
-  if (!manifestResponse.ok) {
-    return "";
-  }
-
-  const manifest = await manifestResponse.json().catch(() => null);
-  const chunks = Array.isArray(manifest?.chunks) ? manifest.chunks : [];
-  if (!chunks.length) {
-    return "";
-  }
-
-  const firstChunkUrl = typeof chunks[0]?.url === "string" ? chunks[0].url : "";
-  return resolveBackendMediaUrl(firstChunkUrl);
 }
 
 export function createAvatarRenderer({ faceElement, readouts }) {
