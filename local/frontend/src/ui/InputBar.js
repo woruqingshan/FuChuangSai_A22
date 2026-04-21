@@ -37,7 +37,12 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
     </div>
     <form class="compact-input-form">
       <div class="compact-compose-row">
-        <input id="message-box" class="message-input" type="text" placeholder="Type a supportive message or use the microphone." />
+        <div class="message-input-shell" data-role="message-input-shell">
+          <input id="message-box" class="message-input" type="text" placeholder="Type a supportive message or use the microphone." />
+          <div class="recording-input-overlay hidden" data-role="recording-input-overlay" aria-live="polite">
+            <span class="recording-overlay-text">正在录音中</span>
+          </div>
+        </div>
         <button type="submit" class="primary-button" data-role="send-button">Send</button>
       </div>
       <div class="compact-control-row">
@@ -55,7 +60,9 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
   `;
 
   const form = controlsElement.querySelector(".compact-input-form");
+  const messageInputShell = controlsElement.querySelector('[data-role="message-input-shell"]');
   const messageBox = controlsElement.querySelector("#message-box");
+  const recordingInputOverlay = controlsElement.querySelector('[data-role="recording-input-overlay"]');
   const sendButton = controlsElement.querySelector('[data-role="send-button"]');
   const voiceButton = controlsElement.querySelector('[data-role="voice-button"]');
   const voiceTitle = controlsElement.querySelector('[data-role="voice-title"]');
@@ -77,6 +84,11 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
   let voiceTurnState = VOICE_TURN_STATE.IDLE;
   let preservedDraft = "";
   let cameraEnabled = false;
+
+  function setRecordingOverlay(visible) {
+    messageInputShell.dataset.recording = visible ? "on" : "off";
+    recordingInputOverlay.classList.toggle("hidden", !visible);
+  }
 
   function setCameraPresentation(nextEnabled) {
     cameraEnabled = nextEnabled;
@@ -106,20 +118,23 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
     if (voiceTurnState === VOICE_TURN_STATE.RECORDING) {
       voiceTitle.textContent = "Stop voice input";
       voiceMeta.textContent = "Recording from the microphone. Text input is locked until this voice turn finishes.";
-      messageBox.placeholder = "Voice capture in progress. This turn will be sent as audio only.";
+      messageBox.placeholder = "正在录音中，本轮将以语音发送。";
+      setRecordingOverlay(true);
       return;
     }
 
     if (voiceTurnState === VOICE_TURN_STATE.PROCESSING) {
       voiceTitle.textContent = "Processing voice input";
       voiceMeta.textContent = "Preparing the recorded audio and sending the voice turn to the local edge-backend.";
-      messageBox.placeholder = "Voice turn is being processed.";
+      messageBox.placeholder = "正在处理语音输入…";
+      setRecordingOverlay(false);
       return;
     }
 
     voiceTitle.textContent = "Start voice input";
     voiceMeta.textContent = "Use the microphone for one audio-only turn. Click again to stop and submit.";
     messageBox.placeholder = "Type a supportive message or use the microphone.";
+    setRecordingOverlay(false);
   }
 
   function setCameraMeta(text) {

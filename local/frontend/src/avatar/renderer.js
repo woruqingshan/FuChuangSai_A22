@@ -134,7 +134,9 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     stopViseme();
     audioPlayer.stop();
     if (!preserveVideo) {
-      freezeCurrentVideoFrame();
+      // Keep the currently selected portrait image stable.
+      // Do not overwrite it with the previous reply video's last frame,
+      // otherwise profile switching appears one-turn delayed.
       resetVideoElement();
       if (portraitImage) {
         portraitImage.classList.remove("hidden");
@@ -298,13 +300,16 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       stopExpression = applyExpressionSequence(faceElement, expressionSeq, fallbackExpression);
       stopMotion = applyMotionSequence(faceElement, motionSeq, fallbackMotion);
       stopViseme = applyVisemeSequence(faceElement, visemeSeq);
+      const audioCue = avatarOutput?.audio;
+      // Always play reply.wav (avatar_output.audio); keep video as visual-only track.
+      audioPlayer.play(audioCue);
 
       const replyVideoUrl = resolveBackendMediaUrl(response.reply_video_url);
       if (videoElement && replyVideoUrl) {
         startVideoSource({
           url: replyVideoUrl,
           currentToken,
-          muted: false,
+          muted: true,
           loop: false,
           sourceType: "reply",
         });
@@ -322,24 +327,15 @@ export function createAvatarRenderer({ faceElement, readouts }) {
               startVideoSource({
                 url: chunkUrl,
                 currentToken,
-                muted: false,
+                muted: true,
                 loop: false,
                 sourceType: "reply",
               });
-              return;
             }
-            audioPlayer.play(avatarOutput?.audio);
           })
-          .catch(() => {
-            if (renderToken !== currentToken) {
-              return;
-            }
-            audioPlayer.play(avatarOutput?.audio);
-          });
+          .catch(() => {});
         return;
       }
-
-      audioPlayer.play(avatarOutput?.audio);
     },
     cleanup,
   };

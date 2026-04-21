@@ -257,9 +257,13 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     if (!profile) {
       return;
     }
+    // Force portrait mode when switching profile so a previously playing reply video
+    // does not keep covering the new portrait.
+    renderer.cleanup();
     selectedAvatarProfile = profile;
     updateProfileUi(profile);
     applyProfilePortrait(profile);
+    portraitImage?.classList.remove("hidden");
 
     if (persist) {
       persistAvatarProfileId(profile.id);

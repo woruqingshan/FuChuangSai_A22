@@ -49,6 +49,7 @@ Default avatar settings in the script:
 - `SOULX_COMMAND_TEMPLATE=<soulx-full python + generate_video.py>`
 - `TTS_MODE=cosyvoice_300m_instruct`
 - `TTS_MODEL=/root/autodl-tmp/a22/models/CosyVoice-300M-Instruct`
+- `AVATAR_SERVICE_TIMEOUT_SECONDS=600` (to avoid orchestrator fallback when SoulX render is slow)
 
 If your machine uses a different avatar env (for example `avatar-service-soulx`), run:
 
