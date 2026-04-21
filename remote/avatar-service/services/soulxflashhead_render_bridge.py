@@ -73,20 +73,22 @@ class SoulXFlashHeadRenderBridge:
         command_template: str = "",
         extra_args: str = "",
     ) -> list[str]:
+        template_values = {
+            "python": "python",
+            "infer_script": infer_script,
+            "audio_path": request.audio_path,
+            "ref_image_path": request.ref_image_path,
+            "output_path": output_path,
+            "fps": request.fps,
+            "chunk_seconds": request.chunk_seconds,
+            "session_id": request.session_id,
+            "turn_id": request.turn_id,
+            "emotion_style": request.emotion_style,
+            "seed": request.seed,
+        }
+
         if command_template.strip():
-            command_text = command_template.format(
-                python="python",
-                infer_script=infer_script,
-                audio_path=request.audio_path,
-                ref_image_path=request.ref_image_path,
-                output_path=output_path,
-                fps=request.fps,
-                chunk_seconds=request.chunk_seconds,
-                session_id=request.session_id,
-                turn_id=request.turn_id,
-                emotion_style=request.emotion_style,
-                seed=request.seed,
-            )
+            command_text = self._render_command_template(command_template, template_values)
             return shlex.split(command_text)
 
         cli_args = [
@@ -108,6 +110,14 @@ class SoulXFlashHeadRenderBridge:
         if extra_args.strip():
             cli_args.extend(shlex.split(extra_args))
         return cli_args
+
+    @staticmethod
+    def _render_command_template(template: str, values: dict[str, object]) -> str:
+        # Avoid str.format parser errors when template contains non-placeholder braces.
+        rendered = template
+        for key, value in values.items():
+            rendered = rendered.replace(f"{{{key}}}", str(value))
+        return rendered
 
     def render_video(
         self,
