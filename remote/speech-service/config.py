@@ -3,15 +3,15 @@ import os
 
 class Settings:
     def __init__(self) -> None:
-        self.asr_provider = os.getenv("ASR_PROVIDER", "belle_whisper").strip().lower() or "belle_whisper"
+        self.asr_provider = os.getenv("ASR_PROVIDER", "qwen3_asr").strip().lower() or "qwen3_asr"
         self.asr_model = (
             os.getenv(
                 "ASR_MODEL",
-                "/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh",
+                "/root/autodl-tmp/a22/models/Qwen3-ASR-1.7B",
             ).strip()
-            or "/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh"
+            or "/root/autodl-tmp/a22/models/Qwen3-ASR-1.7B"
         )
-        self.asr_language = os.getenv("ASR_LANGUAGE", "zh").strip() or "zh"
+        self.asr_language = os.getenv("ASR_LANGUAGE", "Chinese").strip() or "Chinese"
         self.asr_device = os.getenv("ASR_DEVICE", "cuda:0").strip() or "cuda:0"
         self.asr_warmup_enabled = os.getenv("ASR_WARMUP_ENABLED", "true").strip().lower() in {
             "1",
@@ -29,9 +29,9 @@ class Settings:
         self.ser_model = (
             os.getenv(
                 "SER_MODEL",
-                "/data/zifeng/siyuan/A22/models/emotion2vec_plus_base",
+                "/root/autodl-tmp/a22/models/emotion2vec_plus_base",
             ).strip()
-            or "/data/zifeng/siyuan/A22/models/emotion2vec_plus_base"
+            or "/root/autodl-tmp/a22/models/emotion2vec_plus_base"
         )
         self.ser_device = os.getenv("SER_DEVICE", self.asr_device).strip() or self.asr_device
         self.ser_hub = os.getenv("SER_HUB", "ms").strip().lower() or "ms"
@@ -55,7 +55,7 @@ class Settings:
             "yes",
             "on",
         }
-        self.tmp_dir = os.getenv("TMP_DIR", "/data/zifeng/siyuan/A22/tmp/speech").strip() or "/data/zifeng/siyuan/A22/tmp/speech"
+        self.tmp_dir = os.getenv("TMP_DIR", "/root/autodl-tmp/a22/tmp/speech").strip() or "/root/autodl-tmp/a22/tmp/speech"
 
 
 settings = Settings()

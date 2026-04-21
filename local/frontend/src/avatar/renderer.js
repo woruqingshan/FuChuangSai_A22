@@ -3,6 +3,49 @@ import { applyExpressionSequence } from "./expressionDriver";
 import { applyMotionSequence } from "./motionDriver";
 import { applyVisemeSequence } from "./visemeDriver";
 
+function resolveBackendMediaUrl(rawUrl) {
+  const url = String(rawUrl || "").trim();
+  if (!url) {
+    return "";
+  }
+
+  const lower = url.toLowerCase();
+  if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("data:") || lower.startsWith("blob:")) {
+    return url;
+  }
+
+  const directApiEnabled = import.meta.env.VITE_USE_DIRECT_API === "true";
+  const directApiBase = directApiEnabled
+    ? String(import.meta.env.VITE_API_BASE || "").trim().replace(/\/$/, "")
+    : "";
+  if (!directApiBase) {
+    return url;
+  }
+
+  if (url.startsWith("/")) {
+    return `${directApiBase}${url}`;
+  }
+  return `${directApiBase}/${url}`;
+}
+
+async function resolveStreamFirstChunkUrl(streamManifestUrl) {
+  const manifestResponse = await fetch(streamManifestUrl, {
+    cache: "no-store",
+  });
+  if (!manifestResponse.ok) {
+    return "";
+  }
+
+  const manifest = await manifestResponse.json().catch(() => null);
+  const chunks = Array.isArray(manifest?.chunks) ? manifest.chunks : [];
+  if (!chunks.length) {
+    return "";
+  }
+
+  const firstChunkUrl = typeof chunks[0]?.url === "string" ? chunks[0].url : "";
+  return resolveBackendMediaUrl(firstChunkUrl);
+}
+
 export function createAvatarRenderer({ faceElement, readouts }) {
   const audioPlayer = createAudioPlayer();
   const portraitImage = faceElement.querySelector(".avatar-portrait-image");
@@ -239,14 +282,43 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       stopMotion = applyMotionSequence(faceElement, motionSeq, fallbackMotion);
       stopViseme = applyVisemeSequence(faceElement, visemeSeq);
 
-      if (videoElement && response.reply_video_url) {
+      const replyVideoUrl = resolveBackendMediaUrl(response.reply_video_url);
+      if (videoElement && replyVideoUrl) {
         startVideoSource({
-          url: response.reply_video_url,
+          url: replyVideoUrl,
           currentToken,
           muted: false,
           loop: false,
           sourceType: "reply",
         });
+        return;
+      }
+
+      const replyVideoStreamUrl = resolveBackendMediaUrl(response.reply_video_stream_url);
+      if (videoElement && replyVideoStreamUrl) {
+        void resolveStreamFirstChunkUrl(replyVideoStreamUrl)
+          .then((chunkUrl) => {
+            if (renderToken !== currentToken) {
+              return;
+            }
+            if (chunkUrl) {
+              startVideoSource({
+                url: chunkUrl,
+                currentToken,
+                muted: false,
+                loop: false,
+                sourceType: "reply",
+              });
+              return;
+            }
+            audioPlayer.play(avatarOutput?.audio);
+          })
+          .catch(() => {
+            if (renderToken !== currentToken) {
+              return;
+            }
+            audioPlayer.play(avatarOutput?.audio);
+          });
         return;
       }
 

@@ -121,7 +121,7 @@ services:
       TTS_MODEL: ${TTS_MODEL_PATH:-/models/CosyVoice2-0.5B}
       TTS_REPO_PATH: ${TTS_REPO_PATH:-/models/CosyVoice}
       TTS_DEVICE: ${TTS_DEVICE:-cuda:0}
-      TTS_SPEAKER_ID: ${TTS_SPEAKER_ID:-中文女}
+      TTS_SPEAKER_ID: ${TTS_SPEAKER_ID:-}
       TTS_WARMUP_ENABLED: ${TTS_WARMUP_ENABLED:-false}
     volumes:
       - ${A22_MODEL_ROOT:-/root/autodl-tmp/a22/models}:/models:ro
