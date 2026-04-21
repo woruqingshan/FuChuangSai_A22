@@ -46,8 +46,8 @@ class Settings:
         )
         self.tts_device = _env_str("TTS_DEVICE", "cuda:0") or "cuda:0"
         self.tts_repo_path = _env_str("TTS_REPO_PATH", "/root/autodl-tmp/a22/models/CosyVoice")
-        # Keep default empty and let runtime pick model speaker fallback safely.
-        self.tts_speaker_id = _env_str("TTS_SPEAKER_ID", "")
+        # Use a fixed default speaker to keep timbre stable across turns.
+        self.tts_speaker_id = _env_str("TTS_SPEAKER_ID", "中文女")
         self.tts_prompt_wav = _env_str("TTS_PROMPT_WAV", "")
         self.tts_prompt_text = _env_str("TTS_PROMPT_TEXT", "YOUR_PROMPT_TEXT|endofprompt|>")
         self.tts_instruct_text = _env_str("TTS_INSTRUCT_TEXT", "YOUR_INSTRUCT_TEXT|endofprompt|>")

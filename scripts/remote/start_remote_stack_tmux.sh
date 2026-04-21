@@ -48,8 +48,8 @@ export HSEMOTION_CACHE_DIR="${HSEMOTION_CACHE_DIR:-$A22_MODEL_ROOT/hsemotion}"
 export TTS_MODE="${TTS_MODE:-cosyvoice_300m_instruct}"
 export TTS_MODEL_PATH="${TTS_MODEL_PATH:-$A22_MODEL_ROOT/CosyVoice-300M-Instruct}"
 export TTS_REPO_PATH="${TTS_REPO_PATH:-$A22_MODEL_ROOT/CosyVoice}"
-# Keep empty by default and let avatar-service resolve to a stable preferred speaker.
-export TTS_SPEAKER_ID="${TTS_SPEAKER_ID:-}"
+# Default to a fixed female speaker to avoid runtime fallback drift.
+export TTS_SPEAKER_ID="${TTS_SPEAKER_ID:-中文女}"
 export AVATAR_SERVICE_TIMEOUT_SECONDS="${AVATAR_SERVICE_TIMEOUT_SECONDS:-600}"
 
 if [ -z "${SOULX_ROOT:-}" ]; then
