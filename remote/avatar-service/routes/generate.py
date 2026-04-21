@@ -106,18 +106,46 @@ async def generate(request: GenerateRequest, background_tasks: BackgroundTasks) 
                 chunk_seconds=settings.soulx_chunk_seconds,
                 metadata={"stream_id": stream_id},
             )
-            reply_video_stream_url = _persist_pending_manifest(
-                session_id=request.session_id,
-                turn_id=request.turn_id,
-                chunk_seconds=settings.soulx_chunk_seconds,
-            )
-            render_in_background = True
-            background_tasks.add_task(
-                _render_soulx_video_in_background,
-                request=request,
-                render_request=render_request,
-                stream_id=stream_id,
-            )
+            if settings.soulx_async_render:
+                reply_video_stream_url = _persist_pending_manifest(
+                    session_id=request.session_id,
+                    turn_id=request.turn_id,
+                    chunk_seconds=settings.soulx_chunk_seconds,
+                )
+                render_in_background = True
+                background_tasks.add_task(
+                    _render_soulx_video_in_background,
+                    request=request,
+                    render_request=render_request,
+                    stream_id=stream_id,
+                )
+            else:
+                render_result = soulxflashhead_render_bridge.render_video(
+                    render_request,
+                    workdir=settings.soulx_root,
+                    infer_script=settings.soulx_infer_script,
+                    timeout_seconds=settings.soulx_timeout_seconds,
+                    command_template=settings.soulx_command_template,
+                    extra_args=settings.soulx_extra_args,
+                )
+                persisted_video_path = avatar_storage.persist_video(
+                    session_id=request.session_id,
+                    turn_id=request.turn_id,
+                    source_path=render_result.video_path,
+                )
+                avatar_storage.persist_video_chunk(
+                    session_id=request.session_id,
+                    turn_id=request.turn_id,
+                    chunk_index=1,
+                    source_path=render_result.video_path,
+                )
+                reply_video_path = str(persisted_video_path)
+                reply_video_url = f"/media/video/{request.session_id}/{request.turn_id}"
+                reply_video_stream_url = _persist_single_chunk_manifest(
+                    session_id=request.session_id,
+                    turn_id=request.turn_id,
+                    chunk_seconds=settings.soulx_chunk_seconds,
+                )
 
         avatar_output = {
             "contract_version": "v1",

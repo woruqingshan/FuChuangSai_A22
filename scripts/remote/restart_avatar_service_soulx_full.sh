@@ -22,6 +22,7 @@ export SOULX_REF_IMAGE_PATH="${SOULX_REF_IMAGE_PATH:-$A22_MODEL_ROOT/SoulX-Flash
 export SOULX_PYTHON="${SOULX_PYTHON:-$A22_ENV_ROOT/soulx-full/bin/python}"
 export SOULX_CKPT_DIR="${SOULX_CKPT_DIR:-$A22_MODEL_ROOT/SoulX-FlashHead-1_3B}"
 export SOULX_WAV2VEC_DIR="${SOULX_WAV2VEC_DIR:-$A22_MODEL_ROOT/wav2vec2-base-960h}"
+export SOULX_ASYNC_RENDER="${SOULX_ASYNC_RENDER:-false}"
 DEFAULT_SOULX_COMMAND_TEMPLATE="$SOULX_PYTHON {infer_script} --ckpt_dir $SOULX_CKPT_DIR --wav2vec_dir $SOULX_WAV2VEC_DIR --model_type lite --cond_image {ref_image_path} --audio_path {audio_path} --audio_encode_mode stream --save_file {output_path}"
 export SOULX_COMMAND_TEMPLATE="${SOULX_COMMAND_TEMPLATE:-$DEFAULT_SOULX_COMMAND_TEMPLATE}"
 

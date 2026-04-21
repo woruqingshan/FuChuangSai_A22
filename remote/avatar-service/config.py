@@ -30,6 +30,12 @@ class Settings:
         self.soulx_timeout_seconds = float(_env_str("SOULX_TIMEOUT_SECONDS", "1200"))
         self.soulx_chunk_seconds = float(_env_str("SOULX_CHUNK_SECONDS", "2.0"))
         self.soulx_fps = int(_env_str("SOULX_FPS", "25"))
+        self.soulx_async_render = _env_str("SOULX_ASYNC_RENDER", "true").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
         self.soulx_command_template = _env_str("SOULX_COMMAND_TEMPLATE", "")
         self.soulx_extra_args = _env_str("SOULX_EXTRA_ARGS", "")
 
