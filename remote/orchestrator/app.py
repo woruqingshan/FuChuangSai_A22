@@ -4,7 +4,9 @@ from routes.chat import router as chat_router
 from routes.chat_ws import router as chat_ws_router
 from routes.health import router as health_router
 from routes.media import router as media_router
+from config import settings
 from services.observability import orchestrator_observability
+from services.rag import rag_service
 
 app = FastAPI(title="A22 Orchestrator", version="0.2.0")
 app.include_router(health_router)
@@ -15,6 +17,8 @@ app.include_router(media_router)
 
 @app.on_event("startup")
 async def on_startup() -> None:
+    if settings.rag_enabled:
+        rag_service.ensure_ready()
     orchestrator_observability.log_run_start()
 
 

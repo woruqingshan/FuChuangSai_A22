@@ -42,6 +42,11 @@ class OrchestratorObservability:
                 "avatar_service_base": settings.avatar_service_base,
                 "emotion_service_enabled": settings.emotion_service_enabled,
                 "emotion_service_base": settings.emotion_service_base,
+                "rag_enabled": settings.rag_enabled,
+                "rag_kb_dir": settings.rag_kb_dir,
+                "rag_processed_dir": settings.rag_processed_dir,
+                "rag_index_dir": settings.rag_index_dir,
+                "rag_top_k": settings.rag_top_k,
                 "log_dir": settings.log_dir,
             },
         )
