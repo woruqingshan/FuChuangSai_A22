@@ -30,6 +30,7 @@ export VISION_MODEL_PATH="${VISION_MODEL_PATH:-$A22_MODEL_ROOT/Qwen2.5-VL-7B-Ins
 export TTS_MODE="${TTS_MODE:-cosyvoice_300m_instruct}"
 export TTS_MODEL_PATH="${TTS_MODEL_PATH:-$A22_MODEL_ROOT/CosyVoice-300M-Instruct}"
 export TTS_REPO_PATH="${TTS_REPO_PATH:-$A22_MODEL_ROOT/CosyVoice}"
+export AVATAR_SERVICE_TIMEOUT_SECONDS="${AVATAR_SERVICE_TIMEOUT_SECONDS:-600}"
 
 if [ -z "${SOULX_ROOT:-}" ]; then
   if [ -d "$A22_MODEL_ROOT/SoulX-FlashHead" ]; then
@@ -75,6 +76,13 @@ mkdir -p "$A22_TMP_ROOT/speech" "$A22_TMP_ROOT/vision" "$A22_TMP_ROOT/avatar" "$
 for session_name in qwen speech vision avatar orchestrator; do
   tmux kill-session -t "$session_name" 2>/dev/null || true
 done
+
+# Clear stale non-tmux processes that may still occupy these ports.
+pkill -f "vllm.entrypoints.openai.api_server.*--port 8000" 2>/dev/null || true
+pkill -f "uvicorn app:app.*--port 19100" 2>/dev/null || true
+pkill -f "uvicorn app:app.*--port 19200" 2>/dev/null || true
+pkill -f "uvicorn app:app.*--port 19300" 2>/dev/null || true
+pkill -f "uvicorn app:app.*--port 19000" 2>/dev/null || true
 
 tmux new-session -d -s qwen "bash -lc '
 set -euo pipefail
@@ -160,6 +168,7 @@ export VISION_SERVICE_ENABLED=true
 export VISION_SERVICE_BASE=http://127.0.0.1:19200
 export AVATAR_SERVICE_ENABLED=true
 export AVATAR_SERVICE_BASE=http://127.0.0.1:19300
+export AVATAR_SERVICE_TIMEOUT_SECONDS=\"$AVATAR_SERVICE_TIMEOUT_SECONDS\"
 export EMOTION_SERVICE_ENABLED=false
 exec python -m uvicorn app:app --host 127.0.0.1 --port 19000
 '"

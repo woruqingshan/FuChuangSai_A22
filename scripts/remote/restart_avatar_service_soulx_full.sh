@@ -41,8 +41,9 @@ fi
 
 mkdir -p "$A22_LOG_ROOT" "$A22_TMP_ROOT/avatar"
 
+tmux kill-session -t avatar 2>/dev/null || true
 source "$A22_ENV_ROOT/$AVATAR_ENV_NAME/bin/activate"
-pkill -f "uvicorn app:app --host $AVATAR_HOST --port $AVATAR_PORT" 2>/dev/null || true
+pkill -f "uvicorn app:app.*--port $AVATAR_PORT" 2>/dev/null || true
 
 cd "$A22_CODE/remote/avatar-service"
 nohup python -m uvicorn app:app --host "$AVATAR_HOST" --port "$AVATAR_PORT" \
