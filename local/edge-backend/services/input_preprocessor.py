@@ -73,4 +73,6 @@ def normalize_chat_request(
         vision_features=vision_features_payload,
         turn_time_window=turn_time_window,
         alignment_mode=alignment_mode,
+        avatar_profile_id=request.avatar_profile_id,
+        avatar_ref_image_path=request.avatar_ref_image_path,
     )

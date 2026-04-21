@@ -1,4 +1,33 @@
+import json
+import logging
 import os
+
+
+logger = logging.getLogger(__name__)
+
+
+def _parse_avatar_profile_ref_image_map(raw: str) -> dict[str, str]:
+    value = (raw or "").strip()
+    if not value:
+        return {}
+
+    try:
+        payload = json.loads(value)
+    except ValueError:
+        logger.warning("AVATAR_PROFILE_REF_IMAGE_MAP is not valid JSON. Ignoring this setting.")
+        return {}
+
+    if not isinstance(payload, dict):
+        logger.warning("AVATAR_PROFILE_REF_IMAGE_MAP must be a JSON object. Ignoring this setting.")
+        return {}
+
+    mapping: dict[str, str] = {}
+    for key, item in payload.items():
+        profile_id = str(key).strip()
+        ref_path = str(item).strip() if item is not None else ""
+        if profile_id and ref_path:
+            mapping[profile_id] = ref_path
+    return mapping
 
 
 class Settings:
@@ -48,6 +77,13 @@ class Settings:
             or "http://127.0.0.1:19300"
         )
         self.avatar_service_timeout_seconds = float(os.getenv("AVATAR_SERVICE_TIMEOUT_SECONDS", "20"))
+        self.avatar_default_profile_id = os.getenv("AVATAR_DEFAULT_PROFILE_ID", "avatar_a").strip() or "avatar_a"
+        self.avatar_profile_alt_id = os.getenv("AVATAR_PROFILE_ALT_ID", "avatar_b").strip() or "avatar_b"
+        self.avatar_profile_default_ref_image_path = (
+            os.getenv("AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH", "").strip()
+        )
+        self.avatar_profile_alt_ref_image_path = os.getenv("AVATAR_PROFILE_ALT_REF_IMAGE_PATH", "").strip()
+        self.avatar_profile_ref_image_map = self._build_avatar_profile_ref_image_map()
         self.emotion_service_enabled = os.getenv("EMOTION_SERVICE_ENABLED", "false").strip().lower() in {
             "1",
             "true",
@@ -67,6 +103,19 @@ class Settings:
                 "Keep replies safe, supportive, and suitable for a local demo."
             ),
         ).strip()
+
+    def _build_avatar_profile_ref_image_map(self) -> dict[str, str]:
+        mapping: dict[str, str] = {}
+
+        if self.avatar_profile_default_ref_image_path:
+            mapping[self.avatar_default_profile_id] = self.avatar_profile_default_ref_image_path
+
+        if self.avatar_profile_alt_ref_image_path:
+            mapping[self.avatar_profile_alt_id] = self.avatar_profile_alt_ref_image_path
+
+        raw_json = os.getenv("AVATAR_PROFILE_REF_IMAGE_MAP", "")
+        mapping.update(_parse_avatar_profile_ref_image_map(raw_json))
+        return mapping
 
 
 settings = Settings()

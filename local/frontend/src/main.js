@@ -28,11 +28,17 @@ const state = {
   videoStatus: "Camera disabled",
   isSending: false,
   cameraEnabled: false,
+  avatarProfileId: "avatar_a",
 };
 
 let leftTopStack = null;
 
-const avatarPanel = createAvatarPanel();
+const avatarPanel = createAvatarPanel({
+  onProfileChange: (profile) => {
+    state.avatarProfileId = profile?.id || state.avatarProfileId;
+  },
+});
+state.avatarProfileId = avatarPanel.getSelectedProfileId();
 const chatPanel = createChatPanel();
 const statusBar = createStatusBar();
 const inputBar = createInputBar({
@@ -162,6 +168,7 @@ async function handleSend({ text, audio, video }) {
       input_type: inputMode,
       client_ts: Math.floor(Date.now() / 1000),
       turn_time_window: turnTimeWindow,
+      avatar_profile_id: state.avatarProfileId,
     };
 
     if (hasAudio) {

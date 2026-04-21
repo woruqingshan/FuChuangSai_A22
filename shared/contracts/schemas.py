@@ -146,6 +146,8 @@ class ChatRequestSchema(BaseModel):
     vision_features: VisionFeaturesSchema | None = None
     turn_time_window: TurnTimeWindowSchema | None = None
     alignment_mode: str | None = None
+    avatar_profile_id: str | None = None
+    avatar_ref_image_path: str | None = None
 
 
 class AvatarActionSchema(BaseModel):

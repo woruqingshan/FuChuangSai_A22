@@ -80,6 +80,18 @@ if [ -z "${SOULX_REF_IMAGE_PATH:-}" ]; then
 fi
 export SOULX_REF_IMAGE_PATH
 
+export AVATAR_DEFAULT_PROFILE_ID="${AVATAR_DEFAULT_PROFILE_ID:-avatar_a}"
+export AVATAR_PROFILE_ALT_ID="${AVATAR_PROFILE_ALT_ID:-avatar_b}"
+export AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH="${AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH:-$SOULX_REF_IMAGE_PATH}"
+if [ -z "${AVATAR_PROFILE_ALT_REF_IMAGE_PATH:-}" ]; then
+  if [ -f "$A22_CODE/local/frontend/public/avatar-portrait-alt.png" ]; then
+    AVATAR_PROFILE_ALT_REF_IMAGE_PATH="$A22_CODE/local/frontend/public/avatar-portrait-alt.png"
+  else
+    AVATAR_PROFILE_ALT_REF_IMAGE_PATH="$SOULX_REF_IMAGE_PATH"
+  fi
+fi
+export AVATAR_PROFILE_ALT_REF_IMAGE_PATH
+
 for env_name in qwen-server speech-service vision-service "$AVATAR_ENV_NAME" orchestrator; do
   if [ ! -x "$A22_ENV_ROOT/$env_name/bin/python" ]; then
     echo "[error] missing uv environment: $A22_ENV_ROOT/$env_name" >&2
@@ -210,6 +222,10 @@ export VISION_SERVICE_BASE=http://127.0.0.1:19200
 export AVATAR_SERVICE_ENABLED=true
 export AVATAR_SERVICE_BASE=http://127.0.0.1:19300
 export AVATAR_SERVICE_TIMEOUT_SECONDS=\"$AVATAR_SERVICE_TIMEOUT_SECONDS\"
+export AVATAR_DEFAULT_PROFILE_ID=\"$AVATAR_DEFAULT_PROFILE_ID\"
+export AVATAR_PROFILE_ALT_ID=\"$AVATAR_PROFILE_ALT_ID\"
+export AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH=\"$AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH\"
+export AVATAR_PROFILE_ALT_REF_IMAGE_PATH=\"$AVATAR_PROFILE_ALT_REF_IMAGE_PATH\"
 export EMOTION_SERVICE_ENABLED=false
 exec python -m uvicorn app:app --host 127.0.0.1 --port 19000
 '"

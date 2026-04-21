@@ -71,6 +71,8 @@ class ChatRequest(BaseModel):
     vision_features: VisionFeatures | None = None
     turn_time_window: TurnTimeWindow | None = None
     alignment_mode: str | None = None
+    avatar_profile_id: str | None = None
+    avatar_ref_image_path: str | None = None
 
 
 class RemoteChatRequest(BaseModel):
@@ -94,6 +96,8 @@ class RemoteChatRequest(BaseModel):
     vision_features: VisionFeatures | None = None
     turn_time_window: TurnTimeWindow | None = None
     alignment_mode: str | None = None
+    avatar_profile_id: str | None = None
+    avatar_ref_image_path: str | None = None
 
 
 class AvatarAction(AvatarActionSchema):

@@ -1,9 +1,15 @@
 import { createAvatarRenderer } from "../avatar/renderer";
 
 const STREAM_URL_STORAGE_KEY = "a22.avatar.external_stream_url";
+const AVATAR_PROFILE_STORAGE_KEY = "a22.avatar.profile_id";
+const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 
 function normalizeStreamUrl(raw) {
   return String(raw || "").trim();
+}
+
+function readBooleanFlag(rawValue) {
+  return TRUE_VALUES.has(String(rawValue || "").trim().toLowerCase());
 }
 
 function isLikelyMediaUrl(url) {
@@ -46,10 +52,103 @@ function persistStreamUrl(url) {
   }
 }
 
-export function createAvatarPanel() {
+function readInitialAvatarProfileId() {
+  try {
+    const queryProfileId = new URLSearchParams(window.location.search).get("avatar_profile_id");
+    if (queryProfileId) {
+      return String(queryProfileId).trim();
+    }
+  } catch {
+    // Ignore malformed query string and keep fallback behavior.
+  }
+
+  try {
+    return String(localStorage.getItem(AVATAR_PROFILE_STORAGE_KEY) || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function persistAvatarProfileId(profileId) {
+  try {
+    if (profileId) {
+      localStorage.setItem(AVATAR_PROFILE_STORAGE_KEY, profileId);
+      return;
+    }
+    localStorage.removeItem(AVATAR_PROFILE_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures in private mode / restricted environments.
+  }
+}
+
+function readSourceControlsEnabled() {
+  const envValue = import.meta.env.VITE_SHOW_AVATAR_SOURCE_CONTROLS;
+  if (readBooleanFlag(envValue)) {
+    return true;
+  }
+
+  try {
+    const queryValue = new URLSearchParams(window.location.search).get("avatar_source_controls");
+    return readBooleanFlag(queryValue);
+  } catch {
+    return false;
+  }
+}
+
+function readDefaultPortraitUrl() {
+  const envUrl = String(import.meta.env.VITE_AVATAR_PORTRAIT_URL || "").trim();
+  if (envUrl) {
+    return envUrl;
+  }
+  // Add a cache buster so replacing public/avatar-portrait.png takes effect immediately.
+  return "./avatar-portrait.png?v=20260421";
+}
+
+function readAvatarProfiles(defaultPortraitUrl) {
+  const defaultProfileId = String(import.meta.env.VITE_AVATAR_PROFILE_DEFAULT_ID || "avatar_a").trim() || "avatar_a";
+  const defaultProfileName = String(import.meta.env.VITE_AVATAR_PROFILE_DEFAULT_NAME || "Digital Human A").trim()
+    || "Digital Human A";
+
+  const altProfileId = String(import.meta.env.VITE_AVATAR_PROFILE_ALT_ID || "avatar_b").trim() || "avatar_b";
+  const altProfileName = String(import.meta.env.VITE_AVATAR_PROFILE_ALT_NAME || "Digital Human B").trim()
+    || "Digital Human B";
+  const altPortraitUrl = String(
+    import.meta.env.VITE_AVATAR_PROFILE_ALT_PORTRAIT_URL || "./avatar-portrait-alt.png?v=20260421",
+  ).trim();
+
+  const profiles = [
+    { id: defaultProfileId, name: defaultProfileName, portraitUrl: defaultPortraitUrl },
+  ];
+
+  if (altProfileId && altProfileId !== defaultProfileId && altPortraitUrl) {
+    profiles.push({ id: altProfileId, name: altProfileName, portraitUrl: altPortraitUrl });
+  }
+
+  return profiles;
+}
+
+export function createAvatarPanel({ onProfileChange } = {}) {
+  const sourceControlsEnabled = readSourceControlsEnabled();
+  const defaultPortraitUrl = readDefaultPortraitUrl();
+  const avatarProfiles = readAvatarProfiles(defaultPortraitUrl);
   const element = document.createElement("section");
   element.className = "avatar-panel";
+  if (sourceControlsEnabled) {
+    element.classList.add("avatar-panel--show-source-controls");
+  }
   element.innerHTML = `
+    <div class="avatar-profile-controls">
+      <div class="avatar-profile-heading">
+        <p class="eyebrow">Avatar Profile</p>
+        <span class="chip" data-role="avatar-profile-chip">Pending</span>
+      </div>
+      <div class="avatar-profile-row">
+        <p class="avatar-profile-name" data-role="avatar-profile-name">-</p>
+        <button type="button" class="secondary-button avatar-profile-button" data-role="avatar-profile-toggle">
+          Switch Avatar
+        </button>
+      </div>
+    </div>
     <div class="avatar-source-controls">
       <div class="avatar-source-heading">
         <p class="eyebrow">D - Avatar Source</p>
@@ -87,7 +186,7 @@ export function createAvatarPanel() {
         <div class="avatar-portrait-shell">
           <img
             class="avatar-portrait-image"
-            src="./avatar-portrait.png"
+            src="${defaultPortraitUrl}"
             alt="Digital human portrait"
           />
           <video
@@ -118,6 +217,10 @@ export function createAvatarPanel() {
   const disconnectButton = element.querySelector('[data-role="avatar-source-disconnect"]');
   const sourceChip = element.querySelector('[data-role="avatar-source-chip"]');
   const sourceMeta = element.querySelector('[data-role="avatar-source-meta"]');
+  const profileChip = element.querySelector('[data-role="avatar-profile-chip"]');
+  const profileName = element.querySelector('[data-role="avatar-profile-name"]');
+  const profileToggleButton = element.querySelector('[data-role="avatar-profile-toggle"]');
+  const portraitImage = element.querySelector(".avatar-portrait-image");
   const avatarVideo = element.querySelector(".avatar-video");
   const embedFrame = element.querySelector('[data-role="avatar-embed-frame"]');
 
@@ -126,7 +229,49 @@ export function createAvatarPanel() {
     readouts: null,
   });
 
+  let selectedAvatarProfile = avatarProfiles[0] || {
+    id: "avatar_a",
+    name: "Digital Human A",
+    portraitUrl: defaultPortraitUrl,
+  };
+
   face.dataset.externalPage = "off";
+
+  function updateProfileUi(profile) {
+    if (!profile) {
+      return;
+    }
+    profileChip.textContent = profile.id;
+    profileName.textContent = profile.name;
+    profileToggleButton.disabled = avatarProfiles.length <= 1;
+  }
+
+  function applyProfilePortrait(profile) {
+    if (!portraitImage || !profile?.portraitUrl) {
+      return;
+    }
+    portraitImage.src = profile.portraitUrl;
+  }
+
+  function applyAvatarProfile(profile, { persist = true, notify = true } = {}) {
+    if (!profile) {
+      return;
+    }
+    selectedAvatarProfile = profile;
+    updateProfileUi(profile);
+    applyProfilePortrait(profile);
+
+    if (persist) {
+      persistAvatarProfileId(profile.id);
+    }
+    if (notify) {
+      onProfileChange?.({
+        id: profile.id,
+        name: profile.name,
+        portraitUrl: profile.portraitUrl,
+      });
+    }
+  }
 
   function setSourceUi({ chipText, metaText, connected }) {
     sourceChip.textContent = chipText;
@@ -186,7 +331,9 @@ export function createAvatarPanel() {
     renderer.clearPinnedVideoSource();
     face.dataset.externalPage = "on";
     setEmbedFrame(url);
-    streamInput.value = url;
+    if (streamInput) {
+      streamInput.value = url;
+    }
     persistStreamUrl(url);
     setSourceUi({
       chipText: "External page",
@@ -207,6 +354,31 @@ export function createAvatarPanel() {
       connected: false,
     });
   }
+
+  profileToggleButton.addEventListener("click", () => {
+    if (avatarProfiles.length <= 1) {
+      return;
+    }
+    const currentIndex = avatarProfiles.findIndex((item) => item.id === selectedAvatarProfile.id);
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % avatarProfiles.length : 0;
+    const nextProfile = avatarProfiles[nextIndex];
+    applyAvatarProfile(nextProfile);
+  });
+
+  portraitImage?.addEventListener("error", () => {
+    if (!selectedAvatarProfile) {
+      return;
+    }
+    if (selectedAvatarProfile.portraitUrl === defaultPortraitUrl) {
+      return;
+    }
+    applyProfilePortrait({ portraitUrl: defaultPortraitUrl });
+    setSourceUi({
+      chipText: "Portrait fallback",
+      metaText: `Failed to load ${selectedAvatarProfile.portraitUrl}. Fallback portrait is used.`,
+      connected: false,
+    });
+  });
 
   connectButton.addEventListener("click", () => {
     connectExternalStream(streamInput.value);
@@ -277,11 +449,19 @@ export function createAvatarPanel() {
     metaText: "Using portrait fallback. Connect a UE URL to show the real digital human.",
     connected: false,
   });
+  const initialProfileId = readInitialAvatarProfileId();
+  const initialProfile = avatarProfiles.find((item) => item.id === initialProfileId) || avatarProfiles[0];
+  applyAvatarProfile(initialProfile, { persist: false, notify: true });
 
   const initialUrl = readInitialStreamUrl();
-  if (initialUrl) {
-    streamInput.value = initialUrl;
+  if (sourceControlsEnabled && initialUrl) {
+    if (streamInput) {
+      streamInput.value = initialUrl;
+    }
     connectExternalStream(initialUrl);
+  }
+  if (!sourceControlsEnabled) {
+    disconnectExternalStream("Using portrait fallback mode.");
   }
 
   const api = {
@@ -289,6 +469,9 @@ export function createAvatarPanel() {
     currentEmotionStyle: "supportive",
     currentFacialExpression: "neutral",
     currentHeadMotion: "steady",
+    getSelectedProfileId() {
+      return selectedAvatarProfile?.id || avatarProfiles[0]?.id || "avatar_a";
+    },
     update(response) {
       api.currentEmotionStyle = response.emotion_style || api.currentEmotionStyle;
       api.currentFacialExpression = response.avatar_action?.facial_expression || api.currentFacialExpression;

@@ -79,6 +79,7 @@ class AvatarClient:
             "tts_instruct_text": tts_instruct_text,
             "tts_speed": tts_speed,
             "tts_speaker_id": tts_speaker_id,
+            "ref_image_path": self._resolve_ref_image_path(request),
             "avatar_action": avatar_action.model_dump() if hasattr(avatar_action, "model_dump") else avatar_action.dict(),
             "turn_time_window": (
                 request.turn_time_window.model_dump()
@@ -158,6 +159,24 @@ class AvatarClient:
             reply_video_url=None,
             reply_video_stream_url=None,
         )
+
+    def _resolve_ref_image_path(self, request: ChatRequest) -> str | None:
+        direct_path = _non_empty_string(getattr(request, "avatar_ref_image_path", None))
+        if direct_path:
+            return direct_path
+
+        profile_id = _non_empty_string(getattr(request, "avatar_profile_id", None))
+        if profile_id:
+            mapped = _non_empty_string(settings.avatar_profile_ref_image_map.get(profile_id))
+            if mapped:
+                return mapped
+
+        default_profile_id = _non_empty_string(settings.avatar_default_profile_id)
+        if default_profile_id:
+            mapped_default = _non_empty_string(settings.avatar_profile_ref_image_map.get(default_profile_id))
+            if mapped_default:
+                return mapped_default
+        return None
 
 
 avatar_client = AvatarClient()

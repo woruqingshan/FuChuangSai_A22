@@ -140,6 +140,7 @@ class DialogService:
             payload={
                 "response_source": response.response_source,
                 "alignment_mode": response.alignment_mode,
+                "avatar_profile_id": request.avatar_profile_id,
                 "emotion_style": response.emotion_style,
                 "tts_speed": tts_plan.tts_speed,
                 "tts_speaker_id": tts_plan.tts_speaker_id,
