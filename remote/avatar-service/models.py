@@ -34,9 +34,9 @@ class GenerateRequest(BaseModel):
     emotion_style: str = Field(default="supportive")
     tts_instruct_text: str | None = Field(default=None)
     tts_speed: float | None = Field(default=None, gt=0.0)
-    tts_speaker_id: str | None = Field(default=None, min_length=1)
-    ref_image_path: str | None = Field(default=None, min_length=1)
-    pose_dir: str | None = Field(default=None, min_length=1)
+    tts_speaker_id: str | None = Field(default=None)
+    ref_image_path: str | None = Field(default=None)
+    pose_dir: str | None = Field(default=None)
     avatar_action: AvatarAction
     turn_time_window: TurnTimeWindow | None = None
 

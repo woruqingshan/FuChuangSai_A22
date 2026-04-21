@@ -1,10 +1,13 @@
 from dataclasses import dataclass
+import logging
 
 import httpx
 
 from config import settings
 from models import AvatarAction, AvatarOutput, ChatRequest
 from services.tts_style_mapper import TTSRenderPlan
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -34,8 +37,19 @@ class AvatarClient:
                     avatar_action=avatar_action,
                     tts_plan=tts_plan,
                 )
-            except httpx.HTTPError:
-                pass
+            except httpx.HTTPStatusError as exc:
+                response_text = ""
+                try:
+                    response_text = exc.response.text[:600]
+                except Exception:  # noqa: BLE001
+                    response_text = "<unreadable>"
+                logger.warning(
+                    "avatar-service returned HTTP %s; detail=%s",
+                    exc.response.status_code,
+                    response_text,
+                )
+            except httpx.HTTPError as exc:
+                logger.warning("avatar-service request failed: %s", exc)
 
         return self._build_fallback(
             request=request,
@@ -53,14 +67,18 @@ class AvatarClient:
         avatar_action: AvatarAction,
         tts_plan: TTSRenderPlan | None = None,
     ) -> AvatarGenerationResult:
+        tts_instruct_text = _non_empty_string(tts_plan.tts_instruct_text if tts_plan else None)
+        tts_speaker_id = _non_empty_string(tts_plan.tts_speaker_id if tts_plan else None)
+        tts_speed = _positive_float(tts_plan.tts_speed if tts_plan else None)
+
         payload = {
             "session_id": request.session_id,
             "turn_id": request.turn_id,
             "reply_text": reply_text,
             "emotion_style": emotion_style,
-            "tts_instruct_text": tts_plan.tts_instruct_text if tts_plan else None,
-            "tts_speed": tts_plan.tts_speed if tts_plan else None,
-            "tts_speaker_id": tts_plan.tts_speaker_id if tts_plan else None,
+            "tts_instruct_text": tts_instruct_text,
+            "tts_speed": tts_speed,
+            "tts_speaker_id": tts_speaker_id,
             "avatar_action": avatar_action.model_dump() if hasattr(avatar_action, "model_dump") else avatar_action.dict(),
             "turn_time_window": (
                 request.turn_time_window.model_dump()
@@ -143,3 +161,22 @@ class AvatarClient:
 
 
 avatar_client = AvatarClient()
+
+
+def _non_empty_string(value: str | None) -> str | None:
+    if value is None:
+        return None
+    trimmed = value.strip()
+    return trimmed or None
+
+
+def _positive_float(value: float | None) -> float | None:
+    if value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed <= 0.0:
+        return None
+    return parsed
