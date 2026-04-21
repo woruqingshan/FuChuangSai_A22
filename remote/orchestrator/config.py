@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from pathlib import Path
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ def _parse_avatar_profile_ref_image_map(raw: str) -> dict[str, str]:
 
 class Settings:
     def __init__(self) -> None:
+        orchestrator_root = Path(__file__).resolve().parent
         self.llm_provider = os.getenv("LLM_PROVIDER", "mock").strip().lower() or "mock"
         self.llm_model = os.getenv("LLM_MODEL", "mock-support-v1").strip() or "mock-support-v1"
 
@@ -95,6 +97,33 @@ class Settings:
             or "http://127.0.0.1:19400"
         )
         self.emotion_service_timeout_seconds = float(os.getenv("EMOTION_SERVICE_TIMEOUT_SECONDS", "15"))
+        default_rag_kb_dir = orchestrator_root / "knowledge_base" / "raw"
+        default_rag_processed_dir = orchestrator_root / "knowledge_base" / "processed"
+        default_rag_index_dir = orchestrator_root / "knowledge_base" / "indexes"
+        self.rag_enabled = os.getenv("RAG_ENABLED", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.rag_kb_dir = os.getenv("RAG_KB_DIR", str(default_rag_kb_dir)).strip() or str(default_rag_kb_dir)
+        self.rag_processed_dir = (
+            os.getenv("RAG_PROCESSED_DIR", str(default_rag_processed_dir)).strip()
+            or str(default_rag_processed_dir)
+        )
+        self.rag_index_dir = (
+            os.getenv("RAG_INDEX_DIR", str(default_rag_index_dir)).strip() or str(default_rag_index_dir)
+        )
+        self.rag_top_k = max(1, int(os.getenv("RAG_TOP_K", "4")))
+        self.rag_max_context_chars = max(500, int(os.getenv("RAG_MAX_CONTEXT_CHARS", "2500")))
+        self.rag_min_score = max(0.0, float(os.getenv("RAG_MIN_SCORE", "0.08")))
+        self.rag_embedding_model = os.getenv("RAG_EMBEDDING_MODEL", "BAAI/bge-small-zh-v1.5").strip()
+        self.rag_rebuild_on_start = os.getenv("RAG_REBUILD_ON_START", "false").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
         self.system_prompt = os.getenv(
             "LLM_SYSTEM_PROMPT",
             (

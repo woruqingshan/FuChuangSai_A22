@@ -13,6 +13,8 @@ from services.alignment.contracts import AlignedTurn
 from services.observability import orchestrator_observability
 from services.policy_service import policy_service
 from services.prompt_builder import prompt_builder
+from services.rag import rag_service, safety_router
+from services.rag.contracts import RagResult
 from services.session_state import session_state
 from services.tts_style_mapper import tts_style_mapper
 
@@ -40,6 +42,18 @@ class DialogService:
         aligned_turn = multimodal_alignment_service.align(enriched_request, transcript)
         emotion_inference = await emotion_client.infer_turn(enriched_request, aligned_turn.canonical_user_text)
         multimodal_result = self._build_multimodal_result(enriched_request, aligned_turn, emotion_inference)
+        speech_tags = list(enriched_request.speech_features.emotion_tags) if enriched_request.speech_features else []
+        vision_tags = list(enriched_request.vision_features.emotion_tags) if enriched_request.vision_features else []
+        route = safety_router.route(
+            aligned_turn.canonical_user_text,
+            speech_tags=speech_tags,
+            vision_tags=vision_tags,
+            emotion_tags=list(emotion_inference.emotion_tags),
+        )
+        rag_result = rag_service.retrieve(
+            query=self._build_rag_query(aligned_turn),
+            route=route,
+        )
         orchestrator_observability.log_alignment_ready(
             request.session_id,
             request.turn_id,
@@ -49,6 +63,10 @@ class DialogService:
                 "speech_context_ready": bool(aligned_turn.speech_context),
                 "vision_context_ready": bool(aligned_turn.vision_context),
                 "emotion_source": emotion_inference.source,
+                "rag_route": route.label,
+                "rag_risk_level": route.risk_level,
+                "rag_hits": len(rag_result.hits),
+                "rag_topics": rag_result.topics,
             },
         )
         context_messages = session_state.build_context_messages(request.session_id)
@@ -56,6 +74,8 @@ class DialogService:
         system_prompt = prompt_builder.build_system_prompt(
             settings.system_prompt,
             context_summary=memory_summary,
+            rag_context=rag_result.prompt_context,
+            route_label=route.label,
         )
         emotion_style = policy_service.select_emotion_style(enriched_request, transcript)
         avatar_action = policy_service.select_avatar_action(enriched_request, transcript)
@@ -123,9 +143,12 @@ class DialogService:
             video_is_partial=video_is_partial,
             response_source=llm_result.response_source,
             context_summary=memory_summary or None,
-            reasoning_hint=llm_result.reasoning_hint
-            or aligned_turn.alignment_summary
-            or prompt_builder.build_reasoning_hint(context_messages),
+            reasoning_hint=self._build_reasoning_hint(
+                llm_result.reasoning_hint,
+                rag_result,
+                aligned_turn,
+                context_messages,
+            ),
             turn_time_window=enriched_request.turn_time_window,
             alignment_mode=aligned_turn.alignment_mode,
         )
@@ -153,9 +176,39 @@ class DialogService:
                 "multimodal_fusion_summary": (
                     response.multimodal_result.fusion_summary if response.multimodal_result else None
                 ),
+                "rag_route": route.label,
+                "rag_hits": len(rag_result.hits),
+                "rag_topics": rag_result.topics,
             },
         )
         return response
+
+    def _build_rag_query(self, aligned_turn: AlignedTurn) -> str:
+        parts = [aligned_turn.canonical_user_text or ""]
+        if aligned_turn.speech_context:
+            parts.append(f"speech: {aligned_turn.speech_context}")
+        if aligned_turn.vision_context:
+            parts.append(f"vision: {aligned_turn.vision_context}")
+        return "\n".join(part for part in parts if part.strip())
+
+    def _build_reasoning_hint(
+        self,
+        llm_hint: str | None,
+        rag_result: RagResult,
+        aligned_turn: AlignedTurn,
+        context_messages,
+    ) -> str | None:
+        parts = []
+        if llm_hint:
+            parts.append(llm_hint)
+        parts.append(rag_result.build_reasoning_hint())
+        if aligned_turn.alignment_summary:
+            parts.append(aligned_turn.alignment_summary)
+        elif not llm_hint:
+            fallback = prompt_builder.build_reasoning_hint(context_messages)
+            if fallback:
+                parts.append(fallback)
+        return "|".join(part for part in parts if part)
 
     def _select_video_reply_text(self, reply_text: str) -> str:
         # Keep full assistant reply for avatar TTS/video generation.
