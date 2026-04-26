@@ -1,431 +1,332 @@
-# A22 本地开发骨架
+# A22 虚拟情感交流机器人系统
 
-## 1. 项目目标
-本项目面向 A22 情感陪护虚拟数字人系统。
+本仓库是服务外包创新创业大赛 A22 赛题的参赛工程，目标是构建一个可通过文本、语音和摄像头输入进行情感陪伴交流的数字人系统。当前版本采用“本地交互端 + 远端模型服务”的混合部署方式：本地负责网页交互、录音、摄像头采集和播放，远端负责大语言模型、多模态理解、语音识别、情绪识别、语音合成和数字人视频生成。
 
-当前阶段的目标是在保持本地展示与转发链路稳定的前提下，完成远端真实推理服务接入与联调，包括：
+当前主流程已经打通：
 
-- 前端展示界面
-- 本地边缘后端
-- 本地统一入口
-- 与远程真实推理服务的接口对接
+- 文本输入到大语言模型回复。
+- 麦克风语音输入到 ASR 识别，再进入对话流程。
+- 摄像头开启后可附带视频关键帧，用于视觉上下文和表情情绪识别。
+- LLM 回复经过 CosyVoice TTS 生成语音。
+- TTS 音频经过 SoulX-FlashHead 生成数字人 MP4 视频和分段视频。
+- 前端播放数字人视频，并支持两套数字人头像切换。
+- orchestrator 内置轻量 RAG 知识库入口，用于心理支持知识增强。
 
-## 2. 当前系统架构
-当前架构按三层划分：
+## 系统架构
 
-1. Windows 层  
-   用于开发入口和展示入口，包括 `VS Code / Cursor`、浏览器、`Docker Desktop`。
+```mermaid
+flowchart LR
+  U["用户浏览器"] --> F["local/frontend"]
+  F --> E["local/edge-backend"]
+  E --> T["SSH tunnel 127.0.0.1:29000"]
+  T --> O["remote/orchestrator :19000"]
+  O --> Q["qwen-server :8000"]
+  O --> S["speech-service :19100"]
+  O --> V["vision-service :19200"]
+  O --> A["avatar-service :19300"]
+  S --> ASR["Qwen3-ASR + emotion2vec"]
+  V --> VL["Qwen2.5-VL + hsemotion"]
+  A --> TTS["CosyVoice-300M-Instruct"]
+  A --> X["SoulX-FlashHead"]
+```
 
-2. WSL2 Ubuntu 22.04 层  
-   作为本地 Linux 开发与运行环境，承载项目源码、本地 `frontend`、本地 `edge-backend`、`nginx`、日志与缓存。
+## 目录说明
 
-3. Remote Server 层  
-   承载全部推理相关服务，包括 `LLM`、`RAG`、`TTS`、多模态融合、状态评估等。
-
-当前约定是：**所有正式推理全部部署在远程服务器，本地 WSL 仅负责展示、业务处理、转发和接口预留。**
-
-## 3. 技术栈
-当前本地开发骨架使用如下技术栈：
-
-- Windows 11 + WSL2
-- Ubuntu 22.04
-- Docker Desktop
-- Docker Compose
-- Nginx
-- Node.js 20
-- Vite
-- Python 3.11
-- FastAPI
-- NVIDIA GPU through WSL2 + Docker Desktop
-
-## 4. 本地 Compose 服务说明
-当前本地 `docker compose` 管理以下服务：
-
-- `frontend`  
-  本地前端开发服务与页面渲染入口。
-
-- `edge-backend`  
-  本地边缘后端，负责会话管理、请求处理、转发预留和 mock 返回。
-
-- `nginx`  
-  本地统一入口，用于路由前端页面和 `/api` 请求。
-
-- `gpu-tools`  
-  可选 GPU 工具容器，仅用于验证本机 GPU 到容器的链路，不属于主业务容器。
-
-## 5. 目录结构
 ```text
-A22/
-├─ compose.yaml
-├─ compose.local.yaml
-├─ compose.remote.yaml
-├─ README.md
-├─ ARCHITECTURE.md
-├─ System_Design/
-│  ├─ version1/
-│  └─ version2/
-├─ local/
-│  ├─ frontend/
-│  ├─ edge-backend/
-│  └─ README.md
-├─ remote/
-│  ├─ orchestrator/
-│  └─ qwen-server/
-├─ shared/
-│  ├─ contracts/
-│  └─ README.md
-├─ infra/nginx/
-├─ logs/
-└─ data/
+local/
+  frontend/              # 本地网页前端，聊天、录音、摄像头、数字人展示
+  edge-backend/          # 本地边缘后端，代理前端请求到远端 orchestrator
+
+remote/
+  orchestrator/          # 统一编排服务，融合文本、语音、视觉、RAG、数字人输出
+  qwen-server/           # vLLM OpenAI API 兼容服务
+  speech-service/        # ASR 与语音情绪识别服务
+  vision-service/        # 视觉理解与人脸情绪识别服务
+  avatar-service/        # TTS 与 SoulX 数字人视频生成服务
+
+shared/                  # 前后端共享契约与数据结构
+scripts/
+  remote/                # 远端 tmux 启停、环境检查脚本
+  release/               # 比赛提交打包脚本
+
+System_Design/
+  submission/            # 项目概要介绍、项目详细方案等提交材料
 ```
 
-## 6. Docker 在 WSL 下的配置步骤
-本项目采用 **Windows 侧 Docker Desktop + WSL2 Ubuntu 22.04** 的方式，不在 WSL 内额外安装独立的 Docker Engine。
+## 当前远端环境约定
 
-### 6.1 Windows 侧准备
-1. 安装并更新 `WSL2`
-2. 安装 `Docker Desktop`
-3. 安装支持 WSL 的 `NVIDIA` 显卡驱动
-
-### 6.2 Docker Desktop 设置
-在 `Docker Desktop` 中确认：
-
-- `Use WSL 2 based engine` 已开启
-- `Resources > WSL Integration` 中已启用默认发行版
-- `Ubuntu-22.04` 已勾选集成
-
-### 6.3 WSL 内验证 Docker
-进入 `Ubuntu-22.04` 后执行：
+远端服务器默认路径如下：
 
 ```bash
-docker version
-docker compose version
-docker context ls
+代码目录: /root/autodl-tmp/a22/code/FuChuangSai_A22
+模型目录: /root/autodl-tmp/a22/models
+虚拟环境: /root/autodl-tmp/a22/.uv_envs
+临时目录: /root/autodl-tmp/a22/tmp
+日志目录: /root/autodl-tmp/a22/logs
 ```
 
-### 6.4 GPU 通路验证
-当前环境已验证可用的测试镜像为：
+远端 5 个核心服务：
 
-```bash
-docker run --rm --gpus all nvidia/cuda:12.6.3-base-ubuntu22.04 nvidia-smi
+| 服务 | 端口 | 主要职责 |
+| --- | --- | --- |
+| qwen-server | 8000 | vLLM 加载 Qwen2.5-7B-Instruct |
+| speech-service | 19100 | Qwen3-ASR 语音识别，emotion2vec 语音情绪 |
+| vision-service | 19200 | Qwen2.5-VL 视觉理解，hsemotion 人脸情绪 |
+| avatar-service | 19300 | CosyVoice TTS，SoulX 数字人视频生成 |
+| orchestrator | 19000 | 对话编排、多模态融合、RAG、调用数字人服务 |
+
+## 当前使用模型
+
+当前运行链路需要的模型目录位于 `/root/autodl-tmp/a22/models`：
+
+| 模型目录 | 用途 |
+| --- | --- |
+| Qwen2.5-7B-Instruct | 主对话大语言模型 |
+| Qwen3-ASR-1.7B | 中文语音识别 |
+| Qwen2.5-VL-7B-Instruct | 视频关键帧/图片理解 |
+| CosyVoice-300M-Instruct | TTS 语音合成 |
+| CosyVoice | CosyVoice 代码依赖路径 |
+| SoulX-FlashHead | 数字人推理工程 |
+| SoulX-FlashHead-1_3B | SoulX 权重 |
+| wav2vec2-base-960h | SoulX 音频特征依赖 |
+| emotion2vec_plus_base | 语音情绪识别 |
+| hsemotion | 人脸表情情绪识别 |
+
+不在当前主流程里的模型不建议放入 500M 比赛提交压缩包。模型参数文件通常体积很大，应作为外部部署资源或单独说明。
+
+## 快速启动
+
+### 1. 远端启动 5 个模型服务
+
+在本地 PowerShell 先登录远端：
+
+```powershell
+ssh -p 57547 root@connect.bjb1.seetacloud.com
 ```
 
-如果容器中可以正常显示本机显卡信息，说明 `WSL2 + Docker Desktop + GPU` 链路可用。
+在远端 Linux 执行：
 
-## 7. 首次拉起项目的操作步骤
-如果是首次在当前机器拉起本项目，建议按下面步骤执行。
-
-### 7.1 进入项目目录
 ```bash
-cd ~/docker_ws/A22
+cd /root/autodl-tmp/a22/code/FuChuangSai_A22
+source /etc/network_turbo || true
+
+# 如远端有临时本地改动，先保存，避免 pull 被阻塞
+git stash push -u -m "tmp-before-run-$(date +%F_%T)" || true
+git pull --ff-only
+
+chmod +x scripts/remote/*.sh
+./scripts/remote/stop_remote_stack_tmux.sh
+./scripts/remote/start_remote_stack_tmux.sh
+
+# 健康检查
+curl -iS http://127.0.0.1:19000/health
+curl -iS http://127.0.0.1:19300/health
 ```
 
-### 7.2 拉取基础镜像
+查看服务：
+
 ```bash
-docker pull node:20-bookworm-slim
-docker pull python:3.11-slim-bookworm
-docker pull nginx:1.27-alpine
-docker pull nvidia/cuda:12.6.3-base-ubuntu22.04
-docker pull nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04
+tmux ls
+ss -ltnp | egrep ':8000|:19000|:19100|:19200|:19300'
 ```
 
-### 7.3 启动本地服务
+查看日志：
+
 ```bash
-docker compose -f compose.yaml -f compose.local.yaml up -d
+tmux capture-pane -pt orchestrator -S -200
+tmux capture-pane -pt avatar -S -260
 ```
 
-### 7.4 查看运行状态
-```bash
+### 2. 本地开启 SSH 隧道
+
+新开一个本地 PowerShell 窗口，保持不关闭：
+
+```powershell
+ssh -N -g -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 0.0.0.0:29000:127.0.0.1:19000 -p 57547 root@connect.bjb1.seetacloud.com
+```
+
+隧道含义：本地 `http://127.0.0.1:29000` 会转发到远端 orchestrator `http://127.0.0.1:19000`。
+
+### 3. 本地启动前端和边缘后端
+
+在另一个本地 PowerShell 窗口执行：
+
+```powershell
+cd C:\Users\FYF\Documents\GitHub\FuChuangSai_A22
+
+# 首次或配置变更时确认 local/frontend/.env.local
+@"
+VITE_USE_DIRECT_API=false
+VITE_API_PROXY_TARGET=http://127.0.0.1:29000
+VITE_AVATAR_SESSION_ID=demo_s1
+VITE_AVATAR_STREAM_ID=demo_stream_1
+"@ | Set-Content local\frontend\.env.local -Encoding UTF8
+
+docker compose -f compose.yaml -f compose.local.yaml up -d frontend edge-backend
 docker compose -f compose.yaml -f compose.local.yaml ps
 ```
 
-### 7.5 查看日志
-```bash
-docker compose -f compose.yaml -f compose.local.yaml logs -f
+浏览器打开：
+
+```text
+http://localhost:3000
 ```
 
-### 7.6 远端 server 推理与 orchestrator（实验室服务器）
+如果页面打不开或旧代码没有刷新：
 
-当前远端代码目录位于：
-
-```bash
-/home/zifeng/siyuan/A22/A22_wmzjbyGroup
+```powershell
+docker compose -f compose.yaml -f compose.local.yaml restart frontend edge-backend
+docker compose -f compose.yaml -f compose.local.yaml logs --tail 120 frontend edge-backend
 ```
 
-当前模型目录位于：
+## 远端接口自检
+
+直接测试 orchestrator：
 
 ```bash
-/data/zifeng/siyuan/A22/models/Qwen2.5-7B-Instruct
-```
-
-当前推荐采用两层服务：
-
-- `remote/qwen-server`：独立运行 `vLLM`，提供 OpenAI-compatible HTTP 接口
-- `remote/orchestrator`：维持 `/chat` 契约与结构化返回，内部调用 `qwen-server`
-
-注意：
-
-- 模型权重必须放在 `/data/...`，不要放到 `/home`
-- `uv` 虚拟环境可以放在项目目录，即 `/home/...` 下
-- `remote/orchestrator/.venv` 如果已经存在，不需要重建；只有在依赖新增或 `pyproject.toml` 更新后，再执行一次同步安装即可
-- `remote/qwen-server/.venv` 建议独立创建，不要与 `orchestrator` 共用
-
-#### 7.6.1 准备 qwen-server 的 `uv` 环境
-
-```bash
-cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote
-mkdir -p qwen-server
-cd qwen-server
-uv venv --python /usr/bin/python3.11 .venv
-source .venv/bin/activate
-uv pip install --upgrade pip
-uv pip install vllm
-```
-
-兼容性说明：
-
-- `vllm` 会自动安装其依赖的 `torch`、CUDA 相关 wheel 与运行时依赖
-- 如果服务器驱动版本、Python 版本或 Linux 环境与 wheel 不匹配，安装阶段或启动阶段可能出现兼容问题
-- 当前服务器为 `3 x RTX 4090 24GB`，运行 `Qwen2.5-7B-Instruct` 资源上是足够的，通常先按单卡部署即可
-- 建议在全新独立 `.venv` 中安装 `vllm`，避免与其他推理框架依赖冲突
-- 如果安装或启动异常，优先检查 `nvidia-smi`、Python 版本以及 `vllm` 安装日志
-
-#### 7.6.2 启动 Qwen 模型服务
-
-```bash
-cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
-source .venv/bin/activate
-export CUDA_VISIBLE_DEVICES=<cuda_id>
-python -m vllm.entrypoints.openai.api_server \
-  --host 127.0.0.1 \
-  --port 8000 \
-  --model /data/zifeng/siyuan/A22/models/Qwen2.5-7B-Instruct \
-  --served-model-name Qwen2.5-7B-Instruct \
-  --dtype auto \
-  --gpu-memory-utilization 0.90 \
-  --trust-remote-code
-```
-
-启动后可在服务器本机验证：
-
-```bash
-curl http://127.0.0.1:8000/v1/models
-```
-
-其中：
-
-- `<cuda_id>` 可以填 `0`、`1` 或 `2`
-- 单卡部署时，`CUDA_VISIBLE_DEVICES=1` 表示只让 vLLM 使用物理 1 号 GPU
-- 当前 `Qwen2.5-7B-Instruct` 默认按单卡启动即可，不需要额外加 `tensor-parallel-size`
-
-#### 7.6.3 准备 orchestrator 的 `uv` 环境
-
-如果 `remote/orchestrator/.venv` 已经存在，直接复用即可：
-
-```bash
-cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
-source .venv/bin/activate
-uv sync
-```
-
-如果 `.venv` 尚未创建，再执行：
-
-```bash
-cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
-uv venv --python /usr/bin/python3.11 .venv
-source .venv/bin/activate
-uv sync
-```
-
-当接入真实 Qwen provider 后，启动前需要设置：
-
-```bash
-export LLM_PROVIDER=qwen
-export LLM_MODEL=Qwen2.5-7B-Instruct
-export LLM_API_BASE=http://127.0.0.1:8000/v1
-export LLM_API_KEY=EMPTY
-export LLM_REQUEST_TIMEOUT_SECONDS=60
-```
-
-#### 7.6.4 启动 orchestrator 服务
-
-```bash
-cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
-source .venv/bin/activate
-uv run uvicorn app:app --host 127.0.0.1 --port 19000
-```
-
-启动后可在服务器本机验证：
-
-```bash
-curl http://127.0.0.1:19000/health
-```
-
-说明：
-
-- `local/edge-backend` 访问的是 `remote/orchestrator`
-- `remote/orchestrator` 再向 `qwen-server` 发起模型调用
-- 因此全链路运行时，服务器上必须同时启动 `qwen-server` 和 `orchestrator`
-
-HTTP 契约见 `shared/contracts/api_v1.md`，远端详细说明见 `remote/orchestrator/README.md`。
-
-### 7.7 当前版本全链路运行指令
-
-当前版本完整链路不是 3 步，而是 4 步：
-
-1. WSL 侧启动本地 Docker 服务
-2. 服务器侧启动 `qwen-server`
-3. 服务器侧启动 `orchestrator`
-4. WSL 侧建立 SSH 隧道
-
-#### 7.7.1 WSL 侧启动本地服务
-
-```bash
-cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup
-docker compose -f compose.yaml -f compose.local.yaml up -d
-```
-
-#### 7.7.2 服务器侧启动模型服务
-
-```bash
-cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
-source .venv/bin/activate
-export CUDA_VISIBLE_DEVICES=<cuda_id>
-python -m vllm.entrypoints.openai.api_server \
-  --host 127.0.0.1 \
-  --port 8000 \
-  --model /data/zifeng/siyuan/A22/models/Qwen2.5-7B-Instruct \
-  --served-model-name Qwen2.5-7B-Instruct \
-  --dtype auto \
-  --gpu-memory-utilization 0.90 \
-  --trust-remote-code
-```
-
-#### 7.7.3 服务器侧启动 orchestrator
-
-```bash
-cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
-source .venv/bin/activate
-export LLM_PROVIDER=qwen
-export LLM_MODEL=Qwen2.5-7B-Instruct
-export LLM_API_BASE=http://127.0.0.1:8000/v1
-export LLM_API_KEY=EMPTY
-export LLM_REQUEST_TIMEOUT_SECONDS=60
-uv run uvicorn app:app --host 127.0.0.1 --port 19000
-```
-
-#### 7.7.4 WSL 侧建立 SSH 隧道
-
-```bash
-ssh -N -L 19000:127.0.0.1:19000 <server_user>@<server_host>
-```
-
-其中：
-
-- 本地 `19000` 映射到远端 `orchestrator` 的 `19000`
-- 本地应用继续通过 `CLOUD_API_BASE=http://127.0.0.1:19000` 访问远端服务
-
-#### 7.7.5 全链路验证
-
-WSL 侧验证远端链路：
-
-```bash
-curl http://127.0.0.1:19000/health
-curl -X POST http://127.0.0.1:19000/chat \
+TURN=10001
+curl -sS -X POST "http://127.0.0.1:19000/chat" \
   -H "Content-Type: application/json" \
-  -d '{"session_id":"demo-001","turn_id":1,"user_text":"hello","input_type":"text"}'
+  -d "{\"session_id\":\"demo_s1\",\"turn_id\":$TURN,\"user_text\":\"你好，请给我一句鼓励。\",\"input_type\":\"text\"}" \
+  | python -m json.tool
 ```
 
-然后通过浏览器访问：
+直接测试 avatar-service：
 
 ```bash
-http://localhost
+TURN=10002
+curl -sS -X POST "http://127.0.0.1:19300/generate" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  --data-raw "{
+    \"session_id\":\"demo_s1\",
+    \"turn_id\":$TURN,
+    \"reply_text\":\"这是数字人联调测试。\",
+    \"emotion_style\":\"supportive\",
+    \"avatar_action\":{\"facial_expression\":\"smile\",\"head_motion\":\"nod\"},
+    \"turn_time_window\":{\"stream_id\":\"demo_stream_1\"}
+  }" | python -m json.tool
 ```
 
-## 8. 已有 yml 情况下的复现步骤
-如果仓库中已经存在 `compose.yaml` 和 `compose.local.yaml`，其他开发者复现本地环境时只需要完成以下操作。
+生成文件默认在：
 
-### 8.1 前置条件
-需要提前具备：
-
-- Windows + WSL2
-- Ubuntu 22.04
-- Docker Desktop
-- 已开启 WSL Integration
-
-### 8.2 克隆仓库
 ```bash
-git clone https://github.com/woruqingshan/A22_womenzhongjiangbaoyanGroup.git
-cd A22_womenzhongjiangbaoyanGroup
+/root/autodl-tmp/a22/tmp/avatar/demo_s1/<turn_id>/
 ```
 
-如果你希望工作区仍位于 WSL 的 Linux 文件系统中，也可以先进入目标目录再克隆。
+## 数字人配置
 
-### 8.3 拉取依赖镜像
+avatar-service 默认使用 SoulX-FlashHead：
+
 ```bash
-docker pull node:20-bookworm-slim
-docker pull python:3.11-slim-bookworm
-docker pull nginx:1.27-alpine
+SOULX_ROOT=/root/autodl-tmp/a22/models/SoulX-FlashHead
+SOULX_CKPT_DIR=/root/autodl-tmp/a22/models/SoulX-FlashHead-1_3B
+SOULX_WAV2VEC_DIR=/root/autodl-tmp/a22/models/wav2vec2-base-960h
+SOULX_PYTHON=/root/autodl-tmp/a22/.uv_envs/soulx-full/bin/python
+TTS_MODE=cosyvoice_300m_instruct
+TTS_MODEL=/root/autodl-tmp/a22/models/CosyVoice-300M-Instruct
+TTS_SPEAKER_ID=中文女
 ```
 
-如果需要验证 GPU，再执行：
+前端支持 `avatar_a` 和 `avatar_b` 两个数字人配置。切换按钮会同时更新前端展示头像，并把 `avatar_profile_id` 传给远端，avatar-service 根据对应参考图生成后续视频。
 
-```bash
-docker pull nvidia/cuda:12.6.3-base-ubuntu22.04
-docker run --rm --gpus all nvidia/cuda:12.6.3-base-ubuntu22.04 nvidia-smi
+## RAG 知识库
+
+orchestrator 已包含轻量 RAG 模块和知识库目录：
+
+```text
+remote/orchestrator/knowledge_base/
+remote/orchestrator/services/rag/
 ```
 
-### 8.4 启动服务
-```bash
-docker compose -f compose.yaml -f compose.local.yaml up -d
+RAG 用于给心理支持类对话提供更稳定的知识提示。它属于 orchestrator 的代码和索引资源，不等同于额外大模型权重。
+
+## 比赛提交打包
+
+比赛压缩包限制为 500M 以内时，不应把完整模型目录或 Docker 镜像 tar 放进最终压缩包。建议提交结构：
+
+```text
+01_software_install_package/     # 可运行代码、脚本、compose 配置
+02_digital_human_project/        # 数字人服务工程文件
+03_speech_recognition_project/   # 语音识别服务工程文件
+docs/                            # 项目概要介绍、项目详细方案、部署说明
+demo/                            # 演示视频或演示视频说明
 ```
 
-### 8.5 验证服务
+已有提交文档：
+
+```text
+System_Design/submission/项目概要介绍.md
+System_Design/submission/项目详细方案.md
+```
+
+打包脚本：
+
 ```bash
+cd /root/autodl-tmp/a22/code/FuChuangSai_A22
+chmod +x scripts/release/package_competition_submission.sh
+
+bash scripts/release/package_competition_submission.sh \
+  --project-name A22_Final \
+  --out-dir /root/autodl-tmp/a22/dist/submission_500m \
+  --skip-images \
+  --skip-models \
+  --skip-build \
+  --skip-rag-build
+```
+
+如果需要额外生成“软件安装包”压缩文件，可在脚本生成的提交目录内只压缩代码和配置，不包含 `models`、`.uv_envs`、日志、临时文件和视频缓存。
+
+## 常见问题
+
+### git pull 被本地改动阻塞
+
+远端服务器经常会有临时改动。拉取前先执行：
+
+```bash
+git status -sb
+git stash push -u -m "tmp-before-pull-$(date +%F_%T)" || true
+git pull --ff-only
+```
+
+### 端口被占用或服务残留
+
+```bash
+./scripts/remote/stop_remote_stack_tmux.sh
+pkill -f "vllm.entrypoints.openai.api_server" 2>/dev/null || true
+pkill -f "uvicorn app:app" 2>/dev/null || true
+./scripts/remote/start_remote_stack_tmux.sh
+```
+
+### 前端提示 Request failed
+
+优先检查：
+
+```powershell
+# 本地隧道窗口是否仍在运行
+curl http://127.0.0.1:29000/health
+
+# Docker 容器是否正常
 docker compose -f compose.yaml -f compose.local.yaml ps
-curl http://localhost:8000/health
-curl -X POST http://localhost/api/chat -H "Content-Type: application/json" \
-  -d '{"session_id":"demo-001","turn_id":1,"user_text":"hello","input_type":"text"}'
+docker compose -f compose.yaml -f compose.local.yaml logs --tail 120 frontend edge-backend
 ```
 
-### 8.6 浏览器访问
-推荐访问统一入口：
+### 数字人视频不更新
 
-- `http://localhost`
+检查远端：
 
-补充说明：
+```bash
+curl -iS http://127.0.0.1:19300/health
+tmux capture-pane -pt avatar -S -260
+ls -lah /root/autodl-tmp/a22/tmp/avatar/demo_s1/
+```
 
-- `http://localhost:3000` 是前端开发服务入口
-- `http://localhost:8000` 是本地后端服务入口
-- 当前完整链路推荐通过 `nginx` 的 `http://localhost` 来访问
+### 浏览器语音播放异常
 
-## 9. 当前已完成内容
-当前版本已经完成以下验证：
+不同浏览器、翻译插件、麦克风权限和自动播放策略可能影响音频播放。演示时建议固定使用同一个浏览器，并关闭网页翻译插件。
 
-- `frontend` 容器已启动
-- `edge-backend` 容器已启动
-- `nginx` 容器已启动
-- `http://localhost:8000/health` 可访问
-- `http://localhost/api/chat` 可访问
-- `docker compose` 已可作为本地多服务管理入口
-- 远端 `remote/orchestrator` 已可通过 `uv` 运行
-- 远端 `qwen-server` 已可作为独立模型服务部署
-- SSH 隧道下的 `http://127.0.0.1:19000/health` 可访问
-- SSH 隧道下的 `http://127.0.0.1:19000/chat` 可访问
+## 开发注意
 
-补充说明：
-
-- 当前已经完成“本地到远端 orchestrator”的通信验证
-- 当前远端推理采用“`orchestrator -> qwen-server`”两层结构
-- 当前目标是在不破坏 `/chat` 契约的前提下，将真实 Qwen provider 接入 `remote/orchestrator`
-
-## 10. 下一步开发方向
-下一阶段将基于当前骨架继续补齐以下功能：
-
-- 将 `local/edge-backend` 改成真实调用 `CLOUD_API_BASE`
-- 前端渲染界面优化与聊天区域设计
-- 前端输入信号接入与消息状态管理
-- 消息格式、发送接收接口与边缘侧数据处理
-- 数字人形象控制与接收消息后的动作驱动逻辑
-- 完成 `remote/orchestrator` 中 Qwen provider 的真实接入
-- 保持 `/chat` 返回结构与现有 local/remote 协议兼容
+- 远端模型路径统一使用 `/root/autodl-tmp/a22/models`，不要再写旧服务器路径。
+- 不要把模型权重、`.uv_envs`、临时视频和日志提交到 Git。
+- 修改远端代码的推荐流程是：本地修改并提交推送，远端 `git pull --ff-only` 后重启服务。
+- 复杂功能改动前先确认当前演示流程可运行，避免破坏已有联调链路。
