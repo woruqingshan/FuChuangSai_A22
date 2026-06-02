@@ -84,7 +84,13 @@ class SpeechRuntime:
             "device_map": "cuda" if settings.asr_device.startswith("cuda") else "cpu",
             "use_flash_attn": bool(settings.qwen_asr_use_flash_attn and settings.asr_device.startswith("cuda")),
         }
-        return Qwen3ASRModel.from_pretrained(model_ref, **load_kwargs)
+        try:
+            return Qwen3ASRModel.from_pretrained(model_ref, **load_kwargs)
+        except TypeError as exc:
+            if "use_flash_attn" not in str(exc):
+                raise
+            load_kwargs.pop("use_flash_attn", None)
+            return Qwen3ASRModel.from_pretrained(model_ref, **load_kwargs)
 
     def _is_qwen_provider(self) -> bool:
         return settings.asr_provider in {"qwen3_asr", "qwen_asr", "qwen3"}
