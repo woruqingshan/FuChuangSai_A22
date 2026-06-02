@@ -457,10 +457,9 @@ class SpeechRuntime:
             with NamedTemporaryFile(suffix=suffix) as temp_audio:
                 temp_audio.write(audio_bytes)
                 temp_audio.flush()
-                result = pipeline_instance.transcribe(
+                result = self._qwen_transcribe_file(
+                    pipeline_instance,
                     temp_audio.name,
-                    language=self._resolve_qwen_language(),
-                    use_itn=settings.qwen_asr_use_itn,
                 )
             text = self._extract_qwen_text(result)
             return text or "Audio input received from the remote speech service."
@@ -468,13 +467,25 @@ class SpeechRuntime:
         with NamedTemporaryFile(suffix=".wav") as temp_audio:
             temp_audio.write(wav_bytes)
             temp_audio.flush()
-            result = pipeline_instance.transcribe(
+            result = self._qwen_transcribe_file(
+                pipeline_instance,
                 temp_audio.name,
-                language=self._resolve_qwen_language(),
-                use_itn=settings.qwen_asr_use_itn,
             )
         text = self._extract_qwen_text(result)
         return text or "Audio input received from the remote speech service."
+
+    def _qwen_transcribe_file(self, pipeline_instance, audio_path: str):
+        kwargs = {
+            "language": self._resolve_qwen_language(),
+            "use_itn": settings.qwen_asr_use_itn,
+        }
+        try:
+            return pipeline_instance.transcribe(audio_path, **kwargs)
+        except TypeError as exc:
+            if "use_itn" not in str(exc):
+                raise
+            kwargs.pop("use_itn", None)
+            return pipeline_instance.transcribe(audio_path, **kwargs)
 
     def _resolve_qwen_language(self) -> str:
         raw = (settings.asr_language or "auto").strip().lower()
