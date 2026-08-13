@@ -1,67 +1,19 @@
-export function createCameraPanel({ onToggle }) {
+export function createCameraPanel() {
   const element = document.createElement("section");
   element.className = "camera-panel";
   element.innerHTML = `
-    <div class="camera-panel-header">
+    <div class="panel-heading">
       <div>
-        <p class="camera-panel-title">Camera input</p>
-        <p class="camera-panel-meta" data-role="camera-meta">Camera disabled. No local rolling buffer is active.</p>
+        <p class="eyebrow">C · 摄像头</p>
+        <h2>摄像头预览</h2>
       </div>
-      <button type="button" class="secondary-button" data-role="camera-toggle">Enable camera</button>
+      <span class="chip">未启用</span>
     </div>
-    <div class="camera-preview-shell" data-state="disabled">
-      <video class="camera-preview" autoplay muted playsinline></video>
-      <div class="camera-preview-overlay" data-role="camera-overlay">Camera off</div>
+    <div class="camera-placeholder">
+      <div class="camera-lens"></div>
+      <p>摄像头未开启</p>
+      <span>开启摄像头后，系统可在本轮对话中附带关键画面。</span>
     </div>
   `;
-
-  const toggleButton = element.querySelector('[data-role="camera-toggle"]');
-  const meta = element.querySelector('[data-role="camera-meta"]');
-  const overlay = element.querySelector('[data-role="camera-overlay"]');
-  const previewShell = element.querySelector(".camera-preview-shell");
-  const preview = element.querySelector(".camera-preview");
-
-  let enabled = false;
-  let busy = false;
-
-  function sync() {
-    toggleButton.disabled = busy;
-    toggleButton.textContent = enabled ? "Disable camera" : "Enable camera";
-    previewShell.dataset.state = enabled ? "enabled" : "disabled";
-    overlay.textContent = enabled ? "Live preview + rolling buffer" : "Camera off";
-  }
-
-  toggleButton.addEventListener("click", async () => {
-    if (busy) {
-      return;
-    }
-
-    busy = true;
-    sync();
-    try {
-      const nextEnabled = await onToggle(!enabled);
-      enabled = nextEnabled;
-    } finally {
-      busy = false;
-      sync();
-    }
-  });
-
-  sync();
-
-  return {
-    element,
-    preview,
-    setEnabled(nextEnabled) {
-      enabled = nextEnabled;
-      sync();
-    },
-    setBusy(nextBusy) {
-      busy = nextBusy;
-      sync();
-    },
-    setMeta(text) {
-      meta.textContent = text;
-    },
-  };
+  return { element };
 }

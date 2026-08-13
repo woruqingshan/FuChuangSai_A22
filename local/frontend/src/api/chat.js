@@ -21,7 +21,7 @@ export async function sendChatRequest(payload) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const detail = data.detail || `The server returned HTTP ${response.status}.`;
+    const detail = data.detail || `服务器返回 HTTP ${response.status}。`;
     throw new Error(detail);
   }
 

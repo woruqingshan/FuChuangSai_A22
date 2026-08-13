@@ -3,6 +3,7 @@ import "./styles.css";
 import { sendChatRequest } from "./api/chat";
 import { createAvatarPanel } from "./ui/AvatarPanel";
 import { createChatPanel } from "./ui/ChatPanel";
+import { formatAssistantMeta, formatMessageMeta } from "./ui/displayText";
 import { createInputBar } from "./ui/InputBar";
 import { createStatusBar } from "./ui/StatusBar";
 
@@ -63,12 +64,12 @@ app.innerHTML = `
   <div class="page-shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">A22 Local Workspace</p>
-        <h1>Emotion Support Digital Human Console</h1>
+        <p class="eyebrow">A22 情感陪伴系统</p>
+        <h1>情感陪伴数字人助手</h1>
       </div>
       <div class="topbar-meta">
-        <span class="chip">Local light processing</span>
-        <span class="chip">Remote unified reasoning</span>
+        <span class="chip">本地轻量处理</span>
+        <span class="chip">远端智能推理</span>
       </div>
     </header>
     <main class="workspace-grid">
@@ -90,7 +91,7 @@ app.querySelector(".control-column").append(inputBar.controlsElement);
 app.querySelector(".avatar-column").appendChild(avatarPanel.element);
 app.querySelector(".status-column").appendChild(statusBar.element);
 
-chatPanel.addSystemMessage("Local UI is ready. Send text or record a short audio clip to start.");
+chatPanel.addSystemMessage("界面已准备好。请输入文字，或点击语音按钮开始对话。");
 syncStatus({
   remoteStatus: "Remote link pending",
   audioStatus: "Audio idle",
@@ -114,7 +115,7 @@ function buildTextTurnTimeWindow(turnId) {
 
 async function handleSend({ text, audio, video }) {
   if (state.isSending) {
-    chatPanel.addSystemMessage("A request is already in progress. Please wait for the current reply.");
+    chatPanel.addSystemMessage("上一轮还在处理中，请稍等。");
     return false;
   }
 
@@ -123,18 +124,18 @@ async function handleSend({ text, audio, video }) {
   const hasVideo = Boolean(video?.video_frames?.length || video?.video_meta);
 
   if (!hasText && !hasAudio) {
-    chatPanel.addSystemMessage("Please enter text or record audio before sending.");
+    chatPanel.addSystemMessage("请先输入文字，或录制一段语音。");
     return false;
   }
 
   const turnId = state.nextTurnId;
   const inputMode = hasAudio ? "audio" : "text";
-  const userMessage = hasText ? text : "[Voice message]";
+  const userMessage = hasText ? text : "[语音消息]";
 
   chatPanel.addMessage({
     role: "user",
     text: userMessage,
-    meta: `Turn ${turnId} · ${inputMode}`,
+    meta: formatMessageMeta({ turnId, inputMode }),
   });
 
   state.isSending = true;
@@ -144,9 +145,9 @@ async function handleSend({ text, audio, video }) {
     transport: "Sending request to local edge-backend",
     remoteStatus: "Awaiting remote orchestrator response",
     inputMode,
-    audioStatus: hasAudio ? `Audio attached (${audio.audio_duration_ms} ms)` : "Text only",
+    audioStatus: hasAudio ? `已附带语音（${audio.audio_duration_ms} 毫秒）` : "Text only",
     videoStatus: hasVideo
-      ? `Video attached (${video.video_frames?.length || video.video_meta?.sampled_frame_count || 0} key frames)`
+      ? `已附带 ${video.video_frames?.length || video.video_meta?.sampled_frame_count || 0} 帧视频画面`
       : state.videoStatus,
   });
 
@@ -189,7 +190,11 @@ async function handleSend({ text, audio, video }) {
     chatPanel.addMessage({
       role: "assistant",
       text: response.reply_text,
-      meta: `${response.emotion_style} · ${response.avatar_action.facial_expression} / ${response.avatar_action.head_motion}`,
+      meta: formatAssistantMeta({
+        emotionStyle: response.emotion_style,
+        facialExpression: response.avatar_action.facial_expression,
+        headMotion: response.avatar_action.head_motion,
+      }),
     });
     avatarPanel.update(response);
     syncStatus({
@@ -204,8 +209,8 @@ async function handleSend({ text, audio, video }) {
     });
     return true;
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "Unknown request error";
-    chatPanel.addSystemMessage(`Request failed: ${detail}`);
+    const detail = error instanceof Error ? error.message : "未知请求错误";
+    chatPanel.addSystemMessage(`请求失败：${detail}`);
     syncStatus({
       transport: "Request failed",
       remoteStatus: "Check edge-backend and remote orchestrator",
