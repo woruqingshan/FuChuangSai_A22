@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
 if [ -f /root/autodl-tmp/a22/env.sh ]; then
   # shellcheck disable=SC1091
   source /root/autodl-tmp/a22/env.sh
 fi
 
-export A22_CODE="${A22_CODE:-/root/autodl-tmp/a22/code/FuChuangSai_A22}"
+# This robot repo is derived from the previous A22 project, but it must run from
+# the current checkout. Do not trust an old env.sh A22_CODE pointing at
+# FuChuangSai_A22 or a teammate's server path.
+if [ -n "${A22_CODE:-}" ] && [ "${A22_CODE}" != "${REPO_ROOT}" ]; then
+  echo "[info] ignoring A22_CODE from environment: ${A22_CODE}"
+fi
+export A22_CODE="${A22_CODE_OVERRIDE:-$REPO_ROOT}"
 export A22_MODEL_ROOT="${A22_MODEL_ROOT:-/root/autodl-tmp/a22/models}"
 export A22_ENV_ROOT="${A22_ENV_ROOT:-/root/autodl-tmp/a22/.uv_envs}"
 export A22_TMP_ROOT="${A22_TMP_ROOT:-/root/autodl-tmp/a22/tmp}"
@@ -49,7 +58,7 @@ export TTS_MODE="${TTS_MODE:-cosyvoice_300m_instruct}"
 export TTS_MODEL_PATH="${TTS_MODEL_PATH:-$A22_MODEL_ROOT/CosyVoice-300M-Instruct}"
 export TTS_REPO_PATH="${TTS_REPO_PATH:-$A22_MODEL_ROOT/CosyVoice}"
 # Default to a fixed female speaker to avoid runtime fallback drift.
-export TTS_SPEAKER_ID="${TTS_SPEAKER_ID:-中文女}"
+export TTS_SPEAKER_ID="${TTS_SPEAKER_ID:-$'\u4e2d\u6587\u5973'}"
 export AVATAR_SERVICE_TIMEOUT_SECONDS="${AVATAR_SERVICE_TIMEOUT_SECONDS:-600}"
 
 if [ -z "${SOULX_ROOT:-}" ]; then
@@ -120,7 +129,9 @@ pkill -f "uvicorn app:app.*--port 19000" 2>/dev/null || true
 
 tmux new-session -d -s qwen "bash -lc '
 set -euo pipefail
-source /root/autodl-tmp/a22/env.sh
+if [ -f /root/autodl-tmp/a22/env.sh ]; then
+  source /root/autodl-tmp/a22/env.sh
+fi
 source \"$A22_ENV_ROOT/qwen-server/bin/activate\"
 cd \"$A22_CODE/remote/qwen-server\"
 export CUDA_VISIBLE_DEVICES=\"$QWEN_CUDA_VISIBLE_DEVICES\"
@@ -134,7 +145,9 @@ exec python -m vllm.entrypoints.openai.api_server \
 
 tmux new-session -d -s speech "bash -lc '
 set -euo pipefail
-source /root/autodl-tmp/a22/env.sh
+if [ -f /root/autodl-tmp/a22/env.sh ]; then
+  source /root/autodl-tmp/a22/env.sh
+fi
 source \"$A22_ENV_ROOT/speech-service/bin/activate\"
 cd \"$A22_CODE/remote/speech-service\"
 export CUDA_VISIBLE_DEVICES=\"$SPEECH_CUDA_VISIBLE_DEVICES\"
@@ -159,7 +172,9 @@ exec python -m uvicorn app:app --host 127.0.0.1 --port 19100
 
 tmux new-session -d -s vision "bash -lc '
 set -euo pipefail
-source /root/autodl-tmp/a22/env.sh
+if [ -f /root/autodl-tmp/a22/env.sh ]; then
+  source /root/autodl-tmp/a22/env.sh
+fi
 source \"$A22_ENV_ROOT/vision-service/bin/activate\"
 cd \"$A22_CODE/remote/vision-service\"
 export CUDA_VISIBLE_DEVICES=\"$VISION_CUDA_VISIBLE_DEVICES\"
@@ -184,7 +199,9 @@ exec python -m uvicorn app:app --host 127.0.0.1 --port 19200
 
 tmux new-session -d -s avatar "bash -lc '
 set -euo pipefail
-source /root/autodl-tmp/a22/env.sh
+if [ -f /root/autodl-tmp/a22/env.sh ]; then
+  source /root/autodl-tmp/a22/env.sh
+fi
 source \"$A22_ENV_ROOT/$AVATAR_ENV_NAME/bin/activate\"
 cd \"$A22_CODE/remote/avatar-service\"
 export CUDA_VISIBLE_DEVICES=\"$AVATAR_CUDA_VISIBLE_DEVICES\"
@@ -200,7 +217,7 @@ export SOULX_ASYNC_RENDER=\"$SOULX_ASYNC_RENDER\"
 export TTS_MODE=\"$TTS_MODE\"
 export TTS_MODEL=\"$TTS_MODEL_PATH\"
 export TTS_REPO_PATH=\"$TTS_REPO_PATH\"
-export TTS_SPEAKER_ID=\"$TTS_SPEAKER_ID\"
+export TTS_SPEAKER_ID="${TTS_SPEAKER_ID:-$'\u4e2d\u6587\u5973'}"
 export TTS_DEVICE=cuda:0
 export TTS_WARMUP_ENABLED=false
 export PYTHONPATH=\"$TTS_REPO_PATH:$TTS_REPO_PATH/third_party/Matcha-TTS\"
@@ -209,7 +226,9 @@ exec python -m uvicorn app:app --host 127.0.0.1 --port 19300
 
 tmux new-session -d -s orchestrator "bash -lc '
 set -euo pipefail
-source /root/autodl-tmp/a22/env.sh
+if [ -f /root/autodl-tmp/a22/env.sh ]; then
+  source /root/autodl-tmp/a22/env.sh
+fi
 source \"$A22_ENV_ROOT/orchestrator/bin/activate\"
 cd \"$A22_CODE/remote/orchestrator\"
 export LLM_PROVIDER=qwen
@@ -234,4 +253,3 @@ exec python -m uvicorn app:app --host 127.0.0.1 --port 19000
 echo "[ok] tmux sessions started:"
 tmux ls | grep -E '^(qwen|speech|vision|avatar|orchestrator):'
 echo "[hint] check health: curl -s http://127.0.0.1:19000/health | python -m json.tool"
-

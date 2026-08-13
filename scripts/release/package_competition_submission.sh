@@ -363,9 +363,7 @@ if [[ "${SKIP_ENGINEERING}" != "true" ]]; then
   cp -a "${ROOT_DIR}/remote/avatar-service" "${AVATAR_STAGE}/remote/avatar-service"
   copy_if_exists "${ROOT_DIR}/remote/orchestrator/services/rag" "${AVATAR_STAGE}/remote/orchestrator/services/" || true
   copy_if_exists "${ROOT_DIR}/remote/orchestrator/knowledge_base" "${AVATAR_STAGE}/remote/orchestrator/" || true
-  cp -a "${ROOT_DIR}/scripts/remote/start_remote_stack_tmux.sh" "${AVATAR_STAGE}/scripts/"
-  cp -a "${ROOT_DIR}/scripts/remote/stop_remote_stack_tmux.sh" "${AVATAR_STAGE}/scripts/"
-  cp -a "${ROOT_DIR}/scripts/remote/restart_avatar_service_soulx_full.sh" "${AVATAR_STAGE}/scripts/"
+  cp -a "${ROOT_DIR}/scripts/remote/"*.sh "${AVATAR_STAGE}/scripts/"
   cp -a "${ROOT_DIR}/shared/contracts" "${AVATAR_STAGE}/shared/contracts"
   cp -a "${ROOT_DIR}/compose.remote.models.yaml" "${AVATAR_STAGE}/"
   copy_if_exists "${ROOT_DIR}/.env.remote.models.example" "${AVATAR_STAGE}/" || true
@@ -386,8 +384,7 @@ EOF
 
   mkdir -p "${SPEECH_STAGE}/remote" "${SPEECH_STAGE}/scripts" "${SPEECH_STAGE}/shared"
   cp -a "${ROOT_DIR}/remote/speech-service" "${SPEECH_STAGE}/remote/speech-service"
-  cp -a "${ROOT_DIR}/scripts/remote/start_remote_stack_tmux.sh" "${SPEECH_STAGE}/scripts/"
-  cp -a "${ROOT_DIR}/scripts/remote/stop_remote_stack_tmux.sh" "${SPEECH_STAGE}/scripts/"
+  cp -a "${ROOT_DIR}/scripts/remote/"*.sh "${SPEECH_STAGE}/scripts/"
   cp -a "${ROOT_DIR}/shared/contracts" "${SPEECH_STAGE}/shared/contracts"
   cp -a "${ROOT_DIR}/compose.remote.models.yaml" "${SPEECH_STAGE}/"
   copy_if_exists "${ROOT_DIR}/.env.remote.models.example" "${SPEECH_STAGE}/" || true

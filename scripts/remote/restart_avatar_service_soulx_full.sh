@@ -30,7 +30,7 @@ export TTS_MODE="${TTS_MODE:-cosyvoice_300m_instruct}"
 export TTS_MODEL="${TTS_MODEL:-$A22_MODEL_ROOT/CosyVoice-300M-Instruct}"
 export TTS_REPO_PATH="${TTS_REPO_PATH:-$A22_MODEL_ROOT/CosyVoice}"
 # Default to fixed female speaker unless explicitly overridden.
-export TTS_SPEAKER_ID="${TTS_SPEAKER_ID:-中文女}"
+export TTS_SPEAKER_ID="${TTS_SPEAKER_ID:-$'\u4e2d\u6587\u5973'}"
 export TTS_DEVICE="${TTS_DEVICE:-cuda:0}"
 export PYTHONPATH="${PYTHONPATH:-$TTS_REPO_PATH:$TTS_REPO_PATH/third_party/Matcha-TTS}"
 
