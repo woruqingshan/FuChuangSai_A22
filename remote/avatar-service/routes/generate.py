@@ -9,6 +9,7 @@ from config import settings
 from models import GenerateRequest, GenerateResponse
 from services.avatar_event_bus import avatar_event_bus
 from services.avatar_render_bridge import avatar_render_bridge
+from services.echomimic_v3_render_bridge import echomimic_v3_render_bridge
 from services.expression_generator import expression_generator
 from services.motion_generator import motion_generator
 from services.soulxflashhead_render_bridge import (
@@ -60,6 +61,70 @@ async def generate(request: GenerateRequest, background_tasks: BackgroundTasks) 
             audio_path,
             fallback_ms=estimated_duration_ms,
         )
+
+        if settings.avatar_renderer_backend == "echomimic_v3" and settings.echomimic_v3_root and reply_audio_url:
+            requested_frames = math.ceil((estimated_duration_ms / 1000.0) * settings.echomimic_v3_fps)
+            render_frames = min(requested_frames, settings.echomimic_v3_max_frames)
+            render_prompt = echomimic_v3_render_bridge.build_prompt(
+                emotion_style=request.emotion_style,
+                facial_expression=request.avatar_action.facial_expression,
+                head_motion=request.avatar_action.head_motion,
+                prompt_template=settings.echomimic_v3_prompt_template,
+            )
+            render_request = echomimic_v3_render_bridge.build_request(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                audio_path=str(audio_path),
+                ref_image_path=request.ref_image_path or settings.echomimic_v3_ref_image_path,
+                prompt=render_prompt,
+                negative_prompt=settings.echomimic_v3_negative_prompt,
+                width=settings.echomimic_v3_width,
+                height=settings.echomimic_v3_height,
+                fps=settings.echomimic_v3_fps,
+                video_length=render_frames,
+                steps=settings.echomimic_v3_steps,
+                guidance_scale=settings.echomimic_v3_guidance_scale,
+                audio_guidance_scale=settings.echomimic_v3_audio_guidance_scale,
+                seed=settings.echomimic_v3_seed,
+                metadata={
+                    "stream_id": stream_id,
+                    "requested_frames": requested_frames,
+                    "truncated": requested_frames > settings.echomimic_v3_max_frames,
+                },
+            )
+            render_result = await asyncio.to_thread(
+                echomimic_v3_render_bridge.render_video,
+                render_request,
+                workdir=settings.echomimic_v3_root,
+                python_path=settings.echomimic_v3_python,
+                infer_script=settings.echomimic_v3_infer_script,
+                config_path=settings.echomimic_v3_config_path,
+                model_path=settings.echomimic_v3_model_path,
+                transformer_path=settings.echomimic_v3_transformer_path,
+                wav2vec_path=settings.echomimic_v3_wav2vec_path,
+                timeout_seconds=settings.echomimic_v3_timeout_seconds,
+                gpu_memory_mode=settings.echomimic_v3_gpu_memory_mode,
+                weight_dtype=settings.echomimic_v3_weight_dtype,
+                teacache_threshold=settings.echomimic_v3_teacache_threshold,
+            )
+            persisted_video_path = avatar_storage.persist_video(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                source_path=render_result.video_path,
+            )
+            avatar_storage.persist_video_chunk(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                chunk_index=1,
+                source_path=render_result.video_path,
+            )
+            reply_video_path = str(persisted_video_path)
+            reply_video_url = f"/media/video/{request.session_id}/{request.turn_id}"
+            reply_video_stream_url = _persist_single_chunk_manifest(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                chunk_seconds=render_result.duration_ms / 1000.0 if render_result.duration_ms else None,
+            )
 
         if settings.avatar_renderer_backend == "echomimic_v2" and settings.echomimic_root and reply_audio_url:
             render_fps = 24
