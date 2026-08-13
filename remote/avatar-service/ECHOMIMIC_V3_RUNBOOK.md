@@ -27,6 +27,10 @@ Use a front-facing, waist-up image with both arms and free space around the hand
 for gesture evaluation. Existing close-up portraits can validate facial motion but
 cannot produce reliable visible hand gestures.
 
+Each turn is capped by `ECHOMIMIC_V3_MAX_FRAMES` (201 by default). Audio beyond
+that frame budget is intentionally truncated until segmented long-form rendering
+is added.
+
 ## Rollback
 
 Set the following before starting the remote stack:
