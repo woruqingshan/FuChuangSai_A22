@@ -187,6 +187,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
           <img
             class="avatar-portrait-image"
             src="${defaultPortraitUrl}"
+            data-profile-src="${defaultPortraitUrl}"
             alt="数字人头像"
           />
           <video
@@ -250,6 +251,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     if (!portraitImage || !profile?.portraitUrl) {
       return;
     }
+    portraitImage.dataset.profileSrc = profile.portraitUrl;
     portraitImage.src = profile.portraitUrl;
   }
 

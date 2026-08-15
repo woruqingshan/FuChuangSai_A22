@@ -93,35 +93,13 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     faceElement.dataset.externalStream = enabled ? "on" : "off";
   }
 
-  function freezeCurrentVideoFrame() {
-    if (!portraitImage || !videoElement) {
+  function restoreProfilePortrait() {
+    if (!portraitImage) {
       return;
     }
-    if (videoElement.classList.contains("hidden")) {
-      if (portraitDefaultSrc && !portraitImage.getAttribute("src")) {
-        portraitImage.setAttribute("src", portraitDefaultSrc);
-      }
-      return;
-    }
-    const width = videoElement.videoWidth;
-    const height = videoElement.videoHeight;
-    if (!width || !height) {
-      return;
-    }
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext("2d");
-      if (!context) {
-        return;
-      }
-      context.drawImage(videoElement, 0, 0, width, height);
-      portraitImage.setAttribute("src", canvas.toDataURL("image/jpeg", 0.92));
-    } catch {
-      if (portraitDefaultSrc) {
-        portraitImage.setAttribute("src", portraitDefaultSrc);
-      }
+    const profileSrc = portraitImage.dataset.profileSrc || portraitDefaultSrc;
+    if (profileSrc) {
+      portraitImage.setAttribute("src", profileSrc);
     }
   }
 
@@ -203,9 +181,16 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       if (renderToken !== currentToken) {
         return;
       }
-      freezeCurrentVideoFrame();
+      stopExpression();
+      stopMotion();
+      stopViseme();
+      faceElement.dataset.expression = "neutral";
+      faceElement.dataset.motion = "steady";
+      faceElement.dataset.gesture = "none";
+      faceElement.dataset.viseme = "sil";
+      restoreProfilePortrait();
       faceElement.dataset.playbackEnded = "true";
-      resetVideoElement({ removeSource: false });
+      resetVideoElement();
       portraitImage?.classList.remove("hidden");
     };
 
