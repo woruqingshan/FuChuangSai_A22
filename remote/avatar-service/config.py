@@ -39,6 +39,17 @@ class Settings:
         self.soulx_command_template = _env_str("SOULX_COMMAND_TEMPLATE", "")
         self.soulx_extra_args = _env_str("SOULX_EXTRA_ARGS", "")
 
+        self.liveavatar_runner_path = _env_str(
+            "LIVEAVATAR_RUNNER_PATH", "/root/autodl-tmp/a22/run_liveavatar.sh"
+        ) or "/root/autodl-tmp/a22/run_liveavatar.sh"
+        self.liveavatar_ref_image_path = _env_str("LIVEAVATAR_REF_IMAGE_PATH", "")
+        self.liveavatar_output_dir = _env_str(
+            "LIVEAVATAR_OUTPUT_DIR", "/root/autodl-tmp/a22/tmp/liveavatar-dialog"
+        ) or "/root/autodl-tmp/a22/tmp/liveavatar-dialog"
+        self.liveavatar_timeout_seconds = float(_env_str("LIVEAVATAR_TIMEOUT_SECONDS", "1800"))
+        self.liveavatar_num_clip = int(_env_str("LIVEAVATAR_NUM_CLIP", "10000"))
+        self.liveavatar_prompt_template = _env_str("LIVEAVATAR_PROMPT_TEMPLATE", "")
+
         self.tts_mode = _env_str("TTS_MODE", "cosyvoice2_sft").lower() or "cosyvoice2_sft"
         self.tts_model = (
             _env_str("TTS_MODEL", "/root/autodl-tmp/a22/models/CosyVoice2-0.5B")

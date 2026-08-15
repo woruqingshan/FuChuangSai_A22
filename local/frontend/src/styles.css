@@ -353,6 +353,26 @@ textarea {
   transition: transform 280ms ease, filter 320ms ease;
 }
 
+.avatar-render-status {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  z-index: 4;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  border: 1px solid rgba(191, 219, 254, 0.28);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #eff6ff;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
 .avatar-embed-frame {
   position: absolute;
   inset: 0;

@@ -10,6 +10,10 @@ from models import GenerateRequest, GenerateResponse
 from services.avatar_event_bus import avatar_event_bus
 from services.avatar_render_bridge import avatar_render_bridge
 from services.expression_generator import expression_generator
+from services.liveavatar_render_bridge import (
+    LiveAvatarRenderRequest,
+    liveavatar_render_bridge,
+)
 from services.motion_generator import motion_generator
 from services.soulxflashhead_render_bridge import (
     SoulXFlashHeadRenderRequest,
@@ -22,6 +26,7 @@ from services.viseme_generator import viseme_generator
 router = APIRouter()
 A2F_EVENT_CONTRACT_VERSION = "a2f-ab-v1"
 logger = logging.getLogger(__name__)
+_liveavatar_render_lock = asyncio.Lock()
 
 
 @router.post("/generate", response_model=GenerateResponse)
@@ -146,6 +151,36 @@ async def generate(request: GenerateRequest, background_tasks: BackgroundTasks) 
                     turn_id=request.turn_id,
                     chunk_seconds=settings.soulx_chunk_seconds,
                 )
+
+        if settings.avatar_renderer_backend == "liveavatar" and reply_audio_url:
+            ref_image_path = request.ref_image_path or settings.liveavatar_ref_image_path
+            if not ref_image_path:
+                raise ValueError("LiveAvatar requires ref_image_path or LIVEAVATAR_REF_IMAGE_PATH")
+            render_request = liveavatar_render_bridge.build_request(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                audio_path=str(audio_path),
+                ref_image_path=ref_image_path,
+                emotion_style=request.emotion_style,
+                facial_expression=request.avatar_action.facial_expression,
+                head_motion=request.avatar_action.head_motion,
+                prompt_template=settings.liveavatar_prompt_template,
+                num_clip=settings.liveavatar_num_clip,
+                metadata={"stream_id": stream_id},
+            )
+            reply_video_stream_url = _persist_pending_manifest(
+                session_id=request.session_id,
+                turn_id=request.turn_id,
+                chunk_seconds=estimated_duration_ms / 1000.0,
+            )
+            render_in_background = True
+            background_tasks.add_task(
+                _render_liveavatar_video_in_background,
+                request=request,
+                render_request=render_request,
+                stream_id=stream_id,
+                audio_duration_ms=estimated_duration_ms,
+            )
 
         avatar_output = {
             "contract_version": "v1",
@@ -385,6 +420,98 @@ async def _render_soulx_video_in_background(
                 "turn_id": request.turn_id,
                 "stream_id": stream_id,
                 "error_code": "AVATAR_RENDER_FAILED",
+                "error_message": str(exc),
+            },
+            session_id=request.session_id,
+            stream_id=stream_id,
+        )
+
+
+async def _render_liveavatar_video_in_background(
+    *,
+    request: GenerateRequest,
+    render_request: LiveAvatarRenderRequest,
+    stream_id: str,
+    audio_duration_ms: int,
+) -> None:
+    try:
+        # LiveAvatar is deliberately serialized. Concurrent 14B renders can exhaust
+        # VRAM and also compete for the runner's distributed rendezvous port.
+        async with _liveavatar_render_lock:
+            render_result = await asyncio.to_thread(
+                liveavatar_render_bridge.render_video,
+                render_request,
+                runner_path=settings.liveavatar_runner_path,
+                output_root=settings.liveavatar_output_dir,
+                timeout_seconds=settings.liveavatar_timeout_seconds,
+            )
+        persisted_video_path = await asyncio.to_thread(
+            avatar_storage.persist_video,
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            source_path=render_result.video_path,
+        )
+        await asyncio.to_thread(
+            avatar_storage.persist_video_chunk,
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            chunk_index=1,
+            source_path=render_result.video_path,
+        )
+        await asyncio.to_thread(
+            _persist_single_chunk_manifest,
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            chunk_seconds=audio_duration_ms / 1000.0,
+        )
+        await avatar_event_bus.publish(
+            payload={
+                "event": "video_ready",
+                "session_id": request.session_id,
+                "turn_id": request.turn_id,
+                "stream_id": stream_id,
+                "reply_video_path": str(persisted_video_path),
+                "reply_video_url": f"/media/video/{request.session_id}/{request.turn_id}",
+                "reply_video_stream_url": f"/media/video-stream/{request.session_id}/{request.turn_id}/manifest",
+            },
+            session_id=request.session_id,
+            stream_id=stream_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "LiveAvatar background render failed for session=%s turn=%s",
+            request.session_id,
+            request.turn_id,
+        )
+        await asyncio.to_thread(
+            avatar_storage.persist_runtime_error,
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            payload={
+                "error_code": "LIVEAVATAR_RENDER_FAILED",
+                "error_message": str(exc),
+            },
+        )
+        await asyncio.to_thread(
+            avatar_storage.persist_video_manifest,
+            session_id=request.session_id,
+            turn_id=request.turn_id,
+            payload={
+                "session_id": request.session_id,
+                "turn_id": request.turn_id,
+                "chunk_seconds": audio_duration_ms / 1000.0,
+                "complete": True,
+                "chunks": [],
+                "error": "LIVEAVATAR_RENDER_FAILED",
+            },
+        )
+        await avatar_event_bus.publish(
+            payload={
+                "event": "turn_error",
+                "session_id": request.session_id,
+                "turn_id": request.turn_id,
+                "stream_id": stream_id,
+                "error_code": "LIVEAVATAR_RENDER_FAILED",
                 "error_message": str(exc),
             },
             session_id=request.session_id,
