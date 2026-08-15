@@ -199,10 +199,21 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       portraitImage?.classList.remove("hidden");
     };
 
+    const handleEnded = () => {
+      if (renderToken !== currentToken) {
+        return;
+      }
+      freezeCurrentVideoFrame();
+      faceElement.dataset.playbackEnded = "true";
+      resetVideoElement({ removeSource: false });
+      portraitImage?.classList.remove("hidden");
+    };
+
     const cleanupListeners = () => {
       videoElement.removeEventListener("loadeddata", handleReady);
       videoElement.removeEventListener("canplay", handleReady);
       videoElement.removeEventListener("error", handleError);
+      videoElement.removeEventListener("ended", handleEnded);
       detachVideoListeners = () => {};
     };
 
@@ -210,6 +221,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     videoElement.addEventListener("loadeddata", handleReady, { once: true });
     videoElement.addEventListener("canplay", handleReady, { once: true });
     videoElement.addEventListener("error", handleError, { once: true });
+    videoElement.addEventListener("ended", handleEnded, { once: true });
   }
 
   function startVideoSource({ url, currentToken, muted, loop, sourceType }) {
@@ -217,6 +229,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       return false;
     }
     renderToken = currentToken;
+    faceElement.dataset.playbackEnded = "false";
     videoElement.muted = Boolean(muted);
     videoElement.controls = false;
     videoElement.playsInline = true;
