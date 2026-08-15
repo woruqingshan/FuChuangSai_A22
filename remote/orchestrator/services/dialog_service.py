@@ -77,8 +77,8 @@ class DialogService:
             rag_context=rag_result.prompt_context,
             route_label=route.label,
         )
-        emotion_style = policy_service.select_emotion_style(enriched_request, transcript)
-        avatar_action = policy_service.select_avatar_action(enriched_request, transcript)
+        emotion_style = policy_service.select_emotion_style(enriched_request, transcript, route)
+        avatar_action = policy_service.select_avatar_action(enriched_request, transcript, route)
         llm_result = await llm_client.generate_reply(
             LLMRequest(
                 session_id=request.session_id,

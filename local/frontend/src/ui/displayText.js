@@ -6,6 +6,7 @@ const VALUE_LABELS = {
   gentle: "温和安抚",
   neutral: "自然",
   neutral_smile: "自然微笑",
+  soft_concern: "关切担忧",
   smile: "微笑",
   attentive: "专注",
   steady: "平稳",
