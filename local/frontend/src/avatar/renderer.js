@@ -30,8 +30,9 @@ function resolveBackendMediaUrl(rawUrl) {
 
 async function resolveStreamFirstChunkUrl(streamManifestUrl) {
   const startedAt = Date.now();
-  const timeoutMs = 120000;
-  const pollIntervalMs = 600;
+  const configuredTimeout = Number(import.meta.env.VITE_AVATAR_VIDEO_WAIT_TIMEOUT_MS || 600000);
+  const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 600000;
+  const pollIntervalMs = 1000;
 
   while (Date.now() - startedAt <= timeoutMs) {
     const manifestResponse = await fetch(streamManifestUrl, {
@@ -67,6 +68,12 @@ export function createAvatarRenderer({ faceElement, readouts }) {
   const audioPlayer = createAudioPlayer();
   const portraitImage = faceElement.querySelector(".avatar-portrait-image");
   const videoElement = faceElement.querySelector(".avatar-video");
+  const portraitShell = faceElement.querySelector(".avatar-portrait-shell");
+  const renderStatus = document.createElement("div");
+  renderStatus.className = "avatar-render-status hidden";
+  renderStatus.setAttribute("role", "status");
+  renderStatus.setAttribute("aria-live", "polite");
+  portraitShell?.appendChild(renderStatus);
   const portraitDefaultSrc = portraitImage?.getAttribute("src") || "";
   let stopExpression = () => {};
   let stopMotion = () => {};
@@ -74,6 +81,13 @@ export function createAvatarRenderer({ faceElement, readouts }) {
   let renderToken = 0;
   let detachVideoListeners = () => {};
   let pinnedVideoSource = "";
+
+  function setRenderStatus(message = "") {
+    const text = String(message || "").trim();
+    renderStatus.textContent = text;
+    renderStatus.classList.toggle("hidden", !text);
+    faceElement.dataset.renderStatus = text ? "waiting" : "idle";
+  }
 
   function setExternalStreamFlag(enabled) {
     faceElement.dataset.externalStream = enabled ? "on" : "off";
@@ -142,6 +156,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
         portraitImage.classList.remove("hidden");
       }
     }
+    setRenderStatus();
   }
 
   function armVideoTransition(currentToken) {
@@ -162,6 +177,12 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       revealVideo();
       void videoElement.play().catch(() => {
         if (renderToken !== currentToken) {
+          return;
+        }
+        if (!videoElement.muted) {
+          videoElement.controls = true;
+          revealVideo();
+          setRenderStatus("视频已生成，请点击播放");
           return;
         }
         resetVideoElement();
@@ -197,6 +218,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     }
     renderToken = currentToken;
     videoElement.muted = Boolean(muted);
+    videoElement.controls = false;
     videoElement.playsInline = true;
     videoElement.loop = Boolean(loop);
     videoElement.preload = "auto";
@@ -273,6 +295,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       const fallbackExpression = response.avatar_action?.facial_expression || "neutral";
       const fallbackMotion = response.avatar_action?.head_motion || "steady";
       const avatarOutput = response.avatar_output;
+      const synchronizedVideo = avatarOutput?.renderer_mode === "synchronized_video";
 
       const emotionStyle = avatarOutput?.emotion_style || response.emotion_style || "supportive";
       const expressionSeq = avatarOutput?.expression_seq || [];
@@ -301,15 +324,18 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       stopMotion = applyMotionSequence(faceElement, motionSeq, fallbackMotion);
       stopViseme = applyVisemeSequence(faceElement, visemeSeq);
       const audioCue = avatarOutput?.audio;
-      // Always play reply.wav (avatar_output.audio); keep video as visual-only track.
-      audioPlayer.play(audioCue);
+      // LiveAvatar output already contains the synchronized audio track. Othe
+      // renderers keep their historical reply.wav + muted-video behavior.
+      if (!synchronizedVideo) {
+        audioPlayer.play(audioCue);
+      }
 
       const replyVideoUrl = resolveBackendMediaUrl(response.reply_video_url);
       if (videoElement && replyVideoUrl) {
         startVideoSource({
           url: replyVideoUrl,
           currentToken,
-          muted: true,
+          muted: !synchronizedVideo,
           loop: false,
           sourceType: "reply",
         });
@@ -318,22 +344,34 @@ export function createAvatarRenderer({ faceElement, readouts }) {
 
       const replyVideoStreamUrl = resolveBackendMediaUrl(response.reply_video_stream_url);
       if (videoElement && replyVideoStreamUrl) {
+        if (synchronizedVideo) {
+          setRenderStatus("数字人视频生成中，请稍候…");
+        }
         void resolveStreamFirstChunkUrl(replyVideoStreamUrl)
           .then((chunkUrl) => {
             if (renderToken !== currentToken) {
               return;
             }
             if (chunkUrl) {
+              setRenderStatus();
               startVideoSource({
                 url: chunkUrl,
                 currentToken,
-                muted: true,
+                muted: !synchronizedVideo,
                 loop: false,
                 sourceType: "reply",
               });
+              return;
+            }
+            if (synchronizedVideo) {
+              setRenderStatus("数字人视频生成失败或等待超时");
             }
           })
-          .catch(() => {});
+          .catch(() => {
+            if (renderToken === currentToken && synchronizedVideo) {
+              setRenderStatus("数字人视频生成失败或等待超时");
+            }
+          });
         return;
       }
     },

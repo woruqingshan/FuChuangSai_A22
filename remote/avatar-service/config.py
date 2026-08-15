@@ -24,54 +24,6 @@ class Settings:
         self.echomimic_ref_image_path = _env_str("ECHOMIMIC_REF_IMAGE_PATH", "")
         self.echomimic_pose_dir = _env_str("ECHOMIMIC_POSE_DIR", "")
         self.echomimic_timeout_seconds = float(_env_str("ECHOMIMIC_TIMEOUT_SECONDS", "1800"))
-        self.echomimic_v3_root = _env_str("ECHOMIMIC_V3_ROOT", "/root/autodl-tmp/a22/code/echomimic_v3")
-        self.echomimic_v3_python = _env_str(
-            "ECHOMIMIC_V3_PYTHON", "/root/autodl-tmp/a22/.uv_envs/echomimic-v3/bin/python"
-        )
-        self.echomimic_v3_infer_script = _env_str("ECHOMIMIC_V3_INFER_SCRIPT", "infer_flash.py")
-        self.echomimic_v3_config_path = _env_str("ECHOMIMIC_V3_CONFIG_PATH", "config/config.yaml")
-        self.echomimic_v3_model_path = _env_str(
-            "ECHOMIMIC_V3_MODEL_PATH",
-            "/root/autodl-tmp/a22/models/echomimic_v3_flash/Wan2.1-Fun-V1.1-1.3B-InP",
-        )
-        self.echomimic_v3_transformer_path = _env_str(
-            "ECHOMIMIC_V3_TRANSFORMER_PATH",
-            "/root/autodl-tmp/a22/models/echomimic_v3_flash/flash/transformer/diffusion_pytorch_model.safetensors",
-        )
-        self.echomimic_v3_wav2vec_path = _env_str(
-            "ECHOMIMIC_V3_WAV2VEC_PATH",
-            "/root/autodl-tmp/a22/models/echomimic_v3_flash/flash/chinese-wav2vec2-base",
-        )
-        self.echomimic_v3_ref_image_path = _env_str("ECHOMIMIC_V3_REF_IMAGE_PATH", "")
-        self.echomimic_v3_timeout_seconds = float(_env_str("ECHOMIMIC_V3_TIMEOUT_SECONDS", "3600"))
-        self.echomimic_v3_width = int(_env_str("ECHOMIMIC_V3_WIDTH", "768"))
-        self.echomimic_v3_height = int(_env_str("ECHOMIMIC_V3_HEIGHT", "768"))
-        self.echomimic_v3_fps = int(_env_str("ECHOMIMIC_V3_FPS", "25"))
-        self.echomimic_v3_steps = int(_env_str("ECHOMIMIC_V3_STEPS", "8"))
-        self.echomimic_v3_max_frames = int(_env_str("ECHOMIMIC_V3_MAX_FRAMES", "201"))
-        self.echomimic_v3_guidance_scale = float(_env_str("ECHOMIMIC_V3_GUIDANCE_SCALE", "6.0"))
-        self.echomimic_v3_audio_guidance_scale = float(
-            _env_str("ECHOMIMIC_V3_AUDIO_GUIDANCE_SCALE", "3.0")
-        )
-        self.echomimic_v3_seed = int(_env_str("ECHOMIMIC_V3_SEED", "43"))
-        self.echomimic_v3_gpu_memory_mode = _env_str(
-            "ECHOMIMIC_V3_GPU_MEMORY_MODE", "sequential_cpu_offload"
-        )
-        self.echomimic_v3_weight_dtype = _env_str("ECHOMIMIC_V3_WEIGHT_DTYPE", "bfloat16")
-        self.echomimic_v3_teacache_threshold = float(
-            _env_str("ECHOMIMIC_V3_TEACACHE_THRESHOLD", "0.1")
-        )
-        self.echomimic_v3_prompt_template = _env_str(
-            "ECHOMIMIC_V3_PROMPT_TEMPLATE",
-            "A Chinese female digital human is speaking naturally. She appears {emotion_prompt}, "
-            "showing {expression_prompt}, with {motion_prompt}. Natural upper-body gestures, "
-            "stable identity, realistic facial details.",
-        )
-        self.echomimic_v3_negative_prompt = _env_str(
-            "ECHOMIMIC_V3_NEGATIVE_PROMPT",
-            "Deformed face, frozen expression, bad lip sync, exaggerated movement, bad hands, "
-            "fused fingers, twisted fingers, blurry hands, identity drift.",
-        )
         self.soulx_root = _env_str("SOULX_ROOT", "")
         self.soulx_infer_script = _env_str("SOULX_INFER_SCRIPT", "infer_stream.py") or "infer_stream.py"
         self.soulx_ref_image_path = _env_str("SOULX_REF_IMAGE_PATH", "")
@@ -86,6 +38,17 @@ class Settings:
         }
         self.soulx_command_template = _env_str("SOULX_COMMAND_TEMPLATE", "")
         self.soulx_extra_args = _env_str("SOULX_EXTRA_ARGS", "")
+
+        self.liveavatar_runner_path = _env_str(
+            "LIVEAVATAR_RUNNER_PATH", "/root/autodl-tmp/a22/run_liveavatar.sh"
+        ) or "/root/autodl-tmp/a22/run_liveavatar.sh"
+        self.liveavatar_ref_image_path = _env_str("LIVEAVATAR_REF_IMAGE_PATH", "")
+        self.liveavatar_output_dir = _env_str(
+            "LIVEAVATAR_OUTPUT_DIR", "/root/autodl-tmp/a22/tmp/liveavatar-dialog"
+        ) or "/root/autodl-tmp/a22/tmp/liveavatar-dialog"
+        self.liveavatar_timeout_seconds = float(_env_str("LIVEAVATAR_TIMEOUT_SECONDS", "1800"))
+        self.liveavatar_num_clip = int(_env_str("LIVEAVATAR_NUM_CLIP", "10000"))
+        self.liveavatar_prompt_template = _env_str("LIVEAVATAR_PROMPT_TEMPLATE", "")
 
         self.tts_mode = _env_str("TTS_MODE", "cosyvoice2_sft").lower() or "cosyvoice2_sft"
         self.tts_model = (

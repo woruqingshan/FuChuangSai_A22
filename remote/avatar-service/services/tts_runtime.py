@@ -165,9 +165,10 @@ class TTSRuntime:
         if mode == "cosyvoice3_zero_shot":
             return self._invoke_zero_shot(model, text, speed=speed)
         if mode == "cosyvoice_300m_instruct":
-            return self._invoke_300m_safe(
+            return self._invoke_instruct(
                 model,
                 text,
+                instruct_text=instruct_text,
                 speed=speed,
                 speaker_id=speaker_id,
             )
@@ -258,20 +259,6 @@ class TTSRuntime:
             speed=self._resolve_speed(speed),
         )
 
-    def _invoke_300m_safe(
-        self,
-        model,
-        text: str,
-        *,
-        speed: float | None = None,
-        speaker_id: str | None = None,
-    ):
-        # The 300M instruct branch has been observed to read the control prompt
-        # itself. Prefer non-instruct paths so only reply_text is synthesized.
-        if callable(getattr(model, "inference_sft", None)):
-            return self._invoke_sft(model, text, speed=speed, speaker_id=speaker_id)
-        return self._invoke_plain_text(model, text, speed=speed)
-
     def _invoke_instruct(
         self,
         model,
@@ -343,6 +330,8 @@ class TTSRuntime:
         mode = settings.tts_mode
         if mode in {"cosyvoice3_instruct2"}:
             return self._normalize_cosyvoice3_prompt(text)
+        if mode == "cosyvoice_300m_instruct":
+            return self._normalize_cosyvoice300m_prompt(text)
         return self._normalize_plain_prompt(text)
 
     def _normalize_instruct_text_for_mode(self, text: str) -> str:
@@ -511,6 +500,14 @@ class TTSRuntime:
             raise RuntimeError("CosyVoice3 tts_text is empty.")
         if "<|endofprompt|>" not in cleaned:
             cleaned = f"<|endofprompt|>{cleaned}"
+        return cleaned
+
+    def _normalize_cosyvoice300m_prompt(self, text: str) -> str:
+        cleaned = text.strip()
+        if not cleaned:
+            raise RuntimeError("CosyVoice-300M instruct text is empty.")
+        if "<|endofprompt|>" not in cleaned:
+            cleaned = f"{cleaned}<|endofprompt|>"
         return cleaned
 
     def _normalize_plain_prompt(self, text: str) -> str:
