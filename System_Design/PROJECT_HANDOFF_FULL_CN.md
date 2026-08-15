@@ -412,14 +412,14 @@ user message
 assistant message
 ```
 
-默认：
+旧版默认：
 
 ```text
 MAX_CONTEXT_MESSAGES=8
 CONTEXT_SUMMARY_TURNS=4
 ```
 
-`MAX_CONTEXT_MESSAGES=8` 表示只给主 LLM 最近 8 条消息，约等于 4 轮用户-助手对话，不足以可靠支撑 12 轮总结。`CONTEXT_SUMMARY_TURNS` 当前也是按“消息条数”截取，不是完整对话轮数。
+`MAX_CONTEXT_MESSAGES=8` 表示只给主 LLM 最近 8 条消息，约等于 4 轮用户-助手对话，不足以可靠支撑 12 轮总结。当前部署已将默认值提升为 30 条消息；`CONTEXT_SUMMARY_TURNS` 仍按“消息条数”截取，不是完整对话轮数。
 
 ### 8.2 录制 12 轮演示前的推荐设置
 
@@ -433,7 +433,7 @@ CONTEXT_SUMMARY_TURNS=4
 
 ```bash
 export MAX_CONTEXT_MESSAGES=30
-export CONTEXT_SUMMARY_TURNS=20
+export CONTEXT_SUMMARY_TURNS=4
 ```
 
 然后重启远端五服务：
@@ -518,7 +518,7 @@ SOULX_ASYNC_RENDER=false
   > avatar-service 自身 SOULX_REF_IMAGE_PATH
 ```
 
-默认 profile 路径来自 SoulX `examples/girl.png`；另一个人物通常映射到仓库中的 `local/frontend/public/avatar-portrait-alt.png`。
+默认 profile 路径来自当前数字人 A 的参考图；数字人 B 映射到仓库中的 `local/frontend/public/avatar-portrait-alt.jpg`，前端静态展示与 LiveAvatar 生成共用该文件。
 
 ---
 

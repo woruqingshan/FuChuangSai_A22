@@ -68,7 +68,7 @@ export HSEMOTION_CACHE_DIR="${HSEMOTION_CACHE_DIR:-$A22_MODEL_ROOT/hsemotion}"
 export TTS_MODE="${TTS_MODE:-cosyvoice_300m_instruct}"
 export TTS_MODEL_PATH="${TTS_MODEL_PATH:-$A22_MODEL_ROOT/CosyVoice-300M-Instruct}"
 export TTS_REPO_PATH="${TTS_REPO_PATH:-$A22_MODEL_ROOT/CosyVoice}"
-# Keep the production voice fixed even if an older env.sh contains a stale or
+# Keep the production voice fixed even if an older env.sh contains a stale o
 # incorrectly encoded TTS_SPEAKER_ID. Use TTS_SPEAKER_ID_OVERRIDE deliberately
 # when another installed preset is required.
 if [ -n "${TTS_SPEAKER_ID_OVERRIDE:-}" ]; then
@@ -123,7 +123,9 @@ else
   export AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH="${AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH:-$SOULX_REF_IMAGE_PATH}"
 fi
 if [ -z "${AVATAR_PROFILE_ALT_REF_IMAGE_PATH:-}" ]; then
-  if [ -f "$A22_CODE/local/frontend/public/avatar-portrait-alt.png" ]; then
+  if [ -f "$A22_CODE/local/frontend/public/avatar-portrait-alt.jpg" ]; then
+    AVATAR_PROFILE_ALT_REF_IMAGE_PATH="$A22_CODE/local/frontend/public/avatar-portrait-alt.jpg"
+  elif [ -f "$A22_CODE/local/frontend/public/avatar-portrait-alt.png" ]; then
     AVATAR_PROFILE_ALT_REF_IMAGE_PATH="$A22_CODE/local/frontend/public/avatar-portrait-alt.png"
   else
     AVATAR_PROFILE_ALT_REF_IMAGE_PATH="$SOULX_REF_IMAGE_PATH"
@@ -284,6 +286,8 @@ export LLM_MODEL=\"$QWEN_MODEL_NAME\"
 export LLM_API_BASE=http://127.0.0.1:8000/v1
 export LLM_API_KEY=EMPTY
 export LLM_MAX_TOKENS=160
+export MAX_CONTEXT_MESSAGES=30
+export CONTEXT_SUMMARY_TURNS=4
 export SPEECH_SERVICE_ENABLED=\"$START_SPEECH_SERVICE\"
 export SPEECH_SERVICE_BASE=http://127.0.0.1:19100
 export VISION_SERVICE_ENABLED=\"$START_VISION_SERVICE\"

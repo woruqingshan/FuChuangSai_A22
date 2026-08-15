@@ -43,7 +43,7 @@ class Settings:
         self.llm_max_tokens = int(os.getenv("LLM_MAX_TOKENS", "256"))
         self.llm_request_timeout_seconds = int(os.getenv("LLM_REQUEST_TIMEOUT_SECONDS", "60"))
 
-        self.max_context_messages = int(os.getenv("MAX_CONTEXT_MESSAGES", "8"))
+        self.max_context_messages = int(os.getenv("MAX_CONTEXT_MESSAGES", "30"))
         self.context_summary_turns = int(os.getenv("CONTEXT_SUMMARY_TURNS", "4"))
         self.log_dir = os.getenv("LOG_DIR", "/tmp/a22_logs/orchestrator").strip() or "/tmp/a22_logs/orchestrator"
         self.speech_service_enabled = os.getenv("SPEECH_SERVICE_ENABLED", "true").strip().lower() in {
