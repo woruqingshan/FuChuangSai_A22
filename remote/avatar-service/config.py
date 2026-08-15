@@ -63,6 +63,14 @@ class Settings:
         self.tts_prompt_text = _env_str("TTS_PROMPT_TEXT", "YOUR_PROMPT_TEXT|endofprompt|>")
         self.tts_instruct_text = _env_str("TTS_INSTRUCT_TEXT", "YOUR_INSTRUCT_TEXT|endofprompt|>")
         self.tts_speed = float(_env_str("TTS_SPEED", "1.0"))
+        self.tts_trim_trailing_silence = _env_str("TTS_TRIM_TRAILING_SILENCE", "true").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.tts_silence_threshold_db = float(_env_str("TTS_SILENCE_THRESHOLD_DB", "-38"))
+        self.tts_tail_padding_ms = max(0, int(_env_str("TTS_TAIL_PADDING_MS", "180")))
         self.tts_warmup_enabled = _env_str("TTS_WARMUP_ENABLED", "true").lower() in {
             "1",
             "true",
