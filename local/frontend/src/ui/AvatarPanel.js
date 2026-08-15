@@ -100,8 +100,8 @@ function readDefaultPortraitUrl() {
   if (envUrl) {
     return envUrl;
   }
-  // Add a cache buster so replacing public/avatar-portrait.png takes effect immediately.
-  return "./avatar-portrait.png?v=20260815";
+  // Keep the idle portrait aligned with avatar A's LiveAvatar reference image.
+  return "./avatar-portrait-idle.jpg?v=20260815-hands-resting";
 }
 
 function readAvatarProfiles(defaultPortraitUrl) {

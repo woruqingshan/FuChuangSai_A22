@@ -64,6 +64,8 @@ function waitFor(ms) {
   });
 }
 
+const VIDEO_FADE_MS = 550;
+
 export function createAvatarRenderer({ faceElement, readouts }) {
   const audioPlayer = createAudioPlayer();
   const portraitImage = faceElement.querySelector(".avatar-portrait-image");
@@ -116,6 +118,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       videoElement.removeAttribute("data-source-type");
       videoElement.load();
     }
+    videoElement.classList.remove("avatar-video--visible");
     videoElement.classList.add("hidden");
   }
 
@@ -147,11 +150,16 @@ export function createAvatarRenderer({ faceElement, readouts }) {
         return;
       }
       videoElement.classList.remove("hidden");
-      portraitImage?.classList.add("hidden");
+      portraitImage?.classList.remove("hidden");
+      window.requestAnimationFrame(() => {
+        if (renderToken === currentToken) {
+          videoElement.classList.add("avatar-video--visible");
+        }
+      });
     };
 
     const handleReady = () => {
-      cleanupListeners();
+      cleanupReadyListeners();
       revealVideo();
       void videoElement.play().catch(() => {
         if (renderToken !== currentToken) {
@@ -190,13 +198,23 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       faceElement.dataset.viseme = "sil";
       restoreProfilePortrait();
       faceElement.dataset.playbackEnded = "true";
-      resetVideoElement();
       portraitImage?.classList.remove("hidden");
+      cleanupListeners();
+      videoElement.classList.remove("avatar-video--visible");
+      window.setTimeout(() => {
+        if (renderToken === currentToken) {
+          resetVideoElement();
+        }
+      }, VIDEO_FADE_MS);
+    };
+
+    const cleanupReadyListeners = () => {
+      videoElement.removeEventListener("loadeddata", handleReady);
+      videoElement.removeEventListener("canplay", handleReady);
     };
 
     const cleanupListeners = () => {
-      videoElement.removeEventListener("loadeddata", handleReady);
-      videoElement.removeEventListener("canplay", handleReady);
+      cleanupReadyListeners();
       videoElement.removeEventListener("error", handleError);
       videoElement.removeEventListener("ended", handleEnded);
       detachVideoListeners = () => {};
@@ -221,6 +239,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     videoElement.loop = Boolean(loop);
     videoElement.preload = "auto";
     videoElement.currentTime = 0;
+    videoElement.classList.remove("avatar-video--visible");
     videoElement.classList.add("hidden");
     portraitImage?.classList.remove("hidden");
     armVideoTransition(currentToken);

@@ -359,7 +359,12 @@ textarea {
   display: block;
   z-index: 2;
   background: #0f172a;
-  transition: transform 280ms ease, filter 320ms ease;
+  opacity: 0;
+  transition: opacity 550ms ease, transform 280ms ease, filter 320ms ease;
+}
+
+.avatar-video.avatar-video--visible {
+  opacity: 1;
 }
 
 .avatar-render-status {
