@@ -101,7 +101,7 @@ function readDefaultPortraitUrl() {
     return envUrl;
   }
   // Add a cache buster so replacing public/avatar-portrait.png takes effect immediately.
-  return "./avatar-portrait.png?v=20260421";
+  return "./avatar-portrait.png?v=20260815";
 }
 
 function readAvatarProfiles(defaultPortraitUrl) {
@@ -480,7 +480,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
       api.currentEmotionStyle = response.emotion_style || api.currentEmotionStyle;
       api.currentFacialExpression = response.avatar_action?.facial_expression || api.currentFacialExpression;
       api.currentHeadMotion = response.avatar_action?.head_motion || api.currentHeadMotion;
-      renderer.render(response);
+      return renderer.render(response);
     },
   };
 

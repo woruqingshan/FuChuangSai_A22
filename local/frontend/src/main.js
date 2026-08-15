@@ -15,8 +15,25 @@ const DEFAULT_AVATAR_STREAM_ID = "demo_stream_1";
 const configuredSessionId = (import.meta.env.VITE_AVATAR_SESSION_ID || "").trim();
 const configuredStreamId = (import.meta.env.VITE_AVATAR_STREAM_ID || "").trim();
 
+function resolveTabSessionId(baseSessionId) {
+  if (import.meta.env.VITE_UNIQUE_SESSION_PER_TAB !== "true") {
+    return baseSessionId;
+  }
+  const storageKey = "a22.avatar.tab_session_suffix";
+  try {
+    let suffix = sessionStorage.getItem(storageKey);
+    if (!suffix) {
+      suffix = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+      sessionStorage.setItem(storageKey, suffix);
+    }
+    return `${baseSessionId}-${suffix}`;
+  } catch {
+    return `${baseSessionId}-${Date.now().toString(36)}`;
+  }
+}
+
 const state = {
-  sessionId: configuredSessionId || DEFAULT_AVATAR_SESSION_ID,
+  sessionId: resolveTabSessionId(configuredSessionId || DEFAULT_AVATAR_SESSION_ID),
   streamId: configuredStreamId || DEFAULT_AVATAR_STREAM_ID,
   nextTurnId: 1,
   transport: "Waiting for first message",
@@ -185,7 +202,16 @@ async function handleSend({ text, audio, video }) {
     const response = await sendChatRequest(requestPayload);
 
     state.nextTurnId += 1;
-    state.transport = "Request completed";
+    state.transport = "Waiting for synchronized digital-human video";
+    syncStatus({
+      transport: state.transport,
+      remoteStatus: "Text and audio ready; rendering digital-human video",
+    });
+
+    const avatarRenderResult = await avatarPanel.update(response).catch((error) => ({
+      status: "failed",
+      error,
+    }));
 
     chatPanel.addMessage({
       role: "assistant",
@@ -196,9 +222,16 @@ async function handleSend({ text, audio, video }) {
         headMotion: response.avatar_action.head_motion,
       }),
     });
-    avatarPanel.update(response);
+    if (avatarRenderResult?.status === "failed") {
+      const videoError = avatarRenderResult.error instanceof Error
+        ? avatarRenderResult.error.message
+        : "数字人视频生成失败";
+      chatPanel.addSystemMessage(`文本回复已保留，但${videoError}`);
+    }
     syncStatus({
-      transport: "Remote reply received",
+      transport: avatarRenderResult?.status === "failed"
+        ? "Text reply received; digital-human video failed"
+        : "Text and digital-human video ready",
       remoteStatus: response.server_status === "ok" ? "Remote orchestrator connected" : "Remote orchestrator error",
       inputMode: response.input_mode || inputMode,
       emotionStyle: response.emotion_style,

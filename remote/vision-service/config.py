@@ -22,6 +22,12 @@ class Settings:
             "yes",
             "on",
         }
+        self.vision_unload_after_request = os.getenv("VISION_UNLOAD_AFTER_REQUEST", "false").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
         self.ring_buffer_enabled = os.getenv("VISION_RING_BUFFER_ENABLED", "true").strip().lower() in {
             "1",
             "true",

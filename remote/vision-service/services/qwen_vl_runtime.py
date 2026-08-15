@@ -62,6 +62,16 @@ class QwenVLRuntime:
                 },
             )
             return fallback
+        finally:
+            if settings.vision_unload_after_request:
+                self.unload()
+
+    def unload(self) -> None:
+        self._model = None
+        self._processor = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
     def _extract_with_model(self, request: ExtractRequest) -> VisionFeatures:
         processor, model = self._ensure_runtime()
