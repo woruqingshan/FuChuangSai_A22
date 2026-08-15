@@ -161,25 +161,12 @@ def _resolve_emotion_prompt(emotion: str, expression: str) -> str:
 
 def _resolve_motion_prompt(motion: str) -> str:
     if any(keyword in motion for keyword in ("open", "gesture", "hand", "手势", "张开")):
-        return (
-            "She makes one brief, synchronized open-hand conversational gesture near chest level, "
-            "then smoothly lowers both hands to rest naturally on the tabletop for the remainder. "
-            "Do not repeat or loop the hand gesture, and do not keep waving."
-        )
+        return "She uses visible, synchronized open-hand conversational gestures near chest level."
     if any(keyword in motion for keyword in ("nod", "点头")):
-        return (
-            "She makes subtle natural nods. Her hands remain resting naturally on the tabletop most of the time, "
-            "with at most one small supportive gesture before returning to rest. No repetitive waving."
-        )
+        return "She makes subtle natural nods and small supportive hand gestures."
     if any(keyword in motion for keyword in ("lean", "前倾")):
-        return (
-            "She leans forward slightly with restrained empathy, makes at most one brief hand gesture, "
-            "then returns both hands to a relaxed resting position on the tabletop. No repetitive waving."
-        )
-    return (
-        "She uses subtle head motion and one brief, restrained conversational hand gesture at most, "
-        "then keeps both hands resting naturally on the tabletop. No repetitive or continuous waving."
-    )
+        return "She leans forward slightly and uses restrained empathetic hand gestures."
+    return "She uses natural restrained conversational hand gestures and subtle head motion."
 
 
 liveavatar_render_bridge = LiveAvatarRenderBridge()

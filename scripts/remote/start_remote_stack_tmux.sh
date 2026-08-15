@@ -117,11 +117,16 @@ export SOULX_REF_IMAGE_PATH
 
 export AVATAR_DEFAULT_PROFILE_ID="${AVATAR_DEFAULT_PROFILE_ID:-avatar_a}"
 export AVATAR_PROFILE_ALT_ID="${AVATAR_PROFILE_ALT_ID:-avatar_b}"
-if [ "$AVATAR_RENDERER_BACKEND" = "liveavatar" ]; then
-  export AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH="${AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH:-$LIVEAVATAR_REF_IMAGE_PATH}"
-else
-  export AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH="${AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH:-$SOULX_REF_IMAGE_PATH}"
+if [ -z "${AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH:-}" ]; then
+  if [ "$AVATAR_RENDERER_BACKEND" = "liveavatar" ] && [ -f "$A22_CODE/local/frontend/public/avatar-portrait-idle.jpg" ]; then
+    AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH="$A22_CODE/local/frontend/public/avatar-portrait-idle.jpg"
+  elif [ "$AVATAR_RENDERER_BACKEND" = "liveavatar" ]; then
+    AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH="$LIVEAVATAR_REF_IMAGE_PATH"
+  else
+    AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH="$SOULX_REF_IMAGE_PATH"
+  fi
 fi
+export AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH
 if [ -z "${AVATAR_PROFILE_ALT_REF_IMAGE_PATH:-}" ]; then
   if [ -f "$A22_CODE/local/frontend/public/avatar-portrait-alt.jpg" ]; then
     AVATAR_PROFILE_ALT_REF_IMAGE_PATH="$A22_CODE/local/frontend/public/avatar-portrait-alt.jpg"
