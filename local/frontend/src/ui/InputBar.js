@@ -108,7 +108,10 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
     messageBox.disabled = textLocked;
     sendButton.disabled = textLocked;
     sendButton.textContent = isBusy ? "发送中..." : "发送";
-    cameraToggle.disabled = isBusy || voiceTurnState !== VOICE_TURN_STATE.IDLE;
+    // Once captureTurn has returned, the current turn already owns an immutable
+    // frame payload. Keep this control available while remote rendering runs so
+    // the user can stop the camera without affecting the in-flight turn.
+    cameraToggle.disabled = voiceTurnState !== VOICE_TURN_STATE.IDLE;
 
     voiceButton.disabled = voiceTurnState === VOICE_TURN_STATE.PROCESSING
       || (isBusy && voiceTurnState !== VOICE_TURN_STATE.RECORDING);
@@ -250,7 +253,7 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
 
       await cameraRecorder.disable();
       setCameraPresentation(false);
-      setCameraMeta("摄像头已关闭，本轮不会附带视频画面。");
+      setCameraMeta("摄像头已关闭；已发送轮次不受影响，下一轮不会附带视频画面。");
       onVideoStatusChange("Camera disabled");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "摄像头采集失败。";

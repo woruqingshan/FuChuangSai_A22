@@ -146,7 +146,33 @@ class TTSRuntime:
         if not chunks:
             raise RuntimeError("CosyVoice returned no audio frames.")
 
-        return np.concatenate(chunks, axis=0), sample_rate
+        waveform = np.concatenate(chunks, axis=0)
+        if settings.tts_trim_trailing_silence:
+            waveform = self._trim_trailing_silence(waveform, sample_rate)
+        return waveform, sample_rate
+
+    def _trim_trailing_silence(self, waveform: np.ndarray, sample_rate: int) -> np.ndarray:
+        samples = np.asarray(waveform, dtype=np.float32).reshape(-1)
+        if samples.size == 0 or sample_rate <= 0:
+            return samples
+
+        window_size = max(1, int(sample_rate * 0.02))
+        active_threshold = 10.0 ** (settings.tts_silence_threshold_db / 20.0)
+        last_active_end = 0
+        for start in range(0, samples.size, window_size):
+            chunk = samples[start : start + window_size]
+            if chunk.size and float(np.sqrt(np.mean(np.square(chunk), dtype=np.float64))) >= active_threshold:
+                last_active_end = min(start + window_size, samples.size)
+
+        if last_active_end <= 0:
+            return samples
+
+        padding_samples = int(sample_rate * settings.tts_tail_padding_ms / 1000.0)
+        trim_end = min(last_active_end + padding_samples, samples.size)
+        minimum_saving = int(sample_rate * 0.1)
+        if samples.size - trim_end < minimum_saving:
+            return samples
+        return samples[:trim_end]
 
     def _invoke_tts(
         self,

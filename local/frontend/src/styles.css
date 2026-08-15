@@ -502,6 +502,12 @@ textarea {
   filter: none !important;
 }
 
+.avatar-face[data-playback-ended="true"] .avatar-portrait-image,
+.avatar-face[data-playback-ended="true"] .avatar-video {
+  animation: none !important;
+  transform: none !important;
+}
+
 .avatar-face[data-external-page="on"] .avatar-halo {
   animation: none;
   opacity: 0.45;

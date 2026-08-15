@@ -4,6 +4,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import numpy as np
+
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 if str(SERVICE_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVICE_ROOT))
@@ -12,6 +14,23 @@ from services.tts_runtime import TTSRuntime
 
 
 class TTSRuntimeInstructTests(unittest.TestCase):
+    def test_trims_long_silent_tail_but_keeps_natural_padding(self):
+        runtime = TTSRuntime()
+        sample_rate = 1000
+        waveform = np.concatenate(
+            [
+                np.full(sample_rate, 0.2, dtype=np.float32),
+                np.zeros(500, dtype=np.float32),
+            ]
+        )
+        with (
+            patch("services.tts_runtime.settings.tts_silence_threshold_db", -40.0),
+            patch("services.tts_runtime.settings.tts_tail_padding_ms", 180),
+        ):
+            trimmed = runtime._trim_trailing_silence(waveform, sample_rate)
+
+        self.assertEqual(trimmed.size, 1180)
+
     def test_300m_prompt_keeps_required_separator(self):
         runtime = TTSRuntime()
         self.assertEqual(
