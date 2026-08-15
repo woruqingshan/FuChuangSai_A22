@@ -23,12 +23,12 @@ class TTSRuntimeInstructTests(unittest.TestCase):
             "concerned caregiver<|endofprompt|>",
         )
 
-    def test_300m_mode_routes_to_instruct_inference(self):
+    def test_300m_mode_uses_safe_non_instruct_inference(self):
         runtime = TTSRuntime()
         model = object()
         with (
             patch("services.tts_runtime.settings.tts_mode", "cosyvoice_300m_instruct"),
-            patch.object(runtime, "_invoke_instruct", return_value="audio") as invoke,
+            patch.object(runtime, "_invoke_300m_safe", return_value="audio") as invoke,
         ):
             result = runtime._invoke_tts(
                 model,
@@ -42,7 +42,6 @@ class TTSRuntimeInstructTests(unittest.TestCase):
         invoke.assert_called_once_with(
             model,
             "正文",
-            instruct_text="concerned caregiver",
             speed=1.0,
             speaker_id="中文女",
         )

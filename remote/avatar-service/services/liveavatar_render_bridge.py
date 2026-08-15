@@ -6,11 +6,11 @@ import subprocess
 
 @dataclass(frozen=True)
 class LiveAvatarRenderRequest:
-    session_id: st
+    session_id: str
     turn_id: int
-    audio_path: st
-    ref_image_path: st
-    prompt: st
+    audio_path: str
+    ref_image_path: str
+    prompt: str
     num_clip: int = 10000
     metadata: dict = field(default_factory=dict)
 
@@ -20,9 +20,9 @@ class LiveAvatarRenderRequest:
 
 @dataclass(frozen=True)
 class LiveAvatarRenderResult:
-    video_path: st
-    audio_path: st
-    ref_image_path: st
+    video_path: str
+    audio_path: str
+    ref_image_path: str
     renderer: str = "liveavatar"
     metadata: dict = field(default_factory=dict)
 

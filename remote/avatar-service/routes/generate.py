@@ -9,19 +9,19 @@ from config import settings
 from models import GenerateRequest, GenerateResponse
 from services.avatar_event_bus import avatar_event_bus
 from services.avatar_render_bridge import avatar_render_bridge
-from services.expression_generator import expression_generato
+from services.expression_generator import expression_generator
 from services.liveavatar_render_bridge import (
     LiveAvatarRenderRequest,
     liveavatar_render_bridge,
 )
-from services.motion_generator import motion_generato
+from services.motion_generator import motion_generator
 from services.soulxflashhead_render_bridge import (
     SoulXFlashHeadRenderRequest,
     soulxflashhead_render_bridge,
 )
 from services.storage import avatar_storage
 from services.tts_runtime import tts_runtime
-from services.viseme_generator import viseme_generato
+from services.viseme_generator import viseme_generator
 
 router = APIRouter()
 A2F_EVENT_CONTRACT_VERSION = "a2f-ab-v1"

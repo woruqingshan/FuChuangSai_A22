@@ -30,8 +30,8 @@ function resolveBackendMediaUrl(rawUrl) {
 
 async function resolveStreamFirstChunkUrl(streamManifestUrl) {
   const startedAt = Date.now();
-  const configuredTimeout = Number(import.meta.env.VITE_AVATAR_VIDEO_WAIT_TIMEOUT_MS || 600000);
-  const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 600000;
+  const configuredTimeout = Number(import.meta.env.VITE_AVATAR_VIDEO_WAIT_TIMEOUT_MS || 1800000);
+  const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 1800000;
   const pollIntervalMs = 1000;
 
   while (Date.now() - startedAt <= timeoutMs) {
@@ -50,12 +50,12 @@ async function resolveStreamFirstChunkUrl(streamManifestUrl) {
       return resolveBackendMediaUrl(firstChunkUrl);
     }
     if (manifest?.complete) {
-      return "";
+      throw new Error(manifest?.error || "数字人视频生成失败");
     }
     await waitFor(pollIntervalMs);
   }
 
-  return "";
+  throw new Error("数字人视频生成等待超时");
 }
 
 function waitFor(ms) {
@@ -287,7 +287,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     hasPinnedVideoSource() {
       return Boolean(pinnedVideoSource);
     },
-    render(response) {
+    async render(response) {
       const externalStreamPinned = Boolean(pinnedVideoSource);
       const currentToken = renderToken + 1;
       cleanup({ preserveVideo: externalStreamPinned });
@@ -316,7 +316,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
         stopViseme = () => {};
         ensurePinnedVideoPlaying(currentToken);
         audioPlayer.play(avatarOutput?.audio);
-        return;
+        return { status: "ready", synchronizedVideo: false };
       }
 
       setExternalStreamFlag(false);
@@ -324,7 +324,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       stopMotion = applyMotionSequence(faceElement, motionSeq, fallbackMotion);
       stopViseme = applyVisemeSequence(faceElement, visemeSeq);
       const audioCue = avatarOutput?.audio;
-      // LiveAvatar output already contains the synchronized audio track. Othe
+      // LiveAvatar output already contains the synchronized audio track. Other
       // renderers keep their historical reply.wav + muted-video behavior.
       if (!synchronizedVideo) {
         audioPlayer.play(audioCue);
@@ -339,7 +339,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
           loop: false,
           sourceType: "reply",
         });
-        return;
+        return { status: "ready", synchronizedVideo };
       }
 
       const replyVideoStreamUrl = resolveBackendMediaUrl(response.reply_video_stream_url);
@@ -347,33 +347,28 @@ export function createAvatarRenderer({ faceElement, readouts }) {
         if (synchronizedVideo) {
           setRenderStatus("数字人视频生成中，请稍候…");
         }
-        void resolveStreamFirstChunkUrl(replyVideoStreamUrl)
-          .then((chunkUrl) => {
-            if (renderToken !== currentToken) {
-              return;
-            }
-            if (chunkUrl) {
-              setRenderStatus();
-              startVideoSource({
-                url: chunkUrl,
-                currentToken,
-                muted: !synchronizedVideo,
-                loop: false,
-                sourceType: "reply",
-              });
-              return;
-            }
-            if (synchronizedVideo) {
-              setRenderStatus("数字人视频生成失败或等待超时");
-            }
-          })
-          .catch(() => {
-            if (renderToken === currentToken && synchronizedVideo) {
-              setRenderStatus("数字人视频生成失败或等待超时");
-            }
+        try {
+          const chunkUrl = await resolveStreamFirstChunkUrl(replyVideoStreamUrl);
+          if (renderToken !== currentToken) {
+            return { status: "cancelled", synchronizedVideo };
+          }
+          setRenderStatus();
+          startVideoSource({
+            url: chunkUrl,
+            currentToken,
+            muted: !synchronizedVideo,
+            loop: false,
+            sourceType: "reply",
           });
-        return;
+          return { status: "ready", synchronizedVideo };
+        } catch (error) {
+          if (renderToken === currentToken && synchronizedVideo) {
+            setRenderStatus(error instanceof Error ? error.message : "数字人视频生成失败");
+          }
+          throw error;
+        }
       }
+      return { status: "ready", synchronizedVideo };
     },
     cleanup,
   };

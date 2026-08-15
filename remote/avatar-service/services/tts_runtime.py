@@ -165,13 +165,7 @@ class TTSRuntime:
         if mode == "cosyvoice3_zero_shot":
             return self._invoke_zero_shot(model, text, speed=speed)
         if mode == "cosyvoice_300m_instruct":
-            return self._invoke_instruct(
-                model,
-                text,
-                instruct_text=instruct_text,
-                speed=speed,
-                speaker_id=speaker_id,
-            )
+            return self._invoke_300m_safe(model, text, speed=speed, speaker_id=speaker_id)
         if mode in {
             "cosyvoice3_instruct2",
             "cosyvoice_instruct2",
@@ -325,6 +319,20 @@ class TTSRuntime:
             "Instruct TTS inference failed for all known CosyVoice entrypoints. "
             + " | ".join(errors)
         )
+
+    def _invoke_300m_safe(
+        self,
+        model,
+        text: str,
+        *,
+        speed: float | None = None,
+        speaker_id: str | None = None,
+    ):
+        # This checkpoint can synthesize its control prompt as speech. Prefer
+        # the fixed female SFT voice so only reply_text becomes audible.
+        if callable(getattr(model, "inference_sft", None)):
+            return self._invoke_sft(model, text, speed=speed, speaker_id=speaker_id)
+        return self._invoke_plain_text(model, text, speed=speed)
 
     def _normalize_instruct_prompt_for_mode(self, text: str) -> str:
         mode = settings.tts_mode

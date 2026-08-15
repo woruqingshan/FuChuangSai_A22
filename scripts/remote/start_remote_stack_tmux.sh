@@ -54,6 +54,7 @@ export SER_TOP_K="${SER_TOP_K:-3}"
 export SER_MIN_CONFIDENCE="${SER_MIN_CONFIDENCE:-0.2}"
 export SER_WARMUP_ENABLED="${SER_WARMUP_ENABLED:-true}"
 export VISION_MODEL_PATH="${VISION_MODEL_PATH:-$A22_MODEL_ROOT/Qwen2.5-VL-7B-Instruct}"
+export VISION_UNLOAD_AFTER_REQUEST="${VISION_UNLOAD_AFTER_REQUEST:-true}"
 export FER_ENABLED="${FER_ENABLED:-true}"
 export FER_PROVIDER="${FER_PROVIDER:-hsemotion}"
 export FER_MODEL_NAME="${FER_MODEL_NAME:-enet_b2_7}"
@@ -67,7 +68,7 @@ export HSEMOTION_CACHE_DIR="${HSEMOTION_CACHE_DIR:-$A22_MODEL_ROOT/hsemotion}"
 export TTS_MODE="${TTS_MODE:-cosyvoice_300m_instruct}"
 export TTS_MODEL_PATH="${TTS_MODEL_PATH:-$A22_MODEL_ROOT/CosyVoice-300M-Instruct}"
 export TTS_REPO_PATH="${TTS_REPO_PATH:-$A22_MODEL_ROOT/CosyVoice}"
-# Keep the production voice fixed even if an older env.sh contains a stale o
+# Keep the production voice fixed even if an older env.sh contains a stale or
 # incorrectly encoded TTS_SPEAKER_ID. Use TTS_SPEAKER_ID_OVERRIDE deliberately
 # when another installed preset is required.
 if [ -n "${TTS_SPEAKER_ID_OVERRIDE:-}" ]; then
@@ -116,7 +117,11 @@ export SOULX_REF_IMAGE_PATH
 
 export AVATAR_DEFAULT_PROFILE_ID="${AVATAR_DEFAULT_PROFILE_ID:-avatar_a}"
 export AVATAR_PROFILE_ALT_ID="${AVATAR_PROFILE_ALT_ID:-avatar_b}"
-export AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH="${AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH:-$SOULX_REF_IMAGE_PATH}"
+if [ "$AVATAR_RENDERER_BACKEND" = "liveavatar" ]; then
+  export AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH="${AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH:-$LIVEAVATAR_REF_IMAGE_PATH}"
+else
+  export AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH="${AVATAR_PROFILE_DEFAULT_REF_IMAGE_PATH:-$SOULX_REF_IMAGE_PATH}"
+fi
 if [ -z "${AVATAR_PROFILE_ALT_REF_IMAGE_PATH:-}" ]; then
   if [ -f "$A22_CODE/local/frontend/public/avatar-portrait-alt.png" ]; then
     AVATAR_PROFILE_ALT_REF_IMAGE_PATH="$A22_CODE/local/frontend/public/avatar-portrait-alt.png"
@@ -184,7 +189,7 @@ source \"$A22_ENV_ROOT/speech-service/bin/activate\"
 cd \"$A22_CODE/remote/speech-service\"
 export CUDA_VISIBLE_DEVICES=\"$SPEECH_CUDA_VISIBLE_DEVICES\"
 export TMP_DIR=\"$A22_TMP_ROOT/speech\"
-export ASR_PROVIDER=qwen3_as
+export ASR_PROVIDER=qwen3_asr
 export ASR_MODEL=\"$ASR_MODEL_PATH\"
 export ASR_LANGUAGE=Chinese
 export ASR_DEVICE=cuda:0
@@ -218,6 +223,7 @@ export VISION_MODEL=\"$VISION_MODEL_PATH\"
 export VISION_DEVICE=cuda:0
 export VISION_DTYPE=float16
 export VISION_WARMUP_ENABLED=false
+export VISION_UNLOAD_AFTER_REQUEST=\"$VISION_UNLOAD_AFTER_REQUEST\"
 export FER_ENABLED=\"$FER_ENABLED\"
 export FER_PROVIDER=\"$FER_PROVIDER\"
 export FER_MODEL_NAME=\"$FER_MODEL_NAME\"
@@ -277,6 +283,7 @@ export LLM_PROVIDER=qwen
 export LLM_MODEL=\"$QWEN_MODEL_NAME\"
 export LLM_API_BASE=http://127.0.0.1:8000/v1
 export LLM_API_KEY=EMPTY
+export LLM_MAX_TOKENS=96
 export SPEECH_SERVICE_ENABLED=\"$START_SPEECH_SERVICE\"
 export SPEECH_SERVICE_BASE=http://127.0.0.1:19100
 export VISION_SERVICE_ENABLED=\"$START_VISION_SERVICE\"
