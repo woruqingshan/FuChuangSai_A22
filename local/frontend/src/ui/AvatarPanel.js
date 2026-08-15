@@ -113,7 +113,7 @@ function readAvatarProfiles(defaultPortraitUrl) {
   const altProfileName = String(import.meta.env.VITE_AVATAR_PROFILE_ALT_NAME || "数字人 B").trim()
     || "数字人 B";
   const altPortraitUrl = String(
-    import.meta.env.VITE_AVATAR_PROFILE_ALT_PORTRAIT_URL || "./avatar-portrait-alt.png?v=20260421",
+    import.meta.env.VITE_AVATAR_PROFILE_ALT_PORTRAIT_URL || "./avatar-portrait-alt.jpg?v=20260815",
   ).trim();
 
   const profiles = [
@@ -187,6 +187,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
           <img
             class="avatar-portrait-image"
             src="${defaultPortraitUrl}"
+            data-profile-src="${defaultPortraitUrl}"
             alt="数字人头像"
           />
           <video
@@ -250,6 +251,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     if (!portraitImage || !profile?.portraitUrl) {
       return;
     }
+    portraitImage.dataset.profileSrc = profile.portraitUrl;
     portraitImage.src = profile.portraitUrl;
   }
 
