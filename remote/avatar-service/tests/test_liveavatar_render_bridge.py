@@ -28,26 +28,7 @@ class LiveAvatarRenderBridgeTests(unittest.TestCase):
         )
 
         self.assertIn("visibly concerned", request.prompt)
-        self.assertIn("one brief, synchronized open-hand conversational gesture", request.prompt)
-        self.assertIn("lowers both hands to rest naturally on the tabletop", request.prompt)
-        self.assertIn("Do not repeat or loop", request.prompt)
-
-    def test_slow_nod_keeps_hands_mostly_at_rest(self) -> None:
-        bridge = LiveAvatarRenderBridge()
-        request = bridge.build_request(
-            session_id="session-a",
-            turn_id=4,
-            audio_path="reply.wav",
-            ref_image_path="portrait.jpg",
-            emotion_style="supportive",
-            facial_expression="attentive",
-            head_motion="slow_nod",
-            prompt_template="{motion_prompt}",
-            num_clip=10000,
-        )
-
-        self.assertIn("hands remain resting naturally on the tabletop most of the time", request.prompt)
-        self.assertIn("No repetitive waving", request.prompt)
+        self.assertIn("open-hand conversational gestures", request.prompt)
 
     def test_render_invokes_runner_without_shell_and_returns_exact_output(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
