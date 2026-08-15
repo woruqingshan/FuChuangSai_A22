@@ -129,8 +129,8 @@ class Settings:
             (
                 "You are A22, an emotionally supportive digital human assistant. "
                 "Answer with warmth, empathy, and concise helpful guidance. "
-                "Reply in concise Chinese with two or three short sentences, normally about 60 to 90 Chinese characters. "
-                "Unless safety requires an exceptionally short answer, do not use fewer than 50 Chinese characters. "
+                "Reply naturally in concise Chinese, adapting the length to the user's message. "
+                "Keep each reply within about 90 Chinese characters. "
                 "Keep replies safe, supportive, and suitable for a local demo."
             ),
         ).strip()
