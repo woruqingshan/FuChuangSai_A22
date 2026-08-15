@@ -320,10 +320,12 @@ textarea {
 
 .avatar-portrait-shell {
   position: relative;
-  width: min(90%, 560px);
+  width: auto;
   height: 92%;
+  max-width: 90%;
   max-height: 640px;
   min-height: 360px;
+  aspect-ratio: 3 / 4;
   border-radius: 32px;
   overflow: hidden;
   border: 1px solid rgba(191, 219, 254, 0.22);
@@ -339,7 +341,7 @@ textarea {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center top;
   display: block;
   z-index: 1;
@@ -352,7 +354,7 @@ textarea {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center top;
   display: block;
   z-index: 2;
