@@ -1,4 +1,5 @@
 import { fetchAccessStatus, verifyAccessCode } from "../api/access";
+import { fetchAuthMe, loginAccount, logoutAccount, registerAccount } from "../api/auth";
 import { sendChatRequest } from "../api/chat";
 import { bootstrapServerSession } from "../api/session";
 import { createAvatarPanel } from "../ui/AvatarPanel";
@@ -28,12 +29,14 @@ const state = {
   isSending: false,
   isSessionReady: false,
   hasAccess: false,
+  authUser: null,
   cameraEnabled: false,
   avatarProfileId: "avatar_a",
 };
 
 let leftTopStack = null;
 let accessGate = null;
+let accountMenu = null;
 
 const avatarPanel = createAvatarPanel({
   onProfileChange: (profile) => {
@@ -71,6 +74,7 @@ app.innerHTML = `
       <div class="topbar-meta">
         <span class="chip">多模态陪伴</span>
         <span class="chip">数字人表达</span>
+        <div class="account-entry" data-role="account-entry"></div>
       </div>
     </header>
     <main class="workspace-grid">
@@ -96,6 +100,24 @@ app.innerHTML = `
         <p class="access-error" data-role="access-error" aria-live="polite"></p>
       </form>
     </div>
+    <div class="access-modal-backdrop hidden" data-role="auth-gate">
+      <form class="access-modal auth-modal" data-role="auth-form">
+        <p class="eyebrow" data-role="auth-eyebrow">账号</p>
+        <h2 data-role="auth-title">登录账号</h2>
+        <p data-role="auth-description">登录后可为后续长期陪伴能力保留用户身份。</p>
+        <label>
+          <span>用户名</span>
+          <input type="text" autocomplete="username" data-role="auth-username" placeholder="请输入用户名" />
+        </label>
+        <label>
+          <span>密码</span>
+          <input type="password" autocomplete="current-password" data-role="auth-password" placeholder="请输入密码" />
+        </label>
+        <button type="submit" data-role="auth-submit">登录</button>
+        <button type="button" class="modal-secondary-button" data-role="auth-cancel">取消</button>
+        <p class="access-error" data-role="auth-error" aria-live="polite"></p>
+      </form>
+    </div>
   </div>
 `;
 
@@ -105,6 +127,10 @@ app.querySelector(".control-column").append(inputBar.controlsElement);
 app.querySelector(".avatar-column").appendChild(avatarPanel.element);
 app.querySelector(".status-column").appendChild(statusBar.element);
 accessGate = createAccessGate(app.querySelector('[data-role="access-gate"]'));
+accountMenu = createAccountMenu(
+  app.querySelector('[data-role="account-entry"]'),
+  app.querySelector('[data-role="auth-gate"]'),
+);
 
 inputBar.setBusy(true);
 syncStatus({
@@ -299,6 +325,7 @@ async function initializeSession({ showReadyMessage = true } = {}) {
     state.nextTurnId = Number(session.next_turn_id || 1);
     state.isSessionReady = true;
     await refreshAccessState({ showReadyMessage });
+    await refreshAuthState();
   } catch (error) {
     state.isSessionReady = false;
     console.warn("Companion service bootstrap failed", error);
@@ -309,6 +336,18 @@ async function initializeSession({ showReadyMessage = true } = {}) {
     });
   } finally {
     inputBar.setBusy(state.isSending || !isInteractionReady());
+  }
+}
+
+async function refreshAuthState() {
+  try {
+    const auth = await fetchAuthMe();
+    state.authUser = auth.authenticated ? auth.user : null;
+  } catch (error) {
+    console.warn("Account status check failed", error);
+    state.authUser = null;
+  } finally {
+    accountMenu?.render();
   }
 }
 
@@ -444,5 +483,129 @@ function createAccessGate(element) {
       errorText.textContent = "";
     },
   };
+}
+
+function createAccountMenu(element, modalElement) {
+  const form = modalElement.querySelector('[data-role="auth-form"]');
+  const title = modalElement.querySelector('[data-role="auth-title"]');
+  const description = modalElement.querySelector('[data-role="auth-description"]');
+  const usernameInput = modalElement.querySelector('[data-role="auth-username"]');
+  const passwordInput = modalElement.querySelector('[data-role="auth-password"]');
+  const submitButton = modalElement.querySelector('[data-role="auth-submit"]');
+  const cancelButton = modalElement.querySelector('[data-role="auth-cancel"]');
+  const errorText = modalElement.querySelector('[data-role="auth-error"]');
+  let mode = "login";
+
+  element.addEventListener("click", async (event) => {
+    const action = event.target?.dataset?.action;
+    if (action === "login") {
+      show("login");
+    }
+    if (action === "register") {
+      if (!state.hasAccess) {
+        chatPanel.addSystemMessage("请先完成体验邀请码验证。");
+        accessGate.show();
+        return;
+      }
+      show("register");
+    }
+    if (action === "logout") {
+      try {
+        await logoutAccount();
+        state.authUser = null;
+        render();
+        chatPanel.addSystemMessage("已退出账号，当前匿名会话可继续使用。");
+      } catch (error) {
+        chatPanel.addSystemMessage("退出失败，请稍后再试。");
+      }
+    }
+  });
+
+  cancelButton.addEventListener("click", () => {
+    hide();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+    if (!username || !password) {
+      errorText.textContent = "请输入用户名和密码。";
+      return;
+    }
+    submitButton.disabled = true;
+    usernameInput.disabled = true;
+    passwordInput.disabled = true;
+    errorText.textContent = "";
+    try {
+      const auth = mode === "register"
+        ? await registerAccount({ username, password })
+        : await loginAccount({ username, password });
+      state.authUser = auth.user || null;
+      render();
+      hide();
+      chatPanel.addSystemMessage(mode === "register" ? "注册成功，已登录。" : "登录成功。");
+    } catch (error) {
+      if (mode === "register" && error?.status === 403) {
+        errorText.textContent = "请先完成体验邀请码验证。";
+      } else if (error?.status === 409) {
+        errorText.textContent = "用户名已被注册。";
+      } else if (error?.status === 429) {
+        errorText.textContent = "尝试次数过多，请稍后再试。";
+      } else {
+        errorText.textContent = error?.message || "账号操作失败，请稍后重试。";
+      }
+    } finally {
+      submitButton.disabled = false;
+      usernameInput.disabled = false;
+      passwordInput.disabled = false;
+      usernameInput.focus();
+    }
+  });
+
+  function show(nextMode) {
+    mode = nextMode;
+    const isRegister = mode === "register";
+    title.textContent = isRegister ? "注册账号" : "登录账号";
+    description.textContent = isRegister
+      ? "注册后当前会话会绑定到你的长期用户身份。"
+      : "登录后当前会话会绑定到你的长期用户身份。";
+    submitButton.textContent = isRegister ? "注册并登录" : "登录";
+    errorText.textContent = "";
+    passwordInput.value = "";
+    modalElement.classList.remove("hidden");
+    window.setTimeout(() => usernameInput.focus(), 50);
+  }
+
+  function hide() {
+    modalElement.classList.add("hidden");
+    errorText.textContent = "";
+  }
+
+  function render() {
+    if (state.authUser) {
+      element.innerHTML = `
+        <span class="account-name">${escapeHtml(state.authUser.username)}</span>
+        <button type="button" class="account-link" data-action="logout">退出</button>
+      `;
+      return;
+    }
+    element.innerHTML = `
+      <button type="button" class="account-link" data-action="login">登录</button>
+      <button type="button" class="account-primary" data-action="register">注册</button>
+    `;
+  }
+
+  render();
+  return { render };
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 }

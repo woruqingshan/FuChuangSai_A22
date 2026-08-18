@@ -81,6 +81,52 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.account-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+}
+
+.account-name {
+  max-width: 160px;
+  overflow: hidden;
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-link,
+.account-primary {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.6);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.account-primary {
+  border-color: rgba(96, 165, 250, 0.45);
+  color: #eff6ff;
+  background: rgba(37, 99, 235, 0.76);
+}
+
+.account-link:hover,
+.account-link:focus-visible,
+.account-primary:hover,
+.account-primary:focus-visible {
+  transform: translateY(-1px);
+  outline: none;
 }
 
 .workspace-grid {
@@ -843,6 +889,11 @@ textarea {
 .access-modal button:disabled {
   cursor: wait;
   opacity: 0.72;
+}
+
+.access-modal .modal-secondary-button {
+  color: #cbd5e1;
+  background: rgba(30, 41, 59, 0.9);
 }
 
 .access-error {
