@@ -96,6 +96,15 @@ class RateLimiterTest(unittest.TestCase):
         self.assertFalse(result.allowed)
         self.assertGreater(result.retry_after_seconds, 0)
 
+    def test_allow_triggers_opportunistic_cleanup(self):
+        limiter = FixedWindowRateLimiter()
+        limiter._cleanup_interval = 2
+        limiter._windows["stale"] = (datetime.now(UTC) - timedelta(seconds=7201), 1)
+        limiter.allow("fresh:1", limit=10, window_seconds=600)
+        self.assertIn("stale", limiter._windows)
+        limiter.allow("fresh:2", limit=10, window_seconds=600)
+        self.assertNotIn("stale", limiter._windows)
+
 
 class JobManagerTest(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
@@ -157,6 +166,31 @@ class JobManagerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await manager.queue_position(second.job_id), 1)
         with self.assertRaises(JobError) as queue_error:
             await manager.submit(session_id="sess_c", turn_id=1, request=make_request("sess_c", 1))
+        self.assertEqual(queue_error.exception.status_code, 429)
+
+    async def test_capacity_applies_before_worker_claims_first_job(self):
+        settings.job_queue_max_pending = 2
+        manager = JobManager()
+        accepted_jobs = []
+        for index in range(1 + settings.job_queue_max_pending):
+            accepted_jobs.append(
+                await manager.submit(
+                    session_id=f"sess_capacity_{index}",
+                    turn_id=1,
+                    request=make_request(f"sess_capacity_{index}", 1),
+                )
+            )
+
+        self.assertEqual(len(accepted_jobs), 3)
+        self.assertEqual(len(manager._queue), 3)
+        self.assertIsNone(manager._active_job_id)
+
+        with self.assertRaises(JobError) as queue_error:
+            await manager.submit(
+                session_id="sess_capacity_overflow",
+                turn_id=1,
+                request=make_request("sess_capacity_overflow", 1),
+            )
         self.assertEqual(queue_error.exception.status_code, 429)
 
 

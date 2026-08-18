@@ -70,7 +70,7 @@ class JobManager:
                     status_code=409,
                     job_id=active_job.job_id,
                 )
-            if len(self._queue) >= settings.job_queue_max_pending and self._active_job_id:
+            if self._active_capacity_count_locked() >= 1 + settings.job_queue_max_pending:
                 raise JobError("Public generation queue is full.", status_code=429)
 
             job = JobRecord(
@@ -200,6 +200,9 @@ class JobManager:
             if job.session_id == session_id and job.status in {"queued", "processing", "rendering"}:
                 return job
         return None
+
+    def _active_capacity_count_locked(self) -> int:
+        return sum(1 for job in self._jobs.values() if job.status in {"queued", "processing", "rendering"})
 
     def _queue_position_locked(self, job_id: str) -> int | None:
         try:

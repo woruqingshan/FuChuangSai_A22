@@ -11,8 +11,13 @@ class RateLimitResult:
 class FixedWindowRateLimiter:
     def __init__(self) -> None:
         self._windows: dict[str, tuple[datetime, int]] = {}
+        self._allow_count = 0
+        self._cleanup_interval = 256
 
     def allow(self, key: str, *, limit: int, window_seconds: int) -> RateLimitResult:
+        self._allow_count += 1
+        if self._allow_count % self._cleanup_interval == 0:
+            self.cleanup()
         now = datetime.now(UTC)
         window_started_at, count = self._windows.get(key, (now, 0))
         elapsed = (now - window_started_at).total_seconds()
