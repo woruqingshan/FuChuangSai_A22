@@ -44,9 +44,10 @@ textarea {
 
 .home-link {
   display: inline-flex;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   color: #bfdbfe;
   font-size: 13px;
+  line-height: 1.2;
   text-decoration: none;
 }
 

@@ -83,8 +83,7 @@ app.innerHTML = `
   <div class="page-shell app-page-shell">
     <header class="topbar">
       <div>
-        <a class="home-link" href="/">← 返回首页</a>
-        <p class="eyebrow">知心伴行</p>
+        <a class="home-link" href="/">← 知心伴行</a>
         <h1>AI 情感陪护数字人</h1>
       </div>
       <div class="topbar-meta">
