@@ -137,3 +137,30 @@ class SessionBootstrapResponse(BaseModel):
     stream_id: str
     created_at: str
     next_turn_id: int
+
+
+class AccessStatusResponse(BaseModel):
+    authorized: bool
+
+
+class AccessVerifyRequest(BaseModel):
+    code: str = Field(..., min_length=1, max_length=128)
+
+
+class AccessVerifyResponse(BaseModel):
+    authorized: bool
+
+
+class ChatJobAcceptedResponse(BaseModel):
+    job_id: str
+    status: str
+    queue_position: int | None = None
+
+
+class JobStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    queue_position: int | None = None
+    chat_response_ready: bool = False
+    chat_response: ChatResponse | None = None
+    error: str | None = None

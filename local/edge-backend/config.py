@@ -1,4 +1,5 @@
 import os
+import json
 
 
 class Settings:
@@ -17,6 +18,28 @@ class Settings:
         self.session_ttl_seconds = max(60, int(os.getenv("SESSION_TTL_SECONDS", "86400")))
         self.session_cookie_secure = self._parse_bool(os.getenv("SESSION_COOKIE_SECURE", "true"))
         self.session_cookie_samesite = os.getenv("SESSION_COOKIE_SAMESITE", "lax").strip().lower() or "lax"
+        self.access_cookie_name = os.getenv("ACCESS_COOKIE_NAME", "a22_access").strip() or "a22_access"
+        self.access_ttl_seconds = max(60, int(os.getenv("ACCESS_TTL_SECONDS", "86400")))
+        self.invitation_codes = self._parse_invitation_codes(os.getenv("INVITATION_CODES_JSON", "[]"))
+        self.invitation_verify_rate_limit_count = max(1, int(os.getenv("INVITATION_VERIFY_RATE_LIMIT_COUNT", "10")))
+        self.invitation_verify_rate_limit_window_seconds = max(
+            60,
+            int(os.getenv("INVITATION_VERIFY_RATE_LIMIT_WINDOW_SECONDS", "600")),
+        )
+        self.chat_session_rate_limit_count = max(1, int(os.getenv("CHAT_SESSION_RATE_LIMIT_COUNT", "5")))
+        self.chat_session_rate_limit_window_seconds = max(
+            60,
+            int(os.getenv("CHAT_SESSION_RATE_LIMIT_WINDOW_SECONDS", "1800")),
+        )
+        self.chat_ip_rate_limit_count = max(1, int(os.getenv("CHAT_IP_RATE_LIMIT_COUNT", "15")))
+        self.chat_ip_rate_limit_window_seconds = max(
+            60,
+            int(os.getenv("CHAT_IP_RATE_LIMIT_WINDOW_SECONDS", "1800")),
+        )
+        self.job_queue_max_pending = max(0, int(os.getenv("JOB_QUEUE_MAX_PENDING", "3")))
+        self.job_render_timeout_seconds = max(30, int(os.getenv("JOB_RENDER_TIMEOUT_SECONDS", "1800")))
+        self.job_retention_seconds = max(60, int(os.getenv("JOB_RETENTION_SECONDS", "3600")))
+        self.job_manifest_poll_seconds = max(1.0, float(os.getenv("JOB_MANIFEST_POLL_SECONDS", "2")))
         self.log_dir = os.getenv("LOG_DIR", "/logs")
         self.data_dir = os.getenv("DATA_DIR", "/data")
         self.default_session_prefix = os.getenv("DEFAULT_SESSION_PREFIX", "local-session")
@@ -37,6 +60,16 @@ class Settings:
     @staticmethod
     def _parse_bool(raw_value: str | None) -> bool:
         return str(raw_value or "").strip().lower() not in {"0", "false", "no", "off"}
+
+    @staticmethod
+    def _parse_invitation_codes(raw_value: str | None) -> list[dict]:
+        try:
+            parsed = json.loads(raw_value or "[]")
+        except ValueError:
+            return []
+        if not isinstance(parsed, list):
+            return []
+        return [item for item in parsed if isinstance(item, dict) and isinstance(item.get("code"), str)]
 
 
 settings = Settings()
