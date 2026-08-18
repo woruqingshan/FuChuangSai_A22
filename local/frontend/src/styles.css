@@ -1812,6 +1812,46 @@ textarea {
   }
 }
 
+@media (min-width: 1181px) and (max-height: 820px) {
+  .page-shell {
+    padding: 12px;
+  }
+
+  .topbar {
+    margin-bottom: 12px;
+  }
+
+  .workspace-grid,
+  .left-column,
+  .right-column,
+  .left-top-stack {
+    gap: 12px;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .avatar-panel {
+    padding: 14px;
+  }
+
+  .avatar-profile-controls {
+    margin-bottom: 10px;
+    padding: 8px 10px;
+  }
+
+  .status-column:has(.status-panel[data-expanded="true"]) {
+    flex-basis: 180px;
+    max-height: 180px;
+  }
+
+  textarea {
+    min-height: 78px;
+    max-height: 96px;
+  }
+}
+
 @media (max-width: 720px) {
   body[data-page="app"] {
     height: auto;
