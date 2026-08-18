@@ -3,12 +3,32 @@
 #   docker compose -f compose.yaml -f compose.public.yaml up -d --build
 
 services:
+  edge-backend:
+    build:
+      context: .
+      dockerfile: local/edge-backend/Dockerfile.public
+    image: a22/edge-backend:latest
+    restart: unless-stopped
+    environment:
+      CLOUD_API_BASE: http://host.docker.internal:29000
+      REMOTE_TRANSPORT: http
+      STATUS_TIMEOUT_SECONDS: "2.5"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - a22_logs:/logs
+      - a22_data:/data
+    networks:
+      - a22-net
+
   public-web:
     build:
       context: ./local/frontend
       dockerfile: Dockerfile.public
     image: a22/public-web:latest
     restart: unless-stopped
+    depends_on:
+      - edge-backend
     ports:
       - "80:80"
       - "443:443"
