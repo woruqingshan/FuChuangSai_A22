@@ -101,7 +101,7 @@ function readDefaultPortraitUrl() {
     return envUrl;
   }
   // Keep the idle portrait aligned with avatar A's LiveAvatar reference image.
-  return "./avatar-portrait-idle.jpg?v=20260815-hands-resting";
+  return "/avatar-portrait-idle.jpg?v=20260815-hands-resting";
 }
 
 function readAvatarProfiles(defaultPortraitUrl) {
@@ -113,7 +113,7 @@ function readAvatarProfiles(defaultPortraitUrl) {
   const altProfileName = String(import.meta.env.VITE_AVATAR_PROFILE_ALT_NAME || "数字人 B").trim()
     || "数字人 B";
   const altPortraitUrl = String(
-    import.meta.env.VITE_AVATAR_PROFILE_ALT_PORTRAIT_URL || "./avatar-portrait-alt.jpg?v=20260815-casual",
+    import.meta.env.VITE_AVATAR_PROFILE_ALT_PORTRAIT_URL || "/avatar-portrait-alt.jpg?v=20260815-casual",
   ).trim();
 
   const profiles = [

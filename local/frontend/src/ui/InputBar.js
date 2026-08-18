@@ -254,7 +254,7 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
       await cameraRecorder.disable();
       setCameraPresentation(false);
       setCameraMeta("摄像头已关闭；已发送轮次不受影响，下一轮不会附带视频画面。");
-      onVideoStatusChange("Camera disabled");
+      onVideoStatusChange("摄像头未开启");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "摄像头采集失败。";
       setCameraPresentation(false);
@@ -291,7 +291,7 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
 
   setCameraPresentation(false);
   setCameraMeta("摄像头已关闭，本轮不会附带视频画面。");
-  onVideoStatusChange("Camera disabled");
+  onVideoStatusChange("摄像头未开启");
   syncControls();
 
   return {

@@ -4,24 +4,24 @@ export function createStatusBar() {
   element.innerHTML = `
     <div class="panel-heading">
       <div>
-        <p class="eyebrow">A · Status</p>
-        <h2>Edge / Remote Runtime</h2>
+        <p class="eyebrow">A · 状态</p>
+        <h2>服务与交互状态</h2>
       </div>
-      <span class="chip">Session-aware</span>
+      <span class="chip">会话隔离</span>
     </div>
     <div class="status-scroll-shell">
       <dl class="status-grid">
-        <div><dt>Session</dt><dd data-role="session-id"></dd></div>
-        <div><dt>Stream</dt><dd data-role="stream-id"></dd></div>
-        <div><dt>Next turn</dt><dd data-role="next-turn"></dd></div>
-        <div><dt>Transport</dt><dd data-role="transport"></dd></div>
-        <div><dt>Remote</dt><dd data-role="remote-status"></dd></div>
-        <div><dt>Input mode</dt><dd data-role="input-mode"></dd></div>
-        <div><dt>Emotion</dt><dd data-role="emotion-style"></dd></div>
-        <div><dt>Expression</dt><dd data-role="facial-expression"></dd></div>
-        <div><dt>Motion</dt><dd data-role="head-motion"></dd></div>
-        <div><dt>Audio</dt><dd data-role="audio-status"></dd></div>
-        <div><dt>Video</dt><dd data-role="video-status"></dd></div>
+        <div><dt>会话</dt><dd data-role="session-id"></dd></div>
+        <div><dt>通道</dt><dd data-role="stream-id"></dd></div>
+        <div><dt>轮次</dt><dd data-role="next-turn"></dd></div>
+        <div><dt>请求</dt><dd data-role="transport"></dd></div>
+        <div><dt>AI 服务</dt><dd data-role="remote-status"></dd></div>
+        <div><dt>输入方式</dt><dd data-role="input-mode"></dd></div>
+        <div><dt>情绪风格</dt><dd data-role="emotion-style"></dd></div>
+        <div><dt>表情</dt><dd data-role="facial-expression"></dd></div>
+        <div><dt>动作</dt><dd data-role="head-motion"></dd></div>
+        <div><dt>语音</dt><dd data-role="audio-status"></dd></div>
+        <div><dt>视觉</dt><dd data-role="video-status"></dd></div>
       </dl>
     </div>
   `;
