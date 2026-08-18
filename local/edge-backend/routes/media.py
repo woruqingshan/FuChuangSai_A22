@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
 
 from config import settings
+from services.session_service import SessionError, session_service
 
 router = APIRouter()
 
@@ -39,7 +40,8 @@ FORWARDED_RESPONSE_HEADERS = {
 
 
 @router.get("/media/video-stream/{session_id}/{turn_id}/manifest")
-async def proxy_video_manifest(session_id: str, turn_id: int) -> Response:
+async def proxy_video_manifest(request: Request, session_id: str, turn_id: int) -> Response:
+    _authorize_media_request(request, session_id)
     upstream_path = f"/media/video-stream/{session_id}/{turn_id}/manifest"
     timeout = httpx.Timeout(settings.media_connect_timeout_seconds, read=settings.media_manifest_timeout_seconds)
     try:
@@ -62,12 +64,14 @@ async def proxy_video_manifest(session_id: str, turn_id: int) -> Response:
 
 @router.api_route("/media/video-chunk/{session_id}/{turn_id}/{chunk_index}", methods=["GET", "HEAD"])
 async def proxy_video_chunk(request: Request, session_id: str, turn_id: int, chunk_index: int) -> Response:
+    _authorize_media_request(request, session_id)
     upstream_path = f"/media/video-chunk/{session_id}/{turn_id}/{chunk_index}"
     return await _stream_remote_media(request, upstream_path)
 
 
 @router.api_route("/media/video/{session_id}/{turn_id}", methods=["GET", "HEAD"])
 async def proxy_video(request: Request, session_id: str, turn_id: int) -> Response:
+    _authorize_media_request(request, session_id)
     upstream_path = f"/media/video/{session_id}/{turn_id}"
     return await _stream_remote_media(request, upstream_path)
 
@@ -221,3 +225,10 @@ def _filter_response_headers(headers) -> dict[str, str]:
         for key, value in headers.items()
         if key.lower() in FORWARDED_RESPONSE_HEADERS and key.lower() not in HOP_BY_HOP_HEADERS
     }
+
+
+def _authorize_media_request(request: Request, session_id: str) -> None:
+    try:
+        session_service.authorize_media_session(request.cookies.get(settings.session_cookie_name), session_id)
+    except SessionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc

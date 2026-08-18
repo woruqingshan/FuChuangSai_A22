@@ -39,6 +39,12 @@ async function resolveStreamFirstChunkUrl(streamManifestUrl) {
       cache: "no-store",
     }).catch(() => null);
     if (!manifestResponse || !manifestResponse.ok) {
+      if (manifestResponse?.status === 401) {
+        throw new Error("会话已失效，请重新开始");
+      }
+      if (manifestResponse?.status === 403) {
+        throw new Error("当前媒体不属于此会话");
+      }
       await waitFor(pollIntervalMs);
       continue;
     }
