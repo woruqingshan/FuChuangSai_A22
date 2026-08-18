@@ -173,10 +173,23 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
         <strong>知心伴行</strong>
         <span>AI 情感陪护虚拟数字人系统</span>
       </footer>
+
+      <div class="service-modal-backdrop" data-role="service-modal" hidden>
+        <section class="service-modal" role="dialog" aria-modal="true" aria-labelledby="service-modal-title">
+          <p class="eyebrow">AI Service Status</p>
+          <h2 id="service-modal-title">AI 服务暂未启动</h2>
+          <p>当前数字人推理服务还没有连接，请稍后再试。</p>
+          <div class="service-modal-actions">
+            <button type="button" class="secondary-button" data-role="service-modal-close">我知道了</button>
+            <button type="button" class="primary-button landing-button" data-role="service-modal-retry">重新检查</button>
+          </div>
+        </section>
+      </div>
     </div>
   `;
 
   initHeroCarousel(root);
+  initExperienceGate(root);
 }
 
 function initHeroCarousel(root) {
@@ -233,6 +246,146 @@ function initHeroCarousel(root) {
   carousel.addEventListener("mouseleave", startAutoPlay);
   showSlide(0);
   startAutoPlay();
+}
+
+function initExperienceGate(root) {
+  const appLinks = Array.from(root.querySelectorAll('a[href="/app"]'));
+  const modal = root.querySelector('[data-role="service-modal"]');
+  const closeButton = root.querySelector('[data-role="service-modal-close"]');
+  const retryButton = root.querySelector('[data-role="service-modal-retry"]');
+  let targetHref = "/app";
+  let checking = false;
+
+  async function attemptEntry(sourceElement) {
+    if (checking) {
+      return;
+    }
+    checking = true;
+    sourceElement?.classList.add("is-checking");
+    sourceElement?.setAttribute("aria-busy", "true");
+    retryButton?.classList.add("is-checking");
+    retryButton?.setAttribute("aria-busy", "true");
+
+    const available = await checkAiServiceAvailable();
+
+    sourceElement?.classList.remove("is-checking");
+    sourceElement?.removeAttribute("aria-busy");
+    retryButton?.classList.remove("is-checking");
+    retryButton?.removeAttribute("aria-busy");
+    checking = false;
+
+    if (available) {
+      window.location.assign(targetHref);
+      return;
+    }
+    showServiceModal(modal, closeButton);
+  }
+
+  appLinks.forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      targetHref = link.getAttribute("href") || "/app";
+      attemptEntry(link);
+    });
+  });
+
+  closeButton?.addEventListener("click", () => hideServiceModal(modal));
+  modal?.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      hideServiceModal(modal);
+    }
+  });
+  retryButton?.addEventListener("click", () => attemptEntry(retryButton));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && modal && !modal.hidden) {
+      hideServiceModal(modal);
+    }
+  });
+}
+
+async function checkAiServiceAvailable() {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 3500);
+  try {
+    const response = await fetch("/api/status", {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return false;
+    }
+    const payload = await readJsonSafely(response);
+    return isAiServiceReady(payload);
+  } catch {
+    return false;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+async function readJsonSafely(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    return {};
+  }
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
+function isAiServiceReady(payload) {
+  if (!payload || typeof payload !== "object") {
+    return true;
+  }
+
+  const booleanSignals = [
+    payload.ai_available,
+    payload.available,
+    payload.ready,
+    payload.ok,
+  ];
+  if (booleanSignals.some((value) => value === false)) {
+    return false;
+  }
+  if (booleanSignals.some((value) => value === true)) {
+    return true;
+  }
+
+  const statusText = [
+    payload.ai,
+    payload.status,
+    payload.ai_status,
+    payload.gateway,
+    payload.orchestrator,
+  ]
+    .filter((value) => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+
+  if (/unavailable|offline|down|disconnected|failed|not connected/.test(statusText)) {
+    return false;
+  }
+  if (/available|online|ready|healthy|connected|ok/.test(statusText)) {
+    return true;
+  }
+  return true;
+}
+
+function showServiceModal(modal, closeButton) {
+  if (!modal) {
+    return;
+  }
+  modal.hidden = false;
+  window.setTimeout(() => closeButton?.focus(), 0);
+}
+
+function hideServiceModal(modal) {
+  if (modal) {
+    modal.hidden = true;
+  }
 }
 
 function escapeHtml(value) {
