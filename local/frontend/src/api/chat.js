@@ -13,6 +13,7 @@ function resolveChatEndpoint() {
 export async function sendChatRequest(payload) {
   const response = await fetch(resolveChatEndpoint(), {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
@@ -22,7 +23,9 @@ export async function sendChatRequest(payload) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const detail = data.detail || `The server returned HTTP ${response.status}.`;
-    throw new Error(detail);
+    const error = new Error(detail);
+    error.status = response.status;
+    throw error;
   }
 
   return data;

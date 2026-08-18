@@ -1,12 +1,10 @@
 import { sendChatRequest } from "../api/chat";
+import { bootstrapServerSession } from "../api/session";
 import { createAvatarPanel } from "../ui/AvatarPanel";
 import { createChatPanel } from "../ui/ChatPanel";
 import { formatAssistantMeta, formatMessageMeta } from "../ui/displayText";
 import { createInputBar } from "../ui/InputBar";
 import { createStatusBar } from "../ui/StatusBar";
-
-const DEFAULT_AVATAR_SESSION_ID = "demo_s1";
-const DEFAULT_AVATAR_STREAM_ID = "demo_stream_1";
 
 export function bootstrapCompanionApp({ root = document.getElementById("app") } = {}) {
 const app = root;
@@ -14,32 +12,12 @@ if (!app) {
   return;
 }
 
-const configuredSessionId = (import.meta.env.VITE_AVATAR_SESSION_ID || "").trim();
-const configuredStreamId = (import.meta.env.VITE_AVATAR_STREAM_ID || "").trim();
-
-function resolveTabSessionId(baseSessionId) {
-  if (import.meta.env.VITE_UNIQUE_SESSION_PER_TAB !== "true") {
-    return baseSessionId;
-  }
-  const storageKey = "a22.avatar.tab_session_suffix";
-  try {
-    let suffix = sessionStorage.getItem(storageKey);
-    if (!suffix) {
-      suffix = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
-      sessionStorage.setItem(storageKey, suffix);
-    }
-    return `${baseSessionId}-${suffix}`;
-  } catch {
-    return `${baseSessionId}-${Date.now().toString(36)}`;
-  }
-}
-
 const state = {
-  sessionId: resolveTabSessionId(configuredSessionId || DEFAULT_AVATAR_SESSION_ID),
-  streamId: configuredStreamId || DEFAULT_AVATAR_STREAM_ID,
+  sessionId: "会话初始化中",
+  streamId: "等待服务端分配",
   nextTurnId: 1,
-  transport: "等待首次对话",
-  remoteStatus: "AI 服务等待连接",
+  transport: "正在初始化会话",
+  remoteStatus: "正在建立匿名会话",
   inputMode: "text",
   emotionStyle: "supportive",
   facialExpression: "neutral",
@@ -47,6 +25,7 @@ const state = {
   audioStatus: "语音待输入",
   videoStatus: "摄像头未开启",
   isSending: false,
+  isSessionReady: false,
   cameraEnabled: false,
   avatarProfileId: "avatar_a",
 };
@@ -110,13 +89,16 @@ app.querySelector(".control-column").append(inputBar.controlsElement);
 app.querySelector(".avatar-column").appendChild(avatarPanel.element);
 app.querySelector(".status-column").appendChild(statusBar.element);
 
-chatPanel.addSystemMessage("知心伴行已准备好。请输入文字，或点击语音按钮开始对话。");
+inputBar.setBusy(true);
+chatPanel.addSystemMessage("正在初始化匿名会话，请稍候。");
 syncStatus({
-  remoteStatus: "AI 服务等待连接",
+  transport: "正在初始化会话",
+  remoteStatus: "正在建立匿名会话",
   audioStatus: "语音待输入",
   videoStatus: "摄像头未开启",
 });
 syncLayout();
+void initializeSession();
 
 function buildTextTurnTimeWindow(turnId) {
   const now = Date.now();
@@ -133,6 +115,11 @@ function buildTextTurnTimeWindow(turnId) {
 }
 
 async function handleSend({ text, audio, video }) {
+  if (!state.isSessionReady) {
+    chatPanel.addSystemMessage("会话尚未初始化完成，请稍后再试。");
+    return false;
+  }
+
   if (state.isSending) {
     chatPanel.addSystemMessage("上一轮还在处理中，请稍等。");
     return false;
@@ -245,7 +232,14 @@ async function handleSend({ text, audio, video }) {
     return true;
   } catch (error) {
     const detail = error instanceof Error ? error.message : "未知请求错误";
-    chatPanel.addSystemMessage(`请求失败：${detail}`);
+    if (error?.status === 401) {
+      state.isSessionReady = false;
+      inputBar.setBusy(true);
+      chatPanel.addSystemMessage("当前会话已失效，正在为你创建新会话。请重新发送上一条消息。");
+      await initializeSession({ showReadyMessage: false });
+    } else {
+      chatPanel.addSystemMessage(`请求失败：${detail}`);
+    }
     syncStatus({
       transport: "请求失败",
       remoteStatus: "AI 服务暂不可用，请稍后再试",
@@ -255,8 +249,35 @@ async function handleSend({ text, audio, video }) {
     return false;
   } finally {
     state.isSending = false;
-    inputBar.setBusy(false);
+    inputBar.setBusy(!state.isSessionReady);
     chatPanel.setLoading(false);
+  }
+}
+
+async function initializeSession({ showReadyMessage = true } = {}) {
+  try {
+    const session = await bootstrapServerSession();
+    state.sessionId = session.session_id || state.sessionId;
+    state.streamId = session.stream_id || state.streamId;
+    state.nextTurnId = Number(session.next_turn_id || 1);
+    state.isSessionReady = true;
+    syncStatus({
+      transport: "等待首次对话",
+      remoteStatus: "匿名会话已就绪",
+    });
+    if (showReadyMessage) {
+      chatPanel.addSystemMessage("知心伴行已准备好。请输入文字，或点击语音按钮开始对话。");
+    }
+  } catch (error) {
+    state.isSessionReady = false;
+    const detail = error instanceof Error ? error.message : "未知错误";
+    chatPanel.addSystemMessage(`会话初始化失败：${detail}。请刷新后重试。`);
+    syncStatus({
+      transport: "会话初始化失败",
+      remoteStatus: "会话服务暂不可用",
+    });
+  } finally {
+    inputBar.setBusy(state.isSending || !state.isSessionReady);
   }
 }
 
