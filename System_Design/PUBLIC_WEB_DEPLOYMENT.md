@@ -1,9 +1,9 @@
 # Public Web Deployment
 
 This runbook deploys the public CPU-server website for Zhixin Banxing.
-It covers the public web layer, AI status gateway, public chat gateway, and
-avatar media proxy. Formal sessions, authorization, jobs, queueing, and rate
-limits are handled in later phases.
+It covers the public web layer, AI status gateway, public chat gateway, avatar
+media proxy, anonymous sessions, invitation access, queueing, and Phase 9
+account persistence.
 
 ## Architecture
 
@@ -13,8 +13,10 @@ Internet
   -> CPU server ports 80/443
   -> Caddy
   -> frontend dist files
-  -> /api/status, /api/chat, /media/*
+  -> /api/status, /api/session, /api/access/*, /api/auth/*, /api/chat, /api/jobs/*, /media/*
   -> edge-backend service
+  -> Redis on CPU loopback for short-lived state
+  -> PostgreSQL on CPU loopback for users/accounts/invitations
   -> CPU host 127.0.0.1:29000 SSH tunnel
   -> GPU host 127.0.0.1:19000 orchestrator
 ```
@@ -24,9 +26,18 @@ The public stack explicitly opens only `/api/status`, `/api/chat`, and the
 fixed avatar media routes. Other `/api/*` routes intentionally return HTTP
 503 JSON so API requests are never served as `index.html`.
 
-The Phase 5 Docker services use host networking so the edge backend can reach
+The Docker services use host networking so the edge backend can reach
 the host-only SSH tunnel at `127.0.0.1:29000`. The edge backend binds only
 `127.0.0.1:18080`; it must not listen on a public interface.
+
+Redis and PostgreSQL are bound only to CPU loopback:
+
+```text
+127.0.0.1:6379
+127.0.0.1:5432
+```
+
+They are not routed through Caddy and must not be exposed publicly.
 
 ## GPU Tunnel
 
@@ -65,6 +76,15 @@ Build and start the public web stack:
 docker compose -f compose.yaml -f compose.public.yaml up -d --build
 ```
 
+The edge backend runs database migrations before starting:
+
+```text
+alembic upgrade head
+```
+
+Do not drop or recreate PostgreSQL tables during normal deploys. Redis and
+PostgreSQL use persistent Docker volumes.
+
 Check status:
 
 ```bash
@@ -101,6 +121,7 @@ curl -I https://zhixinbanxing.com/app
 curl -i https://zhixinbanxing.com/healthz
 curl -i https://zhixinbanxing.com/api/status
 curl -i -c /tmp/a22.cookies -b /tmp/a22.cookies -X POST https://zhixinbanxing.com/api/session
+curl -i -c /tmp/a22.cookies -b /tmp/a22.cookies https://zhixinbanxing.com/api/auth/me
 curl -i https://zhixinbanxing.com/api/chat
 curl -i https://zhixinbanxing.com/media/video-stream/example/1/manifest
 ```
@@ -122,6 +143,15 @@ Expected:
   invitation access.
 - `/api/access/verify` validates a runtime-configured invitation code and sets
   an HttpOnly `a22_access` cookie.
+- `/api/auth/register` creates a User and Account, stores an Argon2id password
+  hash, sets an HttpOnly `a22_auth` cookie, and binds the current Session to
+  the new User. Registration requires invitation access in the current demo.
+- `/api/auth/login` verifies username/password, sets `a22_auth`, and binds the
+  current Session to the User without changing `session_id`.
+- `/api/auth/logout` clears `a22_auth` and leaves the technical anonymous
+  Session in place.
+- `/api/auth/me` returns public account status without exposing tokens or
+  password hashes.
 - `/api/chat` requires a valid anonymous session cookie plus invitation access,
   then returns HTTP 202 with a Job id.
 - `/api/jobs/{job_id}` is session-owned and returns queue / generation status.
@@ -141,6 +171,53 @@ curl -sS http://127.0.0.1:29000/health
 
 The `29000` listener must be `127.0.0.1` only.
 The edge backend `18080` listener must also be `127.0.0.1` only.
+Redis `6379` and PostgreSQL `5432` must also be `127.0.0.1` only.
+
+## Phase 9 Persistence
+
+Phase 9 introduces Redis and PostgreSQL as required runtime dependencies.
+There is no silent fallback to Python in-memory state if either storage service
+is unavailable.
+
+Redis stores short-lived state:
+
+- `a22_session` session records by token digest.
+- `a22_access` invitation access grants by token digest.
+- `a22_auth` auth sessions by token digest.
+- rate-limit windows.
+- Job state and queue state.
+
+PostgreSQL stores durable product records:
+
+- `users`
+- `accounts`
+- `invitation_codes`
+
+Invitation codes are stored by deterministic fingerprint only. Real code values
+stay in the local server environment and are not committed.
+
+Cookie responsibilities:
+
+- `a22_session`: current technical browser Session.
+- `a22_access`: permission to use expensive GPU generation.
+- `a22_auth`: registered account authentication.
+
+Registered account login does not automatically grant GPU access. Invitation
+access remains separate.
+
+Edge restart recovery:
+
+- Redis Session / Access / Auth survives.
+- Queued Jobs survive and can continue.
+- Rendering Jobs with saved chat response resume manifest monitoring.
+- Processing Jobs are failed conservatively as
+  `edge_restarted_during_processing` to avoid duplicate GPU generation.
+
+Limit:
+
+GPU Orchestrator recent conversation history is still GPU process memory.
+Phase 9 persists CPU edge state and accounts; it does not persist GPU-side
+conversation history or implement long-term UserProfile memory.
 
 ## Phase 7 Session Model
 
@@ -191,22 +268,22 @@ Media routes are session-bound:
 This applies to manifests, video chunks, full video, `HEAD`, and `Range`
 requests.
 
-## Phase 7 Limits
+## Phase 7 / 8 Historical Limits
 
-Sessions are stored in a single-process in-memory registry with inactivity TTL
-cleanup. Keep the edge backend as one process / one worker. If the edge backend
-restarts, anonymous sessions reset; the next `/api/session` call creates a new
-server session and replaces the cookie. Redis-backed persistence and multi-worker
-session sharing are future work.
+Phase 7 originally used a single-process in-memory SessionRegistry. Phase 8
+originally added an in-memory invitation gate, one-active-job-per-session,
+bounded queue, queue position, and rate limit. Those CPU-edge states are moved
+to Redis in Phase 9.
 
-Phase 7 does not provide one-active-job-per-session enforcement, global bounded
-queueing, queue position, access code, Redis-backed persistence, or rate
-limiting.
+Production still runs one Uvicorn worker in Phase 9. Redis provides the
+foundation for future multi-worker operation, but the service should not be
+scaled to multiple workers without a follow-up concurrency review.
 
 ## Phase 8 Access And Capacity Gate
 
-Phase 8 adds an in-memory invitation gate and bounded public GPU queue on the
-CPU edge backend.
+Phase 8 adds an invitation gate and bounded public GPU queue on the CPU edge
+backend. After Phase 9, Access Grants, Jobs, Queue, and Rate Limit state are
+Redis-backed, while invitation `used_count` is PostgreSQL-backed.
 
 Runtime-only secret configuration:
 
@@ -252,8 +329,9 @@ JOB_RETENTION_SECONDS=3600
 JOB_MANIFEST_POLL_SECONDS=2
 ```
 
-Phase 8 remains single-process and in-memory. Edge restart clears Access, Job,
-Queue, Rate Limit, and invitation used-count state.
+Phase 9 keeps the same public Job contract but persists the CPU edge state.
+Edge restart no longer clears Session, Access, Auth, Rate Limit, queued Jobs, or
+invitation used-count state.
 
 ## Logs
 

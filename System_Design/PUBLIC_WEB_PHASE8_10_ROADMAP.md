@@ -1,8 +1,7 @@
 # Public Web Phase 8-10 Roadmap
 
 This document fixes the product-domain boundaries after Phase 7 session
-isolation. It is intentionally a design foundation, not an implementation
-commitment for Phase 7.5.
+isolation and tracks the implemented public-web roadmap through Phase 9.
 
 ## Current State After Phase 7
 
@@ -17,19 +16,24 @@ Current capabilities:
 - Missing cookie: HTTP 401.
 - Cross-session media: HTTP 403.
 
+Implemented after Phase 8 / 9:
+
+- Capacity Queue: yes, Redis-backed after Phase 9.
+- One active generation per session: yes, Redis-backed after Phase 9.
+- Rate limit: yes, Redis-backed after Phase 9.
+- Redis persistence for short-lived state: yes.
+- PostgreSQL persistence for users, accounts, and invitation metadata: yes.
+- User Account: yes, username/password first version.
+- Persistent User: yes, as a database entity.
+
 Not implemented yet:
 
-- User Account: no.
-- Persistent User: no.
 - Long-term UserProfile: no.
-- Capacity Queue: no.
-- One active generation per session: no.
-- Rate limit: no.
-- Redis / database persistence: no.
 
 The current public prototype should be described as a server-side anonymous
-session isolated AI web prototype. It should not be described as a registered
-multi-user product with persistent user memory.
+session isolated AI web prototype with optional registered accounts and
+persistent edge state. It should not be described as a product with persistent
+long-term user memory.
 
 ## Domain Definitions
 
@@ -50,7 +54,7 @@ Current binding:
 
 ```text
 HttpOnly a22_session cookie
-  -> CPU SessionRegistry
+  -> Redis Session record
   -> internal session_id / stream_id
 ```
 
@@ -76,14 +80,14 @@ User 1
   -> Session C
 ```
 
-Anonymous sessions currently have `user_id = null`. After account support is
-added, registered sessions can be associated with a concrete User.
+Anonymous sessions currently have `user_id = null`. Registered sessions can be
+associated with a concrete User without changing the current `session_id`.
 
 ### Account
 
 An Account is the authentication credential entity for a User.
 
-Future responsibilities:
+Current responsibilities:
 
 - username
 - password hash
@@ -199,7 +203,8 @@ created_at
 last_seen_at
 ```
 
-In the current anonymous-only system, `user_id = null`.
+For anonymous sessions, `user_id = null`. After registration or login, the
+current technical Session can bind to a concrete `user_id`.
 
 ## Phase 8: Access & Capacity Protection
 
@@ -245,6 +250,10 @@ Cookies stay separate:
 - Access cookie: `a22_access`
 
 Do not store the invitation code itself in browser localStorage.
+
+After Phase 9, invitation `used_count` and metadata are persisted in
+PostgreSQL by deterministic code fingerprint. The real invitation code remains
+runtime-only configuration and is not stored in Git or database plaintext.
 
 Invitation model:
 
@@ -442,7 +451,7 @@ Caddy overwrites `X-A22-Client-IP` before forwarding API requests to Edge, and
 the Edge rate limiter uses that trusted header with `request.client.host` as a
 fallback.
 
-Phase 8 in-memory state:
+Phase 8 originally introduced these in-memory state groups:
 
 - invitation `used_count`
 - access grants
@@ -450,7 +459,7 @@ Phase 8 in-memory state:
 - Jobs
 - queue
 
-Known Phase 8 limits:
+Known Phase 8 limits before Phase 9:
 
 - Edge restart invalidates access grants.
 - Edge restart loses Job / Queue state.
@@ -459,9 +468,8 @@ Known Phase 8 limits:
 - Multiple Uvicorn workers are not supported.
 - Multiple Edge instances are not supported.
 
-Phase 9 must move Session / Access / Job / Queue / Rate Limit state to Redis
-and long-term business records to PostgreSQL or an explicitly approved
-alternative.
+Phase 9 moves Session / Access / Job / Queue / Rate Limit state to Redis and
+long-term business records to PostgreSQL.
 
 ## Phase 9: Persistence + Account / Password
 
@@ -473,7 +481,7 @@ What survives an Edge restart?
 How can anonymous usage become long-term usage?
 ```
 
-Recommended storage:
+Implemented storage:
 
 - Redis
 - PostgreSQL
@@ -485,14 +493,14 @@ Redis responsibilities:
 - Queue
 - Rate limit
 - short-lived access state
+- auth sessions
 
 PostgreSQL responsibilities:
 
 - User
 - Account
 - Invitation records
-- UserProfile metadata
-- long-term business data
+- long-term business records foundation
 
 Do not put all long-term business data in Redis merely for convenience.
 
@@ -517,7 +525,7 @@ Account
 
 ### Auth API
 
-Phase 9 should plan at least:
+Phase 9 implements:
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
@@ -525,7 +533,16 @@ Phase 9 should plan at least:
 - `GET /api/auth/me`
 
 Username and password are enough for the first version. OAuth, SMS codes, and
-third-party login should not be included unless explicitly approved later.
+third-party login are not included in Phase 9.
+
+Cookies stay separate:
+
+- `a22_session`: technical browser Session.
+- `a22_access`: invitation-based GPU access.
+- `a22_auth`: registered account authentication.
+
+Registered User does not automatically imply GPU access. `a22_access` remains
+the authority for expensive GPU usage.
 
 ### Password Storage
 
@@ -558,9 +575,18 @@ rename `session_id` to `user_id`.
 
 ### Persistence
 
-Phase 7 uses an in-memory SessionRegistry. Phase 9 moves Session / Job / Queue
-state to Redis so Edge restart recovery and future multi-worker deployments can
-work.
+Phase 9 moves Session / Access / Auth / Job / Queue / Rate Limit state to Redis
+so Edge restart recovery and future multi-worker deployments can work. The CPU
+edge can recover queued Jobs. A Job that was `processing` during an Edge crash
+is failed conservatively to avoid duplicate GPU generation. A Job that was
+already `rendering` with a saved `chat_response` resumes manifest monitoring
+without resending `/chat` to the GPU.
+
+Important remaining limit:
+
+GPU Orchestrator recent conversation history is still process memory on the GPU
+side. Phase 9 persists CPU edge state; it does not persist GPU in-process
+conversation history or implement long-term UserProfile memory.
 
 Phase 9 completion state:
 
