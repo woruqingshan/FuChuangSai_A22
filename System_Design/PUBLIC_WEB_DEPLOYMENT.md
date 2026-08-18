@@ -23,6 +23,10 @@ The frontend uses same-origin `/api/...` URLs in production. Phase 5 only
 opens `/api/status`. Other `/api/*` routes intentionally return HTTP 503 JSON
 so API requests are never served as `index.html`.
 
+The Phase 5 Docker services use host networking so the edge backend can reach
+the host-only SSH tunnel at `127.0.0.1:29000`. The edge backend binds only
+`127.0.0.1:18080`; it must not listen on a public interface.
+
 ## GPU Tunnel
 
 Create a host-level SSH tunnel with a private key that is stored outside Git.
@@ -83,8 +87,8 @@ docker compose -f compose.yaml -f compose.public.yaml ps
 docker compose -f compose.yaml -f compose.public.yaml down
 ```
 
-This stops the public web container. It keeps Caddy volumes unless explicitly
-removed.
+This stops the public web and edge backend containers. It keeps Caddy volumes
+unless explicitly removed.
 
 ## Health Checks
 
@@ -119,6 +123,7 @@ curl -sS http://127.0.0.1:29000/health
 ```
 
 The `29000` listener must be `127.0.0.1` only.
+The edge backend `18080` listener must also be `127.0.0.1` only.
 
 ## Logs
 

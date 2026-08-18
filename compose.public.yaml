@@ -10,16 +10,14 @@ services:
     image: a22/edge-backend:latest
     restart: unless-stopped
     environment:
-      CLOUD_API_BASE: http://host.docker.internal:29000
+      CLOUD_API_BASE: http://127.0.0.1:29000
       REMOTE_TRANSPORT: http
       STATUS_TIMEOUT_SECONDS: "2.5"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    command: ["uvicorn", "app:app", "--host", "127.0.0.1", "--port", "18080"]
     volumes:
       - a22_logs:/logs
       - a22_data:/data
-    networks:
-      - a22-net
+    network_mode: host
 
   public-web:
     build:
@@ -29,15 +27,11 @@ services:
     restart: unless-stopped
     depends_on:
       - edge-backend
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
       - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-    networks:
-      - a22-net
+    network_mode: host
 
 volumes:
   caddy_data:
