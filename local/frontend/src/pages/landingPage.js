@@ -74,15 +74,15 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
       <main>
         <section class="landing-hero">
           <div class="hero-copy">
-            <p class="eyebrow hero-reveal hero-reveal-1">AI 情感陪护虚拟数字人系统</p>
-            <h1 class="hero-reveal hero-reveal-2">知心伴行</h1>
-            <p class="hero-lede hero-reveal hero-reveal-3">让陪伴更有温度、更专业、更持续，为老年情感陪护场景提供可体验的 AI 数字人原型。</p>
-            <div class="hero-actions hero-reveal hero-reveal-4">
+            <p class="eyebrow">AI 情感陪护虚拟数字人系统</p>
+            <h1>知心伴行</h1>
+            <p class="hero-lede">让陪伴更有温度、更专业、更持续，为老年情感陪护场景提供可体验的 AI 数字人原型。</p>
+            <div class="hero-actions">
               <a class="primary-button landing-button" href="/app">开始体验</a>
               <a class="text-link-button" href="#features">查看产品特点</a>
             </div>
           </div>
-          <div class="hero-product hero-reveal hero-reveal-5" aria-label="知心伴行产品预览">
+          <div class="hero-product" aria-label="知心伴行产品预览">
             <div class="preview-window">
               <div class="preview-toolbar">
                 <span></span>
