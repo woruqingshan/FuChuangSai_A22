@@ -269,7 +269,7 @@ textarea {
 
 .avatar-profile-controls {
   margin-bottom: 14px;
-  padding: 12px;
+  padding: 10px 12px;
   border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(30, 41, 59, 0.5);
@@ -286,8 +286,12 @@ textarea {
 .avatar-profile-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
+}
+
+.avatar-profile-copy {
+  min-width: 0;
 }
 
 .avatar-profile-name {
@@ -298,8 +302,18 @@ textarea {
   letter-spacing: 0.02em;
 }
 
+.avatar-profile-meta {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .avatar-profile-button {
-  min-height: 36px;
+  min-height: 34px;
   padding: 0 12px;
   border-radius: 10px;
 }

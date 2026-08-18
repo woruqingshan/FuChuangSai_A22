@@ -138,12 +138,11 @@ export function createAvatarPanel({ onProfileChange } = {}) {
   }
   element.innerHTML = `
     <div class="avatar-profile-controls">
-      <div class="avatar-profile-heading">
-        <p class="eyebrow">数字人形象</p>
-        <span class="chip" data-role="avatar-profile-chip">待选择</span>
-      </div>
       <div class="avatar-profile-row">
-        <p class="avatar-profile-name" data-role="avatar-profile-name">-</p>
+        <div class="avatar-profile-copy">
+          <p class="avatar-profile-name" data-role="avatar-profile-name">-</p>
+          <p class="avatar-profile-meta" data-role="avatar-profile-chip">温和陪护形象</p>
+        </div>
         <button type="button" class="secondary-button avatar-profile-button" data-role="avatar-profile-toggle">
           切换形象
         </button>
@@ -242,7 +241,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     if (!profile) {
       return;
     }
-    profileChip.textContent = profile.id;
+    profileChip.textContent = profile.name.includes("B") ? "生活化陪伴形象" : "温和陪护形象";
     profileName.textContent = profile.name;
     profileToggleButton.disabled = avatarProfiles.length <= 1;
   }
