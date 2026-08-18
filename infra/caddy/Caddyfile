@@ -14,9 +14,26 @@ zhixinbanxing.com {
 		reverse_proxy 127.0.0.1:18080
 	}
 
+	handle /api/chat {
+		uri strip_prefix /api
+		reverse_proxy 127.0.0.1:18080
+	}
+
 	handle /api/* {
 		header Content-Type application/json
 		respond `{"detail":"AI service gateway is not connected yet"}` 503
+	}
+
+	handle /media/video-stream/* {
+		reverse_proxy 127.0.0.1:18080
+	}
+
+	handle /media/video-chunk/* {
+		reverse_proxy 127.0.0.1:18080
+	}
+
+	handle /media/video/* {
+		reverse_proxy 127.0.0.1:18080
 	}
 
 	handle {

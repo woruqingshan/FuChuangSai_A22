@@ -12,7 +12,11 @@ services:
     environment:
       CLOUD_API_BASE: http://127.0.0.1:29000
       REMOTE_TRANSPORT: http
+      REMOTE_TIMEOUT_SECONDS: "120"
       STATUS_TIMEOUT_SECONDS: "2.5"
+      MEDIA_CONNECT_TIMEOUT_SECONDS: "5"
+      MEDIA_MANIFEST_TIMEOUT_SECONDS: "5"
+      MEDIA_READ_TIMEOUT_SECONDS: "300"
     command: ["uvicorn", "app:app", "--host", "127.0.0.1", "--port", "18080"]
     volumes:
       - a22_logs:/logs
