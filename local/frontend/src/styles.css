@@ -357,9 +357,10 @@ textarea {
 
 .avatar-portrait-shell {
   position: relative;
-  width: min(100%, 460px);
-  height: auto;
-  max-height: 100%;
+  width: auto;
+  height: 100%;
+  max-width: 92%;
+  max-height: 720px;
   min-height: 0;
   aspect-ratio: 3 / 4;
   border-radius: 32px;
