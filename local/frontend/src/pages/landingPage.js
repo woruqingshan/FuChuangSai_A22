@@ -28,6 +28,27 @@ const SCENARIO_ITEMS = [
   },
 ];
 
+const CAROUSEL_SLIDES = [
+  {
+    title: "数字人 A",
+    subtitle: "温和、稳定的陪护表达",
+    image: "/avatar-portrait-idle.jpg",
+    alt: "知心伴行数字人 A 预览",
+  },
+  {
+    title: "数字人 B",
+    subtitle: "更生活化的陪伴形象",
+    image: "/avatar-portrait-alt.jpg",
+    alt: "知心伴行数字人 B 预览",
+  },
+  {
+    title: "更多形象持续开发中",
+    subtitle: "More avatars coming soon",
+    image: "",
+    alt: "",
+  },
+];
+
 export function renderLandingPage({ root = document.getElementById("app"), notFoundPath = "" } = {}) {
   if (!root) {
     return;
@@ -37,8 +58,8 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
     <div class="landing-shell">
       <header class="landing-nav">
         <a class="brand-mark" href="/" aria-label="知心伴行首页">
-          <span class="brand-symbol">心</span>
-          <span>知心伴行</span>
+          <span class="brand-symbol" aria-hidden="true">知</span>
+          <span class="brand-wordmark">知心伴行</span>
         </a>
         <nav class="landing-nav-links" aria-label="首页导航">
           <a href="#features">产品特点</a>
@@ -53,15 +74,15 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
       <main>
         <section class="landing-hero">
           <div class="hero-copy">
-            <p class="eyebrow">AI 情感陪护虚拟数字人系统</p>
-            <h1>知心伴行</h1>
-            <p class="hero-lede">让陪伴更有温度、更专业、更持续，为老年情感陪护场景提供可体验的 AI 数字人原型。</p>
-            <div class="hero-actions">
+            <p class="eyebrow hero-reveal hero-reveal-1">AI 情感陪护虚拟数字人系统</p>
+            <h1 class="hero-reveal hero-reveal-2">知心伴行</h1>
+            <p class="hero-lede hero-reveal hero-reveal-3">让陪伴更有温度、更专业、更持续，为老年情感陪护场景提供可体验的 AI 数字人原型。</p>
+            <div class="hero-actions hero-reveal hero-reveal-4">
               <a class="primary-button landing-button" href="/app">开始体验</a>
-              <a class="secondary-button landing-button" href="#features">查看产品特点</a>
+              <a class="text-link-button" href="#features">查看产品特点</a>
             </div>
           </div>
-          <div class="hero-product" aria-label="知心伴行产品预览">
+          <div class="hero-product hero-reveal hero-reveal-5" aria-label="知心伴行产品预览">
             <div class="preview-window">
               <div class="preview-toolbar">
                 <span></span>
@@ -69,8 +90,29 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
                 <span></span>
               </div>
               <div class="preview-content">
-                <div class="preview-avatar">
-                  <img src="/avatar-portrait-idle.jpg" alt="知心伴行数字人预览" />
+                <div class="avatar-carousel" data-role="avatar-carousel">
+                  <div class="carousel-track" data-role="carousel-track">
+                    ${CAROUSEL_SLIDES.map((slide, index) => `
+                      <article class="carousel-slide${index === 0 ? " is-active" : ""}" data-slide-index="${index}">
+                        ${slide.image
+                          ? `<img src="${slide.image}" alt="${slide.alt}" />`
+                          : `<div class="carousel-placeholder" aria-hidden="true">
+                              <span>+</span>
+                            </div>`}
+                        <div class="carousel-caption">
+                          <strong>${slide.title}</strong>
+                          <span>${slide.subtitle}</span>
+                        </div>
+                      </article>
+                    `).join("")}
+                  </div>
+                  <button type="button" class="carousel-arrow carousel-arrow-prev" data-role="carousel-prev" aria-label="上一张数字人形象">‹</button>
+                  <button type="button" class="carousel-arrow carousel-arrow-next" data-role="carousel-next" aria-label="下一张数字人形象">›</button>
+                  <div class="carousel-indicators" data-role="carousel-indicators" aria-label="数字人形象轮播指示">
+                    ${CAROUSEL_SLIDES.map((_, index) => `
+                      <button type="button" class="${index === 0 ? "is-active" : ""}" data-slide-target="${index}" aria-label="查看第 ${index + 1} 张"></button>
+                    `).join("")}
+                  </div>
                 </div>
                 <div class="preview-dialogue">
                   <p class="preview-kicker">AI 陪护对话</p>
@@ -133,6 +175,64 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
       </footer>
     </div>
   `;
+
+  initHeroCarousel(root);
+}
+
+function initHeroCarousel(root) {
+  const carousel = root.querySelector('[data-role="avatar-carousel"]');
+  if (!carousel) {
+    return;
+  }
+
+  const slides = Array.from(carousel.querySelectorAll(".carousel-slide"));
+  const indicators = Array.from(carousel.querySelectorAll("[data-slide-target]"));
+  const prevButton = carousel.querySelector('[data-role="carousel-prev"]');
+  const nextButton = carousel.querySelector('[data-role="carousel-next"]');
+  let currentIndex = 0;
+  let timer = null;
+
+  function showSlide(nextIndex) {
+    currentIndex = (nextIndex + slides.length) % slides.length;
+    slides.forEach((slide, index) => {
+      slide.classList.toggle("is-active", index === currentIndex);
+    });
+    indicators.forEach((indicator, index) => {
+      indicator.classList.toggle("is-active", index === currentIndex);
+      indicator.setAttribute("aria-current", index === currentIndex ? "true" : "false");
+    });
+  }
+
+  function stopAutoPlay() {
+    if (timer) {
+      window.clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  function startAutoPlay() {
+    stopAutoPlay();
+    timer = window.setInterval(() => showSlide(currentIndex + 1), 5000);
+  }
+
+  prevButton?.addEventListener("click", () => {
+    showSlide(currentIndex - 1);
+    startAutoPlay();
+  });
+  nextButton?.addEventListener("click", () => {
+    showSlide(currentIndex + 1);
+    startAutoPlay();
+  });
+  indicators.forEach((indicator) => {
+    indicator.addEventListener("click", () => {
+      showSlide(Number(indicator.dataset.slideTarget || 0));
+      startAutoPlay();
+    });
+  });
+  carousel.addEventListener("mouseenter", stopAutoPlay);
+  carousel.addEventListener("mouseleave", startAutoPlay);
+  showSlide(0);
+  startAutoPlay();
 }
 
 function escapeHtml(value) {
