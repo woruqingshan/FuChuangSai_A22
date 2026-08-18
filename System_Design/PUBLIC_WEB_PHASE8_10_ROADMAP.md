@@ -359,6 +359,110 @@ Phase 8 completion state:
 > The system becomes a controlled-access public AI demo service with bounded GPU
 > capacity.
 
+### Phase 8 Implementation Snapshot
+
+Phase 8 is implemented as a single-process in-memory public access and capacity
+gate in the CPU edge backend.
+
+Implemented public APIs:
+
+- `GET /api/access/status`
+- `POST /api/access/verify`
+- `POST /api/chat`
+- `GET /api/jobs/{job_id}`
+
+Cookie separation:
+
+- `a22_session`: anonymous technical Session credential.
+- `a22_access`: invitation access credential.
+
+The access token is opaque, HttpOnly, Secure, SameSite=Lax, and bound to the
+current server-side `session_id`. Access does not create a User, Account, or
+UserProfile.
+
+Invitation code configuration is supplied through runtime environment, not Git:
+
+```text
+INVITATION_CODES_JSON
+```
+
+The production code value must not be committed, returned in JSON, put into the
+frontend bundle, or written to logs.
+
+The public chat flow is now asynchronous:
+
+```text
+POST /api/chat
+  -> validate Session
+  -> validate Access
+  -> rate limit
+  -> create Job
+  -> HTTP 202 { job_id, status, queue_position }
+
+GET /api/jobs/{job_id}
+  -> queued / processing / rendering / completed / failed
+```
+
+The frontend polls the Job until `chat_response_ready=true`. Once a
+ChatResponse is available, the existing LiveAvatar frontend renderer continues
+to poll `/media/video-stream/.../manifest` and plays the synchronized video.
+
+GPU slot ownership:
+
+- Acquired when the single public Job worker claims a queued Job.
+- Held through GPU `/chat`.
+- Remains held during LiveAvatar background rendering.
+- Released only after the backend Job worker observes manifest terminal state:
+  `complete=true` with chunks, `complete=true` with error/no chunks, or render
+  timeout.
+
+Default capacity:
+
+```text
+1 active public GPU generation
+JOB_QUEUE_MAX_PENDING=3
+```
+
+One-active-job rule:
+
+```text
+one Session -> at most one queued / processing / rendering Job
+```
+
+If violated, `POST /api/chat` returns HTTP 409. If the bounded queue is full,
+it returns HTTP 429 with `reason=queue_full`.
+
+Basic in-memory rate limits:
+
+- Invitation verification by client IP.
+- Chat submission by Session.
+- Chat submission by client IP.
+
+Caddy overwrites `X-A22-Client-IP` before forwarding API requests to Edge, and
+the Edge rate limiter uses that trusted header with `request.client.host` as a
+fallback.
+
+Phase 8 in-memory state:
+
+- invitation `used_count`
+- access grants
+- rate-limit windows
+- Jobs
+- queue
+
+Known Phase 8 limits:
+
+- Edge restart invalidates access grants.
+- Edge restart loses Job / Queue state.
+- Edge restart resets invitation `used_count`.
+- Edge restart resets rate-limit windows.
+- Multiple Uvicorn workers are not supported.
+- Multiple Edge instances are not supported.
+
+Phase 9 must move Session / Access / Job / Queue / Rate Limit state to Redis
+and long-term business records to PostgreSQL or an explicitly approved
+alternative.
+
 ## Phase 9: Persistence + Account / Password
 
 Phase 9 answers:

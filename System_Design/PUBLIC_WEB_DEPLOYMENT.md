@@ -118,8 +118,13 @@ Expected:
   GPU orchestrator is unavailable.
 - `/api/session` creates or reuses an anonymous server-side session and sets an
   HttpOnly cookie.
-- `/api/chat` requires a valid anonymous session cookie, then proxies through
-  the edge backend to the GPU orchestrator.
+- `/api/access/status` reports whether the current Session already has
+  invitation access.
+- `/api/access/verify` validates a runtime-configured invitation code and sets
+  an HttpOnly `a22_access` cookie.
+- `/api/chat` requires a valid anonymous session cookie plus invitation access,
+  then returns HTTP 202 with a Job id.
+- `/api/jobs/{job_id}` is session-owned and returns queue / generation status.
 - `/media/video-stream/*`, `/media/video-chunk/*`, and `/media/video/*` are
   authorized against the anonymous session before being proxied through the edge
   backend to the GPU media routes.
@@ -197,6 +202,58 @@ session sharing are future work.
 Phase 7 does not provide one-active-job-per-session enforcement, global bounded
 queueing, queue position, access code, Redis-backed persistence, or rate
 limiting.
+
+## Phase 8 Access And Capacity Gate
+
+Phase 8 adds an in-memory invitation gate and bounded public GPU queue on the
+CPU edge backend.
+
+Runtime-only secret configuration:
+
+```text
+INVITATION_CODES_JSON
+```
+
+Example shape only:
+
+```json
+[
+  {
+    "code": "<secret>",
+    "enabled": true,
+    "expires_at": "2026-12-31T23:59:59+08:00",
+    "max_uses": 20
+  }
+]
+```
+
+Do not commit the real code value. On the CPU server, keep it in a local
+environment file that is excluded from Git.
+
+Public chat now uses Jobs:
+
+```text
+POST /api/chat -> 202 { job_id, status, queue_position }
+GET /api/jobs/{job_id} -> queued / processing / rendering / completed / failed
+```
+
+The single public Job worker keeps the GPU slot until the LiveAvatar manifest is
+terminal. This means the slot is not released when GPU `/chat` returns; it is
+released only after manifest complete / render failure / timeout.
+
+Configured defaults:
+
+```text
+ACCESS_COOKIE_NAME=a22_access
+ACCESS_TTL_SECONDS=86400
+JOB_QUEUE_MAX_PENDING=3
+JOB_RENDER_TIMEOUT_SECONDS=1800
+JOB_RETENTION_SECONDS=3600
+JOB_MANIFEST_POLL_SECONDS=2
+```
+
+Phase 8 remains single-process and in-memory. Edge restart clears Access, Job,
+Queue, Rate Limit, and invitation used-count state.
 
 ## Logs
 
