@@ -100,6 +100,7 @@ curl -I https://www.zhixinbanxing.com
 curl -I https://zhixinbanxing.com/app
 curl -i https://zhixinbanxing.com/healthz
 curl -i https://zhixinbanxing.com/api/status
+curl -i -c /tmp/a22.cookies -b /tmp/a22.cookies -X POST https://zhixinbanxing.com/api/session
 curl -i https://zhixinbanxing.com/api/chat
 curl -i https://zhixinbanxing.com/media/video-stream/example/1/manifest
 ```
@@ -115,9 +116,13 @@ Expected:
   and orchestrator are healthy.
 - `/api/status` returns HTTP 503 with `ai_available=false` when the tunnel or
   GPU orchestrator is unavailable.
-- `/api/chat` is proxied through the edge backend to the GPU orchestrator.
+- `/api/session` creates or reuses an anonymous server-side session and sets an
+  HttpOnly cookie.
+- `/api/chat` requires a valid anonymous session cookie, then proxies through
+  the edge backend to the GPU orchestrator.
 - `/media/video-stream/*`, `/media/video-chunk/*`, and `/media/video/*` are
-  proxied through the edge backend to the GPU media routes.
+  authorized against the anonymous session before being proxied through the edge
+  backend to the GPU media routes.
 - Other `/api/*` routes return HTTP 503 JSON.
 - Unknown media objects return upstream media errors such as HTTP 404, not SPA
   `index.html`.
@@ -132,12 +137,66 @@ curl -sS http://127.0.0.1:29000/health
 The `29000` listener must be `127.0.0.1` only.
 The edge backend `18080` listener must also be `127.0.0.1` only.
 
-## Phase 6 Limits
+## Phase 7 Session Model
 
-The Phase 6 public chain is intended for single-user or small engineering
-validation. It does not provide formal session isolation, media ownership
-authorization, one-active-job-per-session enforcement, queueing, Redis-backed
-persistence, or rate limiting.
+Phase 7 makes the CPU edge backend the session authority:
+
+```text
+Browser HttpOnly cookie
+  -> edge SessionRegistry
+  -> server-generated internal session_id
+  -> server-owned turn_id and stream_id
+  -> GPU orchestrator
+```
+
+Production cookie:
+
+- Name: `a22_session`
+- `HttpOnly`
+- `Secure`
+- `SameSite=Lax`
+- `Path=/`
+- Browser-session cookie; no persistent `Max-Age` is set.
+
+The cookie token is a credential and must not be logged, returned in JSON, added
+to URLs, or sent to the GPU. The internal session id is an identifier and uses a
+Beijing time (UTC+8) timestamp plus strong randomness:
+
+```text
+sess_YYYYMMDDTHHMMSSCST_<32 hex random>
+stream_YYYYMMDDTHHMMSSCST_<16 hex random>
+```
+
+The timestamp is for operations readability only. The random suffix provides
+the security property. IP addresses are not used in session ids.
+
+The edge backend ignores client-provided `session_id` and `turn_id` in chat
+payloads. It allocates the internal session id, stream id, and turn id from the
+server-side registry. It also overwrites `turn_time_window.window_id`,
+`turn_time_window.stream_id`, and `turn_time_window.sequence_id` before sending
+requests to the GPU, while preserving sensor timing fields such as capture
+timestamps.
+
+Media routes are session-bound:
+
+- Missing or expired cookie: HTTP 401.
+- Valid cookie for a different session path: HTTP 403.
+- Same-session media path: proxied upstream.
+
+This applies to manifests, video chunks, full video, `HEAD`, and `Range`
+requests.
+
+## Phase 7 Limits
+
+Sessions are stored in a single-process in-memory registry with inactivity TTL
+cleanup. Keep the edge backend as one process / one worker. If the edge backend
+restarts, anonymous sessions reset; the next `/api/session` call creates a new
+server session and replaces the cookie. Redis-backed persistence and multi-worker
+session sharing are future work.
+
+Phase 7 does not provide one-active-job-per-session enforcement, global bounded
+queueing, queue position, access code, Redis-backed persistence, or rate
+limiting.
 
 ## Logs
 
