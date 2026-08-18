@@ -1,0 +1,24 @@
+# Public web stack for the CPU server.
+# Usage:
+#   docker compose -f compose.yaml -f compose.public.yaml up -d --build
+
+services:
+  public-web:
+    build:
+      context: ./local/frontend
+      dockerfile: Dockerfile.public
+    image: a22/public-web:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - a22-net
+
+volumes:
+  caddy_data:
+  caddy_config:
