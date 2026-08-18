@@ -123,3 +123,9 @@ class HealthResponse(BaseModel):
     cloud_ws_chat_endpoint: str | None = None
     remote_transport: str
     request_timeout_seconds: float
+
+
+class PublicStatusResponse(BaseModel):
+    status: str
+    ai_available: bool
+    gateway: str = "ok"

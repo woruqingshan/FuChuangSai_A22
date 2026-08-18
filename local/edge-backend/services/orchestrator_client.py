@@ -38,6 +38,18 @@ class OrchestratorClient:
 
         return await self._send_chat_http(request_payload, request_id=request_id)
 
+    async def check_health(self) -> bool:
+        url = f"{self._base_url}/health"
+        try:
+            async with httpx.AsyncClient(timeout=settings.status_timeout_seconds) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                payload = response.json()
+        except (httpx.HTTPError, ValueError):
+            return False
+
+        return isinstance(payload, dict) and payload.get("status") == "ok"
+
     async def _send_chat_http(self, request_payload: dict, *, request_id: str) -> ChatResponse:
         url = f"{self._base_url}/chat"
         started_at = time.perf_counter()

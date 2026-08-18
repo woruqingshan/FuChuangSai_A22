@@ -9,6 +9,7 @@ class Settings:
         cloud_ws_chat_endpoint = os.getenv("CLOUD_WS_CHAT_ENDPOINT", "").strip()
         self.cloud_ws_chat_endpoint = cloud_ws_chat_endpoint or self._default_ws_chat_endpoint(self.cloud_api_base)
         self.request_timeout_seconds = float(os.getenv("REMOTE_TIMEOUT_SECONDS", "15"))
+        self.status_timeout_seconds = float(os.getenv("STATUS_TIMEOUT_SECONDS", "2.5"))
         self.log_dir = os.getenv("LOG_DIR", "/logs")
         self.data_dir = os.getenv("DATA_DIR", "/data")
         self.default_session_prefix = os.getenv("DEFAULT_SESSION_PREFIX", "local-session")
