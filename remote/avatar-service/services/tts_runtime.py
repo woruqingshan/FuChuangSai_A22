@@ -146,7 +146,33 @@ class TTSRuntime:
         if not chunks:
             raise RuntimeError("CosyVoice returned no audio frames.")
 
-        return np.concatenate(chunks, axis=0), sample_rate
+        waveform = np.concatenate(chunks, axis=0)
+        if settings.tts_trim_trailing_silence:
+            waveform = self._trim_trailing_silence(waveform, sample_rate)
+        return waveform, sample_rate
+
+    def _trim_trailing_silence(self, waveform: np.ndarray, sample_rate: int) -> np.ndarray:
+        samples = np.asarray(waveform, dtype=np.float32).reshape(-1)
+        if samples.size == 0 or sample_rate <= 0:
+            return samples
+
+        window_size = max(1, int(sample_rate * 0.02))
+        active_threshold = 10.0 ** (settings.tts_silence_threshold_db / 20.0)
+        last_active_end = 0
+        for start in range(0, samples.size, window_size):
+            chunk = samples[start : start + window_size]
+            if chunk.size and float(np.sqrt(np.mean(np.square(chunk), dtype=np.float64))) >= active_threshold:
+                last_active_end = min(start + window_size, samples.size)
+
+        if last_active_end <= 0:
+            return samples
+
+        padding_samples = int(sample_rate * settings.tts_tail_padding_ms / 1000.0)
+        trim_end = min(last_active_end + padding_samples, samples.size)
+        minimum_saving = int(sample_rate * 0.1)
+        if samples.size - trim_end < minimum_saving:
+            return samples
+        return samples[:trim_end]
 
     def _invoke_tts(
         self,
@@ -165,12 +191,7 @@ class TTSRuntime:
         if mode == "cosyvoice3_zero_shot":
             return self._invoke_zero_shot(model, text, speed=speed)
         if mode == "cosyvoice_300m_instruct":
-            return self._invoke_300m_safe(
-                model,
-                text,
-                speed=speed,
-                speaker_id=speaker_id,
-            )
+            return self._invoke_300m_safe(model, text, speed=speed, speaker_id=speaker_id)
         if mode in {
             "cosyvoice3_instruct2",
             "cosyvoice_instruct2",
@@ -258,20 +279,6 @@ class TTSRuntime:
             speed=self._resolve_speed(speed),
         )
 
-    def _invoke_300m_safe(
-        self,
-        model,
-        text: str,
-        *,
-        speed: float | None = None,
-        speaker_id: str | None = None,
-    ):
-        # The 300M instruct branch has been observed to read the control prompt
-        # itself. Prefer non-instruct paths so only reply_text is synthesized.
-        if callable(getattr(model, "inference_sft", None)):
-            return self._invoke_sft(model, text, speed=speed, speaker_id=speaker_id)
-        return self._invoke_plain_text(model, text, speed=speed)
-
     def _invoke_instruct(
         self,
         model,
@@ -339,10 +346,26 @@ class TTSRuntime:
             + " | ".join(errors)
         )
 
+    def _invoke_300m_safe(
+        self,
+        model,
+        text: str,
+        *,
+        speed: float | None = None,
+        speaker_id: str | None = None,
+    ):
+        # This checkpoint can synthesize its control prompt as speech. Prefer
+        # the fixed female SFT voice so only reply_text becomes audible.
+        if callable(getattr(model, "inference_sft", None)):
+            return self._invoke_sft(model, text, speed=speed, speaker_id=speaker_id)
+        return self._invoke_plain_text(model, text, speed=speed)
+
     def _normalize_instruct_prompt_for_mode(self, text: str) -> str:
         mode = settings.tts_mode
         if mode in {"cosyvoice3_instruct2"}:
             return self._normalize_cosyvoice3_prompt(text)
+        if mode == "cosyvoice_300m_instruct":
+            return self._normalize_cosyvoice300m_prompt(text)
         return self._normalize_plain_prompt(text)
 
     def _normalize_instruct_text_for_mode(self, text: str) -> str:
@@ -511,6 +534,14 @@ class TTSRuntime:
             raise RuntimeError("CosyVoice3 tts_text is empty.")
         if "<|endofprompt|>" not in cleaned:
             cleaned = f"<|endofprompt|>{cleaned}"
+        return cleaned
+
+    def _normalize_cosyvoice300m_prompt(self, text: str) -> str:
+        cleaned = text.strip()
+        if not cleaned:
+            raise RuntimeError("CosyVoice-300M instruct text is empty.")
+        if "<|endofprompt|>" not in cleaned:
+            cleaned = f"{cleaned}<|endofprompt|>"
         return cleaned
 
     def _normalize_plain_prompt(self, text: str) -> str:

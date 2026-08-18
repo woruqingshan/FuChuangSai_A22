@@ -9,6 +9,7 @@ services:
       - "3000:3000"
     environment:
       VITE_API_BASE: http://localhost:8000
+      VITE_API_PROXY_TARGET: http://host.docker.internal:29000
     networks:
       - a22-net
 
@@ -26,8 +27,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      CLOUD_API_BASE: http://host.docker.internal:19000
-      CLOUD_WS_CHAT_ENDPOINT: ws://host.docker.internal:19000/ws/chat
+      CLOUD_API_BASE: http://host.docker.internal:29000
+      CLOUD_WS_CHAT_ENDPOINT: ws://host.docker.internal:29000/ws/chat
+      REMOTE_TIMEOUT_SECONDS: 120
       REMOTE_TRANSPORT: auto
       LOG_DIR: /workspace-logs/edge-backend
       DATA_DIR: /data

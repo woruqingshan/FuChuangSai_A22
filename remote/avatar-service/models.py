@@ -57,3 +57,4 @@ class HealthResponse(BaseModel):
     tts_model: str
     tts_device: str
     tts_speaker_id: str
+    renderer_backend: str

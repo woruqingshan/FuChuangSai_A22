@@ -100,20 +100,20 @@ function readDefaultPortraitUrl() {
   if (envUrl) {
     return envUrl;
   }
-  // Add a cache buster so replacing public/avatar-portrait.png takes effect immediately.
-  return "./avatar-portrait.png?v=20260421";
+  // Keep the idle portrait aligned with avatar A's LiveAvatar reference image.
+  return "./avatar-portrait-idle.jpg?v=20260815-hands-resting";
 }
 
 function readAvatarProfiles(defaultPortraitUrl) {
   const defaultProfileId = String(import.meta.env.VITE_AVATAR_PROFILE_DEFAULT_ID || "avatar_a").trim() || "avatar_a";
-  const defaultProfileName = String(import.meta.env.VITE_AVATAR_PROFILE_DEFAULT_NAME || "Digital Human A").trim()
-    || "Digital Human A";
+  const defaultProfileName = String(import.meta.env.VITE_AVATAR_PROFILE_DEFAULT_NAME || "数字人 A").trim()
+    || "数字人 A";
 
   const altProfileId = String(import.meta.env.VITE_AVATAR_PROFILE_ALT_ID || "avatar_b").trim() || "avatar_b";
-  const altProfileName = String(import.meta.env.VITE_AVATAR_PROFILE_ALT_NAME || "Digital Human B").trim()
-    || "Digital Human B";
+  const altProfileName = String(import.meta.env.VITE_AVATAR_PROFILE_ALT_NAME || "数字人 B").trim()
+    || "数字人 B";
   const altPortraitUrl = String(
-    import.meta.env.VITE_AVATAR_PROFILE_ALT_PORTRAIT_URL || "./avatar-portrait-alt.png?v=20260421",
+    import.meta.env.VITE_AVATAR_PROFILE_ALT_PORTRAIT_URL || "./avatar-portrait-alt.jpg?v=20260815-casual",
   ).trim();
 
   const profiles = [
@@ -139,37 +139,37 @@ export function createAvatarPanel({ onProfileChange } = {}) {
   element.innerHTML = `
     <div class="avatar-profile-controls">
       <div class="avatar-profile-heading">
-        <p class="eyebrow">Avatar Profile</p>
-        <span class="chip" data-role="avatar-profile-chip">Pending</span>
+        <p class="eyebrow">数字人形象</p>
+        <span class="chip" data-role="avatar-profile-chip">待选择</span>
       </div>
       <div class="avatar-profile-row">
         <p class="avatar-profile-name" data-role="avatar-profile-name">-</p>
         <button type="button" class="secondary-button avatar-profile-button" data-role="avatar-profile-toggle">
-          Switch Avatar
+          切换形象
         </button>
       </div>
     </div>
     <div class="avatar-source-controls">
       <div class="avatar-source-heading">
-        <p class="eyebrow">D - Avatar Source</p>
-        <span class="chip" data-role="avatar-source-chip">Portrait fallback</span>
+        <p class="eyebrow">D · 数字人来源</p>
+        <span class="chip" data-role="avatar-source-chip">默认头像</span>
       </div>
       <div class="avatar-source-row">
         <input
           class="avatar-source-input"
           data-role="avatar-source-input"
           type="text"
-          placeholder="Paste UE URL (media URL or Pixel Streaming page URL)"
+          placeholder="粘贴外部数字人页面或视频地址"
         />
         <button type="button" class="secondary-button avatar-source-button" data-role="avatar-source-connect">
-          Connect
+          连接
         </button>
         <button type="button" class="secondary-button avatar-source-button" data-role="avatar-source-disconnect">
-          Disconnect
+          断开
         </button>
       </div>
       <p class="avatar-source-meta" data-role="avatar-source-meta">
-        Using portrait fallback. Connect a UE URL to show the real digital human.
+        当前使用默认头像。如需外部数字人，可在这里连接页面或视频地址。
       </p>
     </div>
     <div class="avatar-stage avatar-stage--portrait-only">
@@ -187,7 +187,8 @@ export function createAvatarPanel({ onProfileChange } = {}) {
           <img
             class="avatar-portrait-image"
             src="${defaultPortraitUrl}"
-            alt="Digital human portrait"
+            data-profile-src="${defaultPortraitUrl}"
+            alt="数字人头像"
           />
           <video
             class="avatar-video hidden"
@@ -198,7 +199,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
           <iframe
             class="avatar-embed-frame hidden"
             data-role="avatar-embed-frame"
-            title="External avatar stream"
+            title="外部数字人画面"
             allow="autoplay; fullscreen; camera; microphone; clipboard-read; clipboard-write"
             referrerpolicy="no-referrer"
           ></iframe>
@@ -231,7 +232,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
 
   let selectedAvatarProfile = avatarProfiles[0] || {
     id: "avatar_a",
-    name: "Digital Human A",
+    name: "数字人 A",
     portraitUrl: defaultPortraitUrl,
   };
 
@@ -250,6 +251,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     if (!portraitImage || !profile?.portraitUrl) {
       return;
     }
+    portraitImage.dataset.profileSrc = profile.portraitUrl;
     portraitImage.src = profile.portraitUrl;
   }
 
@@ -302,7 +304,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     const url = normalizeStreamUrl(rawUrl);
     if (!url) {
       setSourceUi({
-        chipText: "Portrait fallback",
+        chipText: "默认头像",
         metaText: "Please provide a non-empty URL before connecting.",
         connected: false,
       });
@@ -315,7 +317,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
       const applied = renderer.setPinnedVideoSource(url);
       if (!applied) {
         setSourceUi({
-          chipText: "Portrait fallback",
+          chipText: "默认头像",
           metaText: "Failed to bind the media URL. Check format and try again.",
           connected: false,
         });
@@ -325,8 +327,8 @@ export function createAvatarPanel({ onProfileChange } = {}) {
       streamInput.value = url;
       persistStreamUrl(url);
       setSourceUi({
-        chipText: "External media",
-        metaText: `Connecting media stream: ${url}`,
+        chipText: "外部视频",
+        metaText: `连接ing media stream: ${url}`,
         connected: true,
       });
       return true;
@@ -340,20 +342,20 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     }
     persistStreamUrl(url);
     setSourceUi({
-      chipText: "External page",
-      metaText: `Embedding external page: ${url}`,
+      chipText: "外部页面",
+      metaText: `正在加载外部页面：${url}`,
       connected: true,
     });
     return true;
   }
 
-  function disconnectExternalStream(message = "External source disconnected. Switched back to portrait fallback.") {
+  function disconnectExternalStream(message = "外部来源已断开，已切回默认头像。") {
     renderer.clearPinnedVideoSource();
     face.dataset.externalPage = "off";
     setEmbedFrame("");
     persistStreamUrl("");
     setSourceUi({
-      chipText: "Portrait fallback",
+      chipText: "默认头像",
       metaText: message,
       connected: false,
     });
@@ -378,7 +380,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     }
     applyProfilePortrait({ portraitUrl: defaultPortraitUrl });
     setSourceUi({
-      chipText: "Portrait fallback",
+      chipText: "默认头像",
       metaText: `Failed to load ${selectedAvatarProfile.portraitUrl}. Fallback portrait is used.`,
       connected: false,
     });
@@ -406,8 +408,8 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     }
     const activeUrl = renderer.getPinnedVideoSource();
     setSourceUi({
-      chipText: "External media",
-      metaText: `External media stream connected: ${activeUrl}`,
+      chipText: "外部视频",
+      metaText: `外部视频 stream connected: ${activeUrl}`,
       connected: true,
     });
   });
@@ -418,7 +420,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     }
     const activeUrl = renderer.getPinnedVideoSource();
     setSourceUi({
-      chipText: "External media error",
+      chipText: "外部视频 error",
       metaText: `Failed to load ${activeUrl}. Check CORS/URL and stream availability.`,
       connected: true,
     });
@@ -430,8 +432,8 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     }
     const activeUrl = normalizeStreamUrl(streamInput.value);
     setSourceUi({
-      chipText: "External page",
-      metaText: `External page loaded: ${activeUrl}`,
+      chipText: "外部页面",
+      metaText: `外部页面 loaded: ${activeUrl}`,
       connected: true,
     });
   });
@@ -442,15 +444,15 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     }
     const activeUrl = normalizeStreamUrl(streamInput.value);
     setSourceUi({
-      chipText: "External page error",
+      chipText: "外部页面 error",
       metaText: `Failed to load ${activeUrl}. Try opening this URL in a new tab first.`,
       connected: true,
     });
   });
 
   setSourceUi({
-    chipText: "Portrait fallback",
-    metaText: "Using portrait fallback. Connect a UE URL to show the real digital human.",
+    chipText: "默认头像",
+    metaText: "当前使用默认头像。如需外部数字人，可在这里连接页面或视频地址。",
     connected: false,
   });
   const initialProfileId = readInitialAvatarProfileId();
@@ -465,7 +467,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     connectExternalStream(initialUrl);
   }
   if (!sourceControlsEnabled) {
-    disconnectExternalStream("Using portrait fallback mode.");
+    disconnectExternalStream("已切回默认头像。");
   }
 
   const api = {
@@ -480,7 +482,7 @@ export function createAvatarPanel({ onProfileChange } = {}) {
       api.currentEmotionStyle = response.emotion_style || api.currentEmotionStyle;
       api.currentFacialExpression = response.avatar_action?.facial_expression || api.currentFacialExpression;
       api.currentHeadMotion = response.avatar_action?.head_motion || api.currentHeadMotion;
-      renderer.render(response);
+      return renderer.render(response);
     },
   };
 

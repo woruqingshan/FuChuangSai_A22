@@ -30,8 +30,9 @@ function resolveBackendMediaUrl(rawUrl) {
 
 async function resolveStreamFirstChunkUrl(streamManifestUrl) {
   const startedAt = Date.now();
-  const timeoutMs = 120000;
-  const pollIntervalMs = 600;
+  const configuredTimeout = Number(import.meta.env.VITE_AVATAR_VIDEO_WAIT_TIMEOUT_MS || 1800000);
+  const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 1800000;
+  const pollIntervalMs = 1000;
 
   while (Date.now() - startedAt <= timeoutMs) {
     const manifestResponse = await fetch(streamManifestUrl, {
@@ -49,12 +50,12 @@ async function resolveStreamFirstChunkUrl(streamManifestUrl) {
       return resolveBackendMediaUrl(firstChunkUrl);
     }
     if (manifest?.complete) {
-      return "";
+      throw new Error(manifest?.error || "数字人视频生成失败");
     }
     await waitFor(pollIntervalMs);
   }
 
-  return "";
+  throw new Error("数字人视频生成等待超时");
 }
 
 function waitFor(ms) {
@@ -63,10 +64,18 @@ function waitFor(ms) {
   });
 }
 
+const VIDEO_FADE_MS = 550;
+
 export function createAvatarRenderer({ faceElement, readouts }) {
   const audioPlayer = createAudioPlayer();
   const portraitImage = faceElement.querySelector(".avatar-portrait-image");
   const videoElement = faceElement.querySelector(".avatar-video");
+  const portraitShell = faceElement.querySelector(".avatar-portrait-shell");
+  const renderStatus = document.createElement("div");
+  renderStatus.className = "avatar-render-status hidden";
+  renderStatus.setAttribute("role", "status");
+  renderStatus.setAttribute("aria-live", "polite");
+  portraitShell?.appendChild(renderStatus);
   const portraitDefaultSrc = portraitImage?.getAttribute("src") || "";
   let stopExpression = () => {};
   let stopMotion = () => {};
@@ -75,39 +84,24 @@ export function createAvatarRenderer({ faceElement, readouts }) {
   let detachVideoListeners = () => {};
   let pinnedVideoSource = "";
 
+  function setRenderStatus(message = "") {
+    const text = String(message || "").trim();
+    renderStatus.textContent = text;
+    renderStatus.classList.toggle("hidden", !text);
+    faceElement.dataset.renderStatus = text ? "waiting" : "idle";
+  }
+
   function setExternalStreamFlag(enabled) {
     faceElement.dataset.externalStream = enabled ? "on" : "off";
   }
 
-  function freezeCurrentVideoFrame() {
-    if (!portraitImage || !videoElement) {
+  function restoreProfilePortrait() {
+    if (!portraitImage) {
       return;
     }
-    if (videoElement.classList.contains("hidden")) {
-      if (portraitDefaultSrc && !portraitImage.getAttribute("src")) {
-        portraitImage.setAttribute("src", portraitDefaultSrc);
-      }
-      return;
-    }
-    const width = videoElement.videoWidth;
-    const height = videoElement.videoHeight;
-    if (!width || !height) {
-      return;
-    }
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext("2d");
-      if (!context) {
-        return;
-      }
-      context.drawImage(videoElement, 0, 0, width, height);
-      portraitImage.setAttribute("src", canvas.toDataURL("image/jpeg", 0.92));
-    } catch {
-      if (portraitDefaultSrc) {
-        portraitImage.setAttribute("src", portraitDefaultSrc);
-      }
+    const profileSrc = portraitImage.dataset.profileSrc || portraitDefaultSrc;
+    if (profileSrc) {
+      portraitImage.setAttribute("src", profileSrc);
     }
   }
 
@@ -124,6 +118,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       videoElement.removeAttribute("data-source-type");
       videoElement.load();
     }
+    videoElement.classList.remove("avatar-video--visible");
     videoElement.classList.add("hidden");
   }
 
@@ -142,6 +137,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
         portraitImage.classList.remove("hidden");
       }
     }
+    setRenderStatus();
   }
 
   function armVideoTransition(currentToken) {
@@ -154,14 +150,25 @@ export function createAvatarRenderer({ faceElement, readouts }) {
         return;
       }
       videoElement.classList.remove("hidden");
-      portraitImage?.classList.add("hidden");
+      portraitImage?.classList.remove("hidden");
+      window.requestAnimationFrame(() => {
+        if (renderToken === currentToken) {
+          videoElement.classList.add("avatar-video--visible");
+        }
+      });
     };
 
     const handleReady = () => {
-      cleanupListeners();
+      cleanupReadyListeners();
       revealVideo();
       void videoElement.play().catch(() => {
         if (renderToken !== currentToken) {
+          return;
+        }
+        if (!videoElement.muted) {
+          videoElement.controls = true;
+          revealVideo();
+          setRenderStatus("视频已生成，请点击播放");
           return;
         }
         resetVideoElement();
@@ -178,10 +185,38 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       portraitImage?.classList.remove("hidden");
     };
 
-    const cleanupListeners = () => {
+    const handleEnded = () => {
+      if (renderToken !== currentToken) {
+        return;
+      }
+      stopExpression();
+      stopMotion();
+      stopViseme();
+      faceElement.dataset.expression = "neutral";
+      faceElement.dataset.motion = "steady";
+      faceElement.dataset.gesture = "none";
+      faceElement.dataset.viseme = "sil";
+      restoreProfilePortrait();
+      faceElement.dataset.playbackEnded = "true";
+      portraitImage?.classList.remove("hidden");
+      cleanupListeners();
+      videoElement.classList.remove("avatar-video--visible");
+      window.setTimeout(() => {
+        if (renderToken === currentToken) {
+          resetVideoElement();
+        }
+      }, VIDEO_FADE_MS);
+    };
+
+    const cleanupReadyListeners = () => {
       videoElement.removeEventListener("loadeddata", handleReady);
       videoElement.removeEventListener("canplay", handleReady);
+    };
+
+    const cleanupListeners = () => {
+      cleanupReadyListeners();
       videoElement.removeEventListener("error", handleError);
+      videoElement.removeEventListener("ended", handleEnded);
       detachVideoListeners = () => {};
     };
 
@@ -189,6 +224,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     videoElement.addEventListener("loadeddata", handleReady, { once: true });
     videoElement.addEventListener("canplay", handleReady, { once: true });
     videoElement.addEventListener("error", handleError, { once: true });
+    videoElement.addEventListener("ended", handleEnded, { once: true });
   }
 
   function startVideoSource({ url, currentToken, muted, loop, sourceType }) {
@@ -196,11 +232,14 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       return false;
     }
     renderToken = currentToken;
+    faceElement.dataset.playbackEnded = "false";
     videoElement.muted = Boolean(muted);
+    videoElement.controls = false;
     videoElement.playsInline = true;
     videoElement.loop = Boolean(loop);
     videoElement.preload = "auto";
     videoElement.currentTime = 0;
+    videoElement.classList.remove("avatar-video--visible");
     videoElement.classList.add("hidden");
     portraitImage?.classList.remove("hidden");
     armVideoTransition(currentToken);
@@ -265,7 +304,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     hasPinnedVideoSource() {
       return Boolean(pinnedVideoSource);
     },
-    render(response) {
+    async render(response) {
       const externalStreamPinned = Boolean(pinnedVideoSource);
       const currentToken = renderToken + 1;
       cleanup({ preserveVideo: externalStreamPinned });
@@ -273,6 +312,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       const fallbackExpression = response.avatar_action?.facial_expression || "neutral";
       const fallbackMotion = response.avatar_action?.head_motion || "steady";
       const avatarOutput = response.avatar_output;
+      const synchronizedVideo = avatarOutput?.renderer_mode === "synchronized_video";
 
       const emotionStyle = avatarOutput?.emotion_style || response.emotion_style || "supportive";
       const expressionSeq = avatarOutput?.expression_seq || [];
@@ -293,7 +333,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
         stopViseme = () => {};
         ensurePinnedVideoPlaying(currentToken);
         audioPlayer.play(avatarOutput?.audio);
-        return;
+        return { status: "ready", synchronizedVideo: false };
       }
 
       setExternalStreamFlag(false);
@@ -301,41 +341,51 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       stopMotion = applyMotionSequence(faceElement, motionSeq, fallbackMotion);
       stopViseme = applyVisemeSequence(faceElement, visemeSeq);
       const audioCue = avatarOutput?.audio;
-      // Always play reply.wav (avatar_output.audio); keep video as visual-only track.
-      audioPlayer.play(audioCue);
+      // LiveAvatar output already contains the synchronized audio track. Other
+      // renderers keep their historical reply.wav + muted-video behavior.
+      if (!synchronizedVideo) {
+        audioPlayer.play(audioCue);
+      }
 
       const replyVideoUrl = resolveBackendMediaUrl(response.reply_video_url);
       if (videoElement && replyVideoUrl) {
         startVideoSource({
           url: replyVideoUrl,
           currentToken,
-          muted: true,
+          muted: !synchronizedVideo,
           loop: false,
           sourceType: "reply",
         });
-        return;
+        return { status: "ready", synchronizedVideo };
       }
 
       const replyVideoStreamUrl = resolveBackendMediaUrl(response.reply_video_stream_url);
       if (videoElement && replyVideoStreamUrl) {
-        void resolveStreamFirstChunkUrl(replyVideoStreamUrl)
-          .then((chunkUrl) => {
-            if (renderToken !== currentToken) {
-              return;
-            }
-            if (chunkUrl) {
-              startVideoSource({
-                url: chunkUrl,
-                currentToken,
-                muted: true,
-                loop: false,
-                sourceType: "reply",
-              });
-            }
-          })
-          .catch(() => {});
-        return;
+        if (synchronizedVideo) {
+          setRenderStatus("数字人视频生成中，请稍候…");
+        }
+        try {
+          const chunkUrl = await resolveStreamFirstChunkUrl(replyVideoStreamUrl);
+          if (renderToken !== currentToken) {
+            return { status: "cancelled", synchronizedVideo };
+          }
+          setRenderStatus();
+          startVideoSource({
+            url: chunkUrl,
+            currentToken,
+            muted: !synchronizedVideo,
+            loop: false,
+            sourceType: "reply",
+          });
+          return { status: "ready", synchronizedVideo };
+        } catch (error) {
+          if (renderToken === currentToken && synchronizedVideo) {
+            setRenderStatus(error instanceof Error ? error.message : "数字人视频生成失败");
+          }
+          throw error;
+        }
       }
+      return { status: "ready", synchronizedVideo };
     },
     cleanup,
   };

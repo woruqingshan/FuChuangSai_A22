@@ -39,6 +39,17 @@ class Settings:
         self.soulx_command_template = _env_str("SOULX_COMMAND_TEMPLATE", "")
         self.soulx_extra_args = _env_str("SOULX_EXTRA_ARGS", "")
 
+        self.liveavatar_runner_path = _env_str(
+            "LIVEAVATAR_RUNNER_PATH", "/root/autodl-tmp/a22/run_liveavatar.sh"
+        ) or "/root/autodl-tmp/a22/run_liveavatar.sh"
+        self.liveavatar_ref_image_path = _env_str("LIVEAVATAR_REF_IMAGE_PATH", "")
+        self.liveavatar_output_dir = _env_str(
+            "LIVEAVATAR_OUTPUT_DIR", "/root/autodl-tmp/a22/tmp/liveavatar-dialog"
+        ) or "/root/autodl-tmp/a22/tmp/liveavatar-dialog"
+        self.liveavatar_timeout_seconds = float(_env_str("LIVEAVATAR_TIMEOUT_SECONDS", "1800"))
+        self.liveavatar_num_clip = int(_env_str("LIVEAVATAR_NUM_CLIP", "10000"))
+        self.liveavatar_prompt_template = _env_str("LIVEAVATAR_PROMPT_TEMPLATE", "")
+
         self.tts_mode = _env_str("TTS_MODE", "cosyvoice2_sft").lower() or "cosyvoice2_sft"
         self.tts_model = (
             _env_str("TTS_MODEL", "/root/autodl-tmp/a22/models/CosyVoice2-0.5B")
@@ -52,6 +63,14 @@ class Settings:
         self.tts_prompt_text = _env_str("TTS_PROMPT_TEXT", "YOUR_PROMPT_TEXT|endofprompt|>")
         self.tts_instruct_text = _env_str("TTS_INSTRUCT_TEXT", "YOUR_INSTRUCT_TEXT|endofprompt|>")
         self.tts_speed = float(_env_str("TTS_SPEED", "1.0"))
+        self.tts_trim_trailing_silence = _env_str("TTS_TRIM_TRAILING_SILENCE", "true").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.tts_silence_threshold_db = float(_env_str("TTS_SILENCE_THRESHOLD_DB", "-38"))
+        self.tts_tail_padding_ms = max(0, int(_env_str("TTS_TAIL_PADDING_MS", "180")))
         self.tts_warmup_enabled = _env_str("TTS_WARMUP_ENABLED", "true").lower() in {
             "1",
             "true",
