@@ -1,15 +1,28 @@
 export function createStatusBar() {
   const element = document.createElement("section");
   element.className = "status-panel";
+  element.dataset.expanded = "false";
   element.innerHTML = `
-    <div class="panel-heading">
-      <div>
-        <p class="eyebrow">A · 状态</p>
-        <h2>服务与交互状态</h2>
+    <div class="status-summary">
+      <div class="status-summary-main">
+        <span class="status-dot" data-role="status-dot"></span>
+        <div>
+          <p class="status-summary-title" data-role="status-summary-title">AI 服务等待连接</p>
+          <p class="status-summary-meta" data-role="status-summary-meta">多模态就绪</p>
+        </div>
       </div>
-      <span class="chip">会话隔离</span>
+      <button type="button" class="status-toggle-button" data-role="status-toggle" aria-expanded="false">
+        详情⌄
+      </button>
     </div>
-    <div class="status-scroll-shell">
+    <div class="status-scroll-shell" data-role="status-details">
+      <div class="panel-heading status-details-heading">
+        <div>
+          <p class="eyebrow">A · 状态</p>
+          <h2>服务与交互状态</h2>
+        </div>
+        <span class="chip">会话隔离</span>
+      </div>
       <dl class="status-grid">
         <div><dt>会话</dt><dd data-role="session-id"></dd></div>
         <div><dt>通道</dt><dd data-role="stream-id"></dd></div>
@@ -27,6 +40,10 @@ export function createStatusBar() {
   `;
 
   const refs = {
+    statusDot: element.querySelector('[data-role="status-dot"]'),
+    summaryTitle: element.querySelector('[data-role="status-summary-title"]'),
+    summaryMeta: element.querySelector('[data-role="status-summary-meta"]'),
+    toggleButton: element.querySelector('[data-role="status-toggle"]'),
     sessionId: element.querySelector('[data-role="session-id"]'),
     streamId: element.querySelector('[data-role="stream-id"]'),
     nextTurnId: element.querySelector('[data-role="next-turn"]'),
@@ -40,9 +57,21 @@ export function createStatusBar() {
     videoStatus: element.querySelector('[data-role="video-status"]'),
   };
 
+  refs.toggleButton.addEventListener("click", () => {
+    const expanded = element.dataset.expanded !== "true";
+    element.dataset.expanded = expanded ? "true" : "false";
+    refs.toggleButton.textContent = expanded ? "收起⌃" : "详情⌄";
+    refs.toggleButton.setAttribute("aria-expanded", expanded ? "true" : "false");
+  });
+
   return {
     element,
     update(snapshot) {
+      const remoteStatus = snapshot.remoteStatus || "AI 服务等待连接";
+      const serviceReady = /已连接|正常|就绪|ready|ok/i.test(remoteStatus);
+      refs.statusDot.dataset.state = serviceReady ? "ok" : "pending";
+      refs.summaryTitle.textContent = serviceReady ? "AI 服务正常" : remoteStatus;
+      refs.summaryMeta.textContent = `${snapshot.transport || "等待首次对话"} · ${snapshot.inputMode || "text"}`;
       refs.sessionId.textContent = snapshot.sessionId;
       refs.streamId.textContent = snapshot.streamId;
       refs.nextTurnId.textContent = snapshot.nextTurnId;
