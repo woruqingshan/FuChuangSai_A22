@@ -129,3 +129,11 @@ class PublicStatusResponse(BaseModel):
     status: str
     ai_available: bool
     gateway: str = "ok"
+
+
+class SessionBootstrapResponse(BaseModel):
+    status: str
+    session_id: str
+    stream_id: str
+    created_at: str
+    next_turn_id: int

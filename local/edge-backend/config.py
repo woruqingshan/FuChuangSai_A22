@@ -13,6 +13,10 @@ class Settings:
         self.media_connect_timeout_seconds = float(os.getenv("MEDIA_CONNECT_TIMEOUT_SECONDS", "5"))
         self.media_manifest_timeout_seconds = float(os.getenv("MEDIA_MANIFEST_TIMEOUT_SECONDS", "5"))
         self.media_read_timeout_seconds = float(os.getenv("MEDIA_READ_TIMEOUT_SECONDS", "300"))
+        self.session_cookie_name = os.getenv("SESSION_COOKIE_NAME", "a22_session").strip() or "a22_session"
+        self.session_ttl_seconds = max(60, int(os.getenv("SESSION_TTL_SECONDS", "86400")))
+        self.session_cookie_secure = self._parse_bool(os.getenv("SESSION_COOKIE_SECURE", "true"))
+        self.session_cookie_samesite = os.getenv("SESSION_COOKIE_SAMESITE", "lax").strip().lower() or "lax"
         self.log_dir = os.getenv("LOG_DIR", "/logs")
         self.data_dir = os.getenv("DATA_DIR", "/data")
         self.default_session_prefix = os.getenv("DEFAULT_SESSION_PREFIX", "local-session")
@@ -29,6 +33,10 @@ class Settings:
         if cloud_api_base.startswith("http://"):
             return f"ws://{cloud_api_base[len('http://'):]}/ws/chat"
         return ""
+
+    @staticmethod
+    def _parse_bool(raw_value: str | None) -> bool:
+        return str(raw_value or "").strip().lower() not in {"0", "false", "no", "off"}
 
 
 settings = Settings()
