@@ -21,13 +21,10 @@ export function createStatusBar() {
           <p class="eyebrow">A · 状态</p>
           <h2>服务与交互状态</h2>
         </div>
-        <span class="chip">会话隔离</span>
+        <span class="chip">安全连接</span>
       </div>
       <dl class="status-grid">
-        <div><dt>会话</dt><dd data-role="session-id"></dd></div>
-        <div><dt>通道</dt><dd data-role="stream-id"></dd></div>
-        <div><dt>轮次</dt><dd data-role="next-turn"></dd></div>
-        <div><dt>请求</dt><dd data-role="transport"></dd></div>
+        <div><dt>当前状态</dt><dd data-role="transport"></dd></div>
         <div><dt>AI 服务</dt><dd data-role="remote-status"></dd></div>
         <div><dt>输入方式</dt><dd data-role="input-mode"></dd></div>
         <div><dt>情绪风格</dt><dd data-role="emotion-style"></dd></div>
@@ -44,9 +41,6 @@ export function createStatusBar() {
     summaryTitle: element.querySelector('[data-role="status-summary-title"]'),
     summaryMeta: element.querySelector('[data-role="status-summary-meta"]'),
     toggleButton: element.querySelector('[data-role="status-toggle"]'),
-    sessionId: element.querySelector('[data-role="session-id"]'),
-    streamId: element.querySelector('[data-role="stream-id"]'),
-    nextTurnId: element.querySelector('[data-role="next-turn"]'),
     transport: element.querySelector('[data-role="transport"]'),
     remoteStatus: element.querySelector('[data-role="remote-status"]'),
     inputMode: element.querySelector('[data-role="input-mode"]'),
@@ -72,9 +66,6 @@ export function createStatusBar() {
       refs.statusDot.dataset.state = serviceReady ? "ok" : "pending";
       refs.summaryTitle.textContent = serviceReady ? "AI 服务正常" : remoteStatus;
       refs.summaryMeta.textContent = `${snapshot.transport || "等待首次对话"} · ${snapshot.inputMode || "text"}`;
-      refs.sessionId.textContent = snapshot.sessionId;
-      refs.streamId.textContent = snapshot.streamId;
-      refs.nextTurnId.textContent = snapshot.nextTurnId;
       refs.transport.textContent = snapshot.transport;
       refs.remoteStatus.textContent = snapshot.remoteStatus;
       refs.inputMode.textContent = snapshot.inputMode;

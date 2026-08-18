@@ -13,11 +13,11 @@ if (!app) {
 }
 
 const state = {
-  sessionId: "会话初始化中",
-  streamId: "等待服务端分配",
+  sessionId: "",
+  streamId: "",
   nextTurnId: 1,
-  transport: "正在初始化会话",
-  remoteStatus: "正在建立匿名会话",
+  transport: "正在准备服务",
+  remoteStatus: "AI 服务连接中",
   inputMode: "text",
   emotionStyle: "supportive",
   facialExpression: "neutral",
@@ -90,10 +90,9 @@ app.querySelector(".avatar-column").appendChild(avatarPanel.element);
 app.querySelector(".status-column").appendChild(statusBar.element);
 
 inputBar.setBusy(true);
-chatPanel.addSystemMessage("正在初始化匿名会话，请稍候。");
 syncStatus({
-  transport: "正在初始化会话",
-  remoteStatus: "正在建立匿名会话",
+  transport: "正在准备服务",
+  remoteStatus: "AI 服务连接中",
   audioStatus: "语音待输入",
   videoStatus: "摄像头未开启",
 });
@@ -116,7 +115,7 @@ function buildTextTurnTimeWindow(turnId) {
 
 async function handleSend({ text, audio, video }) {
   if (!state.isSessionReady) {
-    chatPanel.addSystemMessage("会话尚未初始化完成，请稍后再试。");
+    chatPanel.addSystemMessage("服务正在准备中，请稍后再试。");
     return false;
   }
 
@@ -235,7 +234,7 @@ async function handleSend({ text, audio, video }) {
     if (error?.status === 401) {
       state.isSessionReady = false;
       inputBar.setBusy(true);
-      chatPanel.addSystemMessage("当前会话已失效，正在为你创建新会话。请重新发送上一条消息。");
+      chatPanel.addSystemMessage("当前连接已失效，正在重新连接服务。请重新发送上一条消息。");
       await initializeSession({ showReadyMessage: false });
     } else {
       chatPanel.addSystemMessage(`请求失败：${detail}`);
@@ -263,18 +262,18 @@ async function initializeSession({ showReadyMessage = true } = {}) {
     state.isSessionReady = true;
     syncStatus({
       transport: "等待首次对话",
-      remoteStatus: "匿名会话已就绪",
+      remoteStatus: "AI 服务已连接",
     });
     if (showReadyMessage) {
       chatPanel.addSystemMessage("知心伴行已准备好。请输入文字，或点击语音按钮开始对话。");
     }
   } catch (error) {
     state.isSessionReady = false;
-    const detail = error instanceof Error ? error.message : "未知错误";
-    chatPanel.addSystemMessage(`会话初始化失败：${detail}。请刷新后重试。`);
+    console.warn("Companion service bootstrap failed", error);
+    chatPanel.addSystemMessage("服务初始化失败，请刷新页面后重试。");
     syncStatus({
-      transport: "会话初始化失败",
-      remoteStatus: "会话服务暂不可用",
+      transport: "服务初始化失败",
+      remoteStatus: "服务连接异常",
     });
   } finally {
     inputBar.setBusy(state.isSending || !state.isSessionReady);
