@@ -1,9 +1,9 @@
 # Public Web Deployment
 
 This runbook deploys the public CPU-server website for Zhixin Banxing.
-It covers the public web layer and the Phase 5 AI status gateway. Full
-public chat, media serving, sessions, jobs, and queueing are handled in
-later phases.
+It covers the public web layer, AI status gateway, public chat gateway, and
+avatar media proxy. Formal sessions, authorization, jobs, queueing, and rate
+limits are handled in later phases.
 
 ## Architecture
 
@@ -13,15 +13,16 @@ Internet
   -> CPU server ports 80/443
   -> Caddy
   -> frontend dist files
-  -> /api/status
+  -> /api/status, /api/chat, /media/*
   -> edge-backend service
   -> CPU host 127.0.0.1:29000 SSH tunnel
-  -> GPU host 127.0.0.1:19000 orchestrator /health
+  -> GPU host 127.0.0.1:19000 orchestrator
 ```
 
-The frontend uses same-origin `/api/...` URLs in production. Phase 5 only
-opens `/api/status`. Other `/api/*` routes intentionally return HTTP 503 JSON
-so API requests are never served as `index.html`.
+The frontend uses same-origin `/api/...` and `/media/...` URLs in production.
+The public stack explicitly opens only `/api/status`, `/api/chat`, and the
+fixed avatar media routes. Other `/api/*` routes intentionally return HTTP
+503 JSON so API requests are never served as `index.html`.
 
 The Phase 5 Docker services use host networking so the edge backend can reach
 the host-only SSH tunnel at `127.0.0.1:29000`. The edge backend binds only
@@ -100,6 +101,7 @@ curl -I https://zhixinbanxing.com/app
 curl -i https://zhixinbanxing.com/healthz
 curl -i https://zhixinbanxing.com/api/status
 curl -i https://zhixinbanxing.com/api/chat
+curl -i https://zhixinbanxing.com/media/video-stream/example/1/manifest
 ```
 
 Expected:
@@ -113,7 +115,12 @@ Expected:
   and orchestrator are healthy.
 - `/api/status` returns HTTP 503 with `ai_available=false` when the tunnel or
   GPU orchestrator is unavailable.
-- Other `/api/*` routes return HTTP 503 JSON until later phases connect them.
+- `/api/chat` is proxied through the edge backend to the GPU orchestrator.
+- `/media/video-stream/*`, `/media/video-chunk/*`, and `/media/video/*` are
+  proxied through the edge backend to the GPU media routes.
+- Other `/api/*` routes return HTTP 503 JSON.
+- Unknown media objects return upstream media errors such as HTTP 404, not SPA
+  `index.html`.
 
 Check the host tunnel directly:
 
@@ -124,6 +131,13 @@ curl -sS http://127.0.0.1:29000/health
 
 The `29000` listener must be `127.0.0.1` only.
 The edge backend `18080` listener must also be `127.0.0.1` only.
+
+## Phase 6 Limits
+
+The Phase 6 public chain is intended for single-user or small engineering
+validation. It does not provide formal session isolation, media ownership
+authorization, one-active-job-per-session enforcement, queueing, Redis-backed
+persistence, or rate limiting.
 
 ## Logs
 
