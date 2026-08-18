@@ -53,7 +53,7 @@ class OrchestratorClient:
     async def _send_chat_http(self, request_payload: dict, *, request_id: str) -> ChatResponse:
         url = f"{self._base_url}/chat"
         started_at = time.perf_counter()
-        edge_observability.log_bridge_outbound(request_id, url, request_payload)
+        edge_observability.log_bridge_outbound(request_id, url, _summarize_payload(request_payload))
 
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
@@ -65,7 +65,7 @@ class OrchestratorClient:
                 latency_ms=int((time.perf_counter() - started_at) * 1000),
                 detail="Remote orchestrator timed out.",
                 status_code=504,
-                payload=request_payload,
+                payload=_summarize_payload(request_payload),
             )
             raise RemoteServiceError(
                 detail="Remote orchestrator timed out.",
@@ -78,7 +78,7 @@ class OrchestratorClient:
                 latency_ms=int((time.perf_counter() - started_at) * 1000),
                 detail=detail,
                 status_code=exc.response.status_code,
-                payload=request_payload,
+                payload=_summarize_payload(request_payload),
             )
             raise RemoteServiceError(detail=detail, status_code=exc.response.status_code) from exc
         except httpx.RequestError as exc:
@@ -87,7 +87,7 @@ class OrchestratorClient:
                 latency_ms=int((time.perf_counter() - started_at) * 1000),
                 detail="Remote orchestrator is unreachable.",
                 status_code=502,
-                payload=request_payload,
+                payload=_summarize_payload(request_payload),
             )
             raise RemoteServiceError(
                 detail="Remote orchestrator is unreachable.",
@@ -111,7 +111,7 @@ class OrchestratorClient:
             raise RemoteServiceError(detail="Remote websocket endpoint is not configured.", status_code=502)
 
         started_at = time.perf_counter()
-        edge_observability.log_bridge_outbound(request_id, ws_url, request_payload)
+        edge_observability.log_bridge_outbound(request_id, ws_url, _summarize_payload(request_payload))
 
         try:
             async with websockets.connect(ws_url, open_timeout=self._timeout, close_timeout=2.0, max_size=None) as socket:
@@ -123,7 +123,7 @@ class OrchestratorClient:
                 latency_ms=int((time.perf_counter() - started_at) * 1000),
                 detail="Remote websocket orchestrator timed out.",
                 status_code=504,
-                payload=request_payload,
+                payload=_summarize_payload(request_payload),
             )
             raise RemoteServiceError(detail="Remote websocket orchestrator timed out.", status_code=504) from exc
         except Exception as exc:  # noqa: BLE001
@@ -132,7 +132,7 @@ class OrchestratorClient:
                 latency_ms=int((time.perf_counter() - started_at) * 1000),
                 detail=f"Remote websocket orchestrator is unreachable: {exc}",
                 status_code=502,
-                payload=request_payload,
+                payload=_summarize_payload(request_payload),
             )
             raise RemoteServiceError(detail="Remote websocket orchestrator is unreachable.", status_code=502) from exc
 
@@ -161,7 +161,7 @@ class OrchestratorClient:
                 latency_ms=int((time.perf_counter() - started_at) * 1000),
                 detail=detail,
                 status_code=status_code,
-                payload=request_payload,
+                payload=_summarize_payload(request_payload),
             )
             raise RemoteServiceError(detail=detail, status_code=status_code)
 
@@ -187,6 +187,23 @@ def _parse_remote_error(response: httpx.Response) -> str:
         return detail
 
     return "Remote orchestrator returned an unexpected error."
+
+
+def _summarize_payload(payload: dict) -> dict:
+    safe_payload = dict(payload)
+    audio_base64 = safe_payload.pop("audio_base64", None)
+    video_frames = safe_payload.pop("video_frames", None)
+    user_text = safe_payload.get("user_text")
+
+    safe_payload["has_audio_base64"] = bool(audio_base64)
+    safe_payload["audio_base64_length"] = len(audio_base64) if isinstance(audio_base64, str) else 0
+    safe_payload["video_frame_count"] = len(video_frames) if isinstance(video_frames, list) else 0
+    if isinstance(user_text, str):
+        safe_payload["user_text_length"] = len(user_text)
+        safe_payload["user_text_preview"] = user_text[:120]
+        safe_payload.pop("user_text", None)
+
+    return safe_payload
 
 
 orchestrator_client = OrchestratorClient()
