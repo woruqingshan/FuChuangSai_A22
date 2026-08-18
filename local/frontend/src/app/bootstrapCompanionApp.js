@@ -1,3 +1,4 @@
+import { fetchAccessStatus, verifyAccessCode } from "../api/access";
 import { sendChatRequest } from "../api/chat";
 import { bootstrapServerSession } from "../api/session";
 import { createAvatarPanel } from "../ui/AvatarPanel";
@@ -26,11 +27,13 @@ const state = {
   videoStatus: "摄像头未开启",
   isSending: false,
   isSessionReady: false,
+  hasAccess: false,
   cameraEnabled: false,
   avatarProfileId: "avatar_a",
 };
 
 let leftTopStack = null;
+let accessGate = null;
 
 const avatarPanel = createAvatarPanel({
   onProfileChange: (profile) => {
@@ -80,6 +83,19 @@ app.innerHTML = `
         <section class="status-column panel"></section>
       </section>
     </main>
+    <div class="access-modal-backdrop hidden" data-role="access-gate">
+      <form class="access-modal" data-role="access-form">
+        <p class="eyebrow">体验入口</p>
+        <h2>请输入体验邀请码</h2>
+        <p>当前数字人服务需要邀请码后才能开始体验。</p>
+        <label>
+          <span>邀请码</span>
+          <input type="password" autocomplete="off" data-role="access-code" placeholder="请输入邀请码" />
+        </label>
+        <button type="submit">进入体验</button>
+        <p class="access-error" data-role="access-error" aria-live="polite"></p>
+      </form>
+    </div>
   </div>
 `;
 
@@ -88,6 +104,7 @@ leftTopStack.append(inputBar.mediaElement, chatPanel.element);
 app.querySelector(".control-column").append(inputBar.controlsElement);
 app.querySelector(".avatar-column").appendChild(avatarPanel.element);
 app.querySelector(".status-column").appendChild(statusBar.element);
+accessGate = createAccessGate(app.querySelector('[data-role="access-gate"]'));
 
 inputBar.setBusy(true);
 syncStatus({
@@ -116,6 +133,13 @@ function buildTextTurnTimeWindow(turnId) {
 async function handleSend({ text, audio, video }) {
   if (!state.isSessionReady) {
     chatPanel.addSystemMessage("服务正在准备中，请稍后再试。");
+    return false;
+  }
+
+  if (!state.hasAccess) {
+    chatPanel.addSystemMessage("请先输入体验邀请码。");
+    accessGate.show();
+    inputBar.setBusy(true);
     return false;
   }
 
@@ -187,7 +211,9 @@ async function handleSend({ text, audio, video }) {
       Object.assign(requestPayload, videoPayload);
     }
 
-    const response = await sendChatRequest(requestPayload);
+    const response = await sendChatRequest(requestPayload, {
+      onJobStatus: handleJobStatus,
+    });
 
     state.nextTurnId += 1;
     state.transport = "等待数字人表达生成";
@@ -233,9 +259,21 @@ async function handleSend({ text, audio, video }) {
     const detail = error instanceof Error ? error.message : "未知请求错误";
     if (error?.status === 401) {
       state.isSessionReady = false;
+      state.hasAccess = false;
       inputBar.setBusy(true);
       chatPanel.addSystemMessage("当前连接已失效，正在重新连接服务。请重新发送上一条消息。");
       await initializeSession({ showReadyMessage: false });
+    } else if (error?.status === 403) {
+      state.hasAccess = false;
+      inputBar.setBusy(true);
+      accessGate.show();
+      chatPanel.addSystemMessage("请先输入体验邀请码。");
+    } else if (error?.status === 409) {
+      chatPanel.addSystemMessage("当前已有一轮对话正在处理中，请等待完成。");
+    } else if (error?.status === 429 && error?.reason === "queue_full") {
+      chatPanel.addSystemMessage("当前体验人数较多，请稍后再试。");
+    } else if (error?.status === 429) {
+      chatPanel.addSystemMessage("尝试次数过多，请稍后再试。");
     } else {
       chatPanel.addSystemMessage(`请求失败：${detail}`);
     }
@@ -248,7 +286,7 @@ async function handleSend({ text, audio, video }) {
     return false;
   } finally {
     state.isSending = false;
-    inputBar.setBusy(!state.isSessionReady);
+    inputBar.setBusy(!isInteractionReady());
     chatPanel.setLoading(false);
   }
 }
@@ -260,13 +298,7 @@ async function initializeSession({ showReadyMessage = true } = {}) {
     state.streamId = session.stream_id || state.streamId;
     state.nextTurnId = Number(session.next_turn_id || 1);
     state.isSessionReady = true;
-    syncStatus({
-      transport: "等待首次对话",
-      remoteStatus: "AI 服务已连接",
-    });
-    if (showReadyMessage) {
-      chatPanel.addSystemMessage("知心伴行已准备好。请输入文字，或点击语音按钮开始对话。");
-    }
+    await refreshAccessState({ showReadyMessage });
   } catch (error) {
     state.isSessionReady = false;
     console.warn("Companion service bootstrap failed", error);
@@ -276,8 +308,59 @@ async function initializeSession({ showReadyMessage = true } = {}) {
       remoteStatus: "服务连接异常",
     });
   } finally {
-    inputBar.setBusy(state.isSending || !state.isSessionReady);
+    inputBar.setBusy(state.isSending || !isInteractionReady());
   }
+}
+
+async function refreshAccessState({ showReadyMessage = true } = {}) {
+  const access = await fetchAccessStatus();
+  state.hasAccess = Boolean(access.authorized);
+  if (state.hasAccess) {
+    accessGate.hide();
+    syncStatus({
+      transport: "等待首次对话",
+      remoteStatus: "AI 服务已连接",
+    });
+    if (showReadyMessage) {
+      chatPanel.addSystemMessage("知心伴行已准备好。请输入文字，或点击语音按钮开始对话。");
+    }
+  } else {
+    accessGate.show();
+    syncStatus({
+      transport: "等待输入邀请码",
+      remoteStatus: "AI 服务已连接",
+    });
+  }
+}
+
+function handleJobStatus(job) {
+  if (!job?.status) {
+    return;
+  }
+  if (job.status === "queued") {
+    syncStatus({
+      transport: `当前正在排队，第 ${job.queue_position || 1} 位`,
+      remoteStatus: "等待进入生成",
+    });
+    return;
+  }
+  if (job.status === "processing") {
+    syncStatus({
+      transport: "正在生成回复",
+      remoteStatus: "AI 服务正在处理",
+    });
+    return;
+  }
+  if (job.status === "rendering") {
+    syncStatus({
+      transport: "等待数字人表达生成",
+      remoteStatus: "文字与语音已就绪，正在生成同步数字人视频",
+    });
+  }
+}
+
+function isInteractionReady() {
+  return state.isSessionReady && state.hasAccess;
 }
 
 function syncStatus(nextState) {
@@ -310,5 +393,56 @@ function syncLayout() {
   }
   leftTopStack.classList.toggle("camera-on", state.cameraEnabled);
   leftTopStack.classList.toggle("camera-off", !state.cameraEnabled);
+}
+
+function createAccessGate(element) {
+  const form = element.querySelector('[data-role="access-form"]');
+  const input = element.querySelector('[data-role="access-code"]');
+  const errorText = element.querySelector('[data-role="access-error"]');
+  const submitButton = form.querySelector('button[type="submit"]');
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const code = input.value.trim();
+    if (!code) {
+      errorText.textContent = "请输入体验邀请码。";
+      return;
+    }
+    submitButton.disabled = true;
+    input.disabled = true;
+    errorText.textContent = "";
+    try {
+      await verifyAccessCode(code);
+      input.value = "";
+      state.hasAccess = true;
+      element.classList.add("hidden");
+      syncStatus({
+        transport: "等待首次对话",
+        remoteStatus: "AI 服务已连接",
+      });
+      chatPanel.addSystemMessage("知心伴行已准备好。请输入文字，或点击语音按钮开始对话。");
+      inputBar.setBusy(state.isSending || !isInteractionReady());
+    } catch (error) {
+      errorText.textContent = error?.status === 429
+        ? "尝试次数过多，请稍后再试。"
+        : "邀请码无效或已失效。";
+    } finally {
+      submitButton.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
+  });
+
+  return {
+    show() {
+      element.classList.remove("hidden");
+      window.setTimeout(() => input.focus(), 50);
+      inputBar.setBusy(true);
+    },
+    hide() {
+      element.classList.add("hidden");
+      errorText.textContent = "";
+    },
+  };
 }
 }
