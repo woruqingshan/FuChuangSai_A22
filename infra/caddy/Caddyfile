@@ -1,0 +1,22 @@
+www.zhixinbanxing.com {
+	redir https://zhixinbanxing.com{uri} permanent
+}
+
+zhixinbanxing.com {
+	encode zstd gzip
+
+	handle /healthz {
+		respond "ok\n" 200
+	}
+
+	handle /api/* {
+		header Content-Type application/json
+		respond `{"detail":"AI service gateway is not connected yet"}` 503
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
