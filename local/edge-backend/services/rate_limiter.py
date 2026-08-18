@@ -1,5 +1,7 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from hashlib import sha256
+
+from services.storage import redis_store
 
 
 @dataclass
@@ -10,32 +12,21 @@ class RateLimitResult:
 
 class FixedWindowRateLimiter:
     def __init__(self) -> None:
-        self._windows: dict[str, tuple[datetime, int]] = {}
-        self._allow_count = 0
-        self._cleanup_interval = 256
+        self._redis = redis_store.client
 
     def allow(self, key: str, *, limit: int, window_seconds: int) -> RateLimitResult:
-        self._allow_count += 1
-        if self._allow_count % self._cleanup_interval == 0:
-            self.cleanup()
-        now = datetime.now(UTC)
-        window_started_at, count = self._windows.get(key, (now, 0))
-        elapsed = (now - window_started_at).total_seconds()
-        if elapsed >= window_seconds:
-            self._windows[key] = (now, 1)
+        redis_key = redis_store.key("rate", sha256(key.encode("utf-8")).hexdigest())
+        count = int(self._redis.incr(redis_key))
+        if count == 1:
+            self._redis.expire(redis_key, window_seconds)
+        if count <= limit:
             return RateLimitResult(allowed=True)
-        if count >= limit:
-            retry_after = max(1, int(window_seconds - elapsed))
-            return RateLimitResult(allowed=False, retry_after_seconds=retry_after)
-        self._windows[key] = (window_started_at, count + 1)
-        return RateLimitResult(allowed=True)
+        ttl = self._redis.ttl(redis_key)
+        retry_after = ttl if ttl and ttl > 0 else window_seconds
+        return RateLimitResult(allowed=False, retry_after_seconds=max(1, int(retry_after)))
 
     def cleanup(self, *, max_age_seconds: int = 7200) -> int:
-        cutoff = datetime.now(UTC) - timedelta(seconds=max_age_seconds)
-        stale_keys = [key for key, (started_at, _count) in self._windows.items() if started_at < cutoff]
-        for key in stale_keys:
-            self._windows.pop(key, None)
-        return len(stale_keys)
+        return 0
 
 
 rate_limiter = FixedWindowRateLimiter()

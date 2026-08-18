@@ -37,6 +37,13 @@ zhixinbanxing.com {
 		}
 	}
 
+	handle /api/auth/* {
+		uri strip_prefix /api
+		reverse_proxy 127.0.0.1:18080 {
+			header_up X-A22-Client-IP {remote_host}
+		}
+	}
+
 	handle /api/chat {
 		uri strip_prefix /api
 		reverse_proxy 127.0.0.1:18080 {

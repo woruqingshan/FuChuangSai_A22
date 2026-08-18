@@ -20,6 +20,14 @@ class Settings:
         self.session_cookie_samesite = os.getenv("SESSION_COOKIE_SAMESITE", "lax").strip().lower() or "lax"
         self.access_cookie_name = os.getenv("ACCESS_COOKIE_NAME", "a22_access").strip() or "a22_access"
         self.access_ttl_seconds = max(60, int(os.getenv("ACCESS_TTL_SECONDS", "86400")))
+        self.auth_cookie_name = os.getenv("AUTH_COOKIE_NAME", "a22_auth").strip() or "a22_auth"
+        self.auth_ttl_seconds = max(300, int(os.getenv("AUTH_TTL_SECONDS", "604800")))
+        self.redis_url = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0").strip()
+        self.redis_key_prefix = os.getenv("REDIS_KEY_PREFIX", "a22").strip() or "a22"
+        self.database_url = os.getenv(
+            "DATABASE_URL",
+            "postgresql+psycopg://a22:a22@127.0.0.1:5432/a22",
+        ).strip()
         self.invitation_codes = self._parse_invitation_codes(os.getenv("INVITATION_CODES_JSON", "[]"))
         self.invitation_verify_rate_limit_count = max(1, int(os.getenv("INVITATION_VERIFY_RATE_LIMIT_COUNT", "10")))
         self.invitation_verify_rate_limit_window_seconds = max(
@@ -40,6 +48,16 @@ class Settings:
         self.job_render_timeout_seconds = max(30, int(os.getenv("JOB_RENDER_TIMEOUT_SECONDS", "1800")))
         self.job_retention_seconds = max(60, int(os.getenv("JOB_RETENTION_SECONDS", "3600")))
         self.job_manifest_poll_seconds = max(1.0, float(os.getenv("JOB_MANIFEST_POLL_SECONDS", "2")))
+        self.register_ip_rate_limit_count = max(1, int(os.getenv("REGISTER_IP_RATE_LIMIT_COUNT", "5")))
+        self.register_ip_rate_limit_window_seconds = max(
+            300,
+            int(os.getenv("REGISTER_IP_RATE_LIMIT_WINDOW_SECONDS", "3600")),
+        )
+        self.login_ip_rate_limit_count = max(1, int(os.getenv("LOGIN_IP_RATE_LIMIT_COUNT", "10")))
+        self.login_ip_rate_limit_window_seconds = max(
+            60,
+            int(os.getenv("LOGIN_IP_RATE_LIMIT_WINDOW_SECONDS", "600")),
+        )
         self.log_dir = os.getenv("LOG_DIR", "/logs")
         self.data_dir = os.getenv("DATA_DIR", "/data")
         self.default_session_prefix = os.getenv("DEFAULT_SESSION_PREFIX", "local-session")

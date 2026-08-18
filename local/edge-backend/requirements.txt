@@ -3,3 +3,8 @@ uvicorn
 pydantic
 httpx
 websockets
+redis
+SQLAlchemy
+psycopg[binary]
+alembic
+argon2-cffi

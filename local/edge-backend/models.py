@@ -164,3 +164,23 @@ class JobStatusResponse(BaseModel):
     chat_response_ready: bool = False
     chat_response: ChatResponse | None = None
     error: str | None = None
+
+
+class AuthCredentialRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=80)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class AuthUserPublic(BaseModel):
+    user_id: str
+    username: str
+
+
+class AuthResponse(BaseModel):
+    authenticated: bool
+    user: AuthUserPublic
+
+
+class AuthMeResponse(BaseModel):
+    authenticated: bool
+    user: AuthUserPublic | None = None

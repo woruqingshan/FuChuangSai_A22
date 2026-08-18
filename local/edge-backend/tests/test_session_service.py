@@ -1,15 +1,21 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 import re
 import sys
 import unittest
 from pathlib import Path
+from uuid import uuid4
 
 EDGE_BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(EDGE_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(EDGE_BACKEND_ROOT))
 
+from config import settings  # noqa: E402
+
+settings.redis_key_prefix = f"a22test:{uuid4().hex}"
+
 from models import TurnTimeWindow  # noqa: E402
 from services.session_service import SessionError, SessionService  # noqa: E402
+from services.storage import redis_store  # noqa: E402
 
 
 SESSION_ID_RE = re.compile(r"^sess_\d{8}T\d{6}CST_[0-9a-f]{32}$")
@@ -17,6 +23,11 @@ STREAM_ID_RE = re.compile(r"^stream_\d{8}T\d{6}CST_[0-9a-f]{16}$")
 
 
 class SessionServiceTest(unittest.TestCase):
+    @classmethod
+    def tearDownClass(cls) -> None:
+        for key in redis_store.client.scan_iter(match=f"{settings.redis_key_prefix}:*"):
+            redis_store.client.delete(key)
+
     def test_session_ids_and_cookie_tokens_are_unique(self) -> None:
         service = SessionService(ttl_seconds=86400)
         record_a, token_a, created_a = service.bootstrap_session(None)
@@ -30,21 +41,19 @@ class SessionServiceTest(unittest.TestCase):
         self.assertRegex(record_a.session_id, SESSION_ID_RE)
         self.assertRegex(record_a.stream_id, STREAM_ID_RE)
 
-    def test_same_cookie_resolves_same_session(self) -> None:
+    def test_same_cookie_resolves_same_session_after_service_recreation(self) -> None:
         service = SessionService(ttl_seconds=86400)
         record_a, token, _ = service.bootstrap_session(None)
-        record_b, reused_token, created = service.bootstrap_session(token)
+        recreated_service = SessionService(ttl_seconds=86400)
+        record_b, reused_token, created = recreated_service.bootstrap_session(token)
 
         self.assertFalse(created)
         self.assertEqual(reused_token, token)
         self.assertEqual(record_b.session_id, record_a.session_id)
         self.assertEqual(record_b.stream_id, record_a.stream_id)
 
-    def test_invalid_and_expired_tokens_are_rejected(self) -> None:
+    def test_invalid_tokens_are_rejected(self) -> None:
         service = SessionService(ttl_seconds=60)
-        record, token, _ = service.bootstrap_session(None)
-        record.last_seen_at = datetime.now(UTC) - timedelta(seconds=61)
-
         with self.assertRaises(SessionError) as missing:
             service.require_session(None)
         self.assertEqual(missing.exception.status_code, 401)
@@ -53,26 +62,14 @@ class SessionServiceTest(unittest.TestCase):
             service.require_session("not-a-real-token")
         self.assertEqual(invalid.exception.status_code, 401)
 
-        with self.assertRaises(SessionError) as expired:
-            service.require_session(token)
-        self.assertEqual(expired.exception.status_code, 401)
-
-    def test_cleanup_removes_expired_sessions(self) -> None:
-        service = SessionService(ttl_seconds=60)
-        record, token, _ = service.bootstrap_session(None)
-        record.last_seen_at = datetime.now(UTC) - timedelta(seconds=120)
-
-        self.assertEqual(service.expire_old_sessions(), 1)
-        with self.assertRaises(SessionError):
-            service.require_session(token)
-
-    def test_server_turn_id_increments(self) -> None:
+    def test_server_turn_id_increments_atomically(self) -> None:
         service = SessionService(ttl_seconds=86400)
-        record, _, _ = service.bootstrap_session(None)
+        record, token, _ = service.bootstrap_session(None)
 
         self.assertEqual(service.allocate_turn(record), 1)
-        self.assertEqual(service.allocate_turn(record), 2)
-        self.assertEqual(record.next_turn_id, 3)
+        recreated_record = service.require_session(token)
+        self.assertEqual(service.allocate_turn(recreated_record), 2)
+        self.assertEqual(service.require_session(token).next_turn_id, 3)
 
     def test_media_authorization_allows_same_session_and_rejects_cross_session(self) -> None:
         service = SessionService(ttl_seconds=86400)

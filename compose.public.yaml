@@ -3,6 +3,27 @@
 #   docker compose -f compose.yaml -f compose.public.yaml up -d --build
 
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   edge-backend:
     build:
       context: .
@@ -23,6 +44,11 @@ services:
       SESSION_COOKIE_SAMESITE: lax
       ACCESS_COOKIE_NAME: a22_access
       ACCESS_TTL_SECONDS: "86400"
+      AUTH_COOKIE_NAME: a22_auth
+      AUTH_TTL_SECONDS: "604800"
+      REDIS_URL: ${REDIS_URL:-redis://127.0.0.1:6379/0}
+      REDIS_KEY_PREFIX: a22
+      DATABASE_URL: ${DATABASE_URL}
       INVITATION_CODES_JSON: ${INVITATION_CODES_JSON:-[]}
       INVITATION_VERIFY_RATE_LIMIT_COUNT: "10"
       INVITATION_VERIFY_RATE_LIMIT_WINDOW_SECONDS: "600"
@@ -34,7 +60,14 @@ services:
       JOB_RENDER_TIMEOUT_SECONDS: "1800"
       JOB_RETENTION_SECONDS: "3600"
       JOB_MANIFEST_POLL_SECONDS: "2"
-    command: ["uvicorn", "app:app", "--host", "127.0.0.1", "--port", "18080"]
+      REGISTER_IP_RATE_LIMIT_COUNT: "5"
+      REGISTER_IP_RATE_LIMIT_WINDOW_SECONDS: "3600"
+      LOGIN_IP_RATE_LIMIT_COUNT: "10"
+      LOGIN_IP_RATE_LIMIT_WINDOW_SECONDS: "600"
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app:app --host 127.0.0.1 --port 18080"]
+    depends_on:
+      - redis
+      - postgres
     volumes:
       - a22_logs:/logs
       - a22_data:/data
@@ -57,3 +90,5 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  redis_data:
+  postgres_data:
