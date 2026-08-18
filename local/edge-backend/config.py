@@ -58,6 +58,10 @@ class Settings:
             60,
             int(os.getenv("LOGIN_IP_RATE_LIMIT_WINDOW_SECONDS", "600")),
         )
+        self.memory_core_profile_max_chars = max(200, int(os.getenv("MEMORY_CORE_PROFILE_MAX_CHARS", "1200")))
+        self.memory_bundle_max_items = max(1, int(os.getenv("MEMORY_BUNDLE_MAX_ITEMS", "100")))
+        self.memory_single_item_max_chars = max(100, int(os.getenv("MEMORY_SINGLE_ITEM_MAX_CHARS", "500")))
+        self.memory_dynamic_ttl_days = max(1, int(os.getenv("MEMORY_DYNAMIC_TTL_DAYS", "7")))
         self.log_dir = os.getenv("LOG_DIR", "/logs")
         self.data_dir = os.getenv("DATA_DIR", "/data")
         self.default_session_prefix = os.getenv("DEFAULT_SESSION_PREFIX", "local-session")
