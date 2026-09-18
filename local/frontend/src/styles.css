@@ -979,6 +979,9 @@ textarea {
 .audio-turn-button-compact {
   flex: 0 0 250px;
   min-height: 68px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .audio-turn-button[data-state="recording"] {
@@ -1154,21 +1157,54 @@ textarea {
 
 .compact-control-row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-columns: minmax(230px, 1.1fr) minmax(150px, 0.72fr) minmax(170px, 0.78fr);
   gap: 12px;
   align-items: stretch;
 }
 
-.camera-toggle-button {
+.secondary-button.camera-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 154px;
+  min-height: 68px;
+  padding: 12px 16px;
+  border: 1px solid rgba(116, 164, 221, 0.35);
+  background: rgba(30, 44, 65, 0.92);
+  color: #f4f7ff;
+  text-align: center;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
+}
+
+.secondary-button.camera-toggle-button:hover,
+.secondary-button.camera-toggle-button:focus-visible {
+  border-color: rgba(147, 197, 253, 0.58);
+  background: rgba(38, 56, 82, 0.96);
+  color: #ffffff;
+}
+
+.secondary-button.camera-toggle-button:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.5);
+  outline-offset: 2px;
+}
+
+.secondary-button.camera-toggle-button:disabled {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(30, 41, 59, 0.52);
+  color: rgba(226, 232, 240, 0.68);
+  box-shadow: none;
 }
 
 .camera-inline-status {
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 170px;
+  min-height: 68px;
   padding: 12px 14px;
   border-radius: 14px;
   background: rgba(30, 41, 59, 0.75);
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid rgba(116, 164, 221, 0.24);
 }
 
 .camera-inline-title {
@@ -1177,6 +1213,7 @@ textarea {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #93c5fd;
+  white-space: nowrap;
 }
 
 .camera-inline-meta {
@@ -1184,6 +1221,8 @@ textarea {
   color: #cbd5e1;
   line-height: 1.45;
   font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .chat-panel,
@@ -2022,6 +2061,7 @@ textarea {
 
   .audio-turn-button-compact,
   .camera-toggle-button,
+  .camera-inline-status,
   .avatar-source-button {
     width: 100%;
   }

@@ -52,8 +52,8 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
         </button>
         <button type="button" class="secondary-button camera-toggle-button" data-role="camera-toggle">Enable Camera</button>
         <div class="camera-inline-status">
-          <p class="camera-inline-title">Video Capture</p>
-          <p class="camera-inline-meta" data-role="camera-meta">The camera is off. No video frames will be attached to this turn.</p>
+          <p class="camera-inline-title">Camera Status</p>
+          <p class="camera-inline-meta" data-role="camera-meta">Camera Off</p>
         </div>
       </div>
     </form>
@@ -156,21 +156,17 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
 
       if (payload?.video_frames?.length) {
         const count = payload.video_frames.length;
-        const preRollMs = payload.turn_time_window?.pre_roll_ms || 0;
-        const postRollMs = payload.turn_time_window?.post_roll_ms || 0;
-        setCameraMeta(
-          `Camera is on. Attached ${count} key frames (${preRollMs} ms pre-roll, ${postRollMs} ms post-roll).`,
-        );
+        setCameraMeta(`${count} frames attached`);
         onVideoStatusChange(`${count} camera frames attached`);
       } else {
-        setCameraMeta("The camera is on, but no video frames were attached to this turn.");
+        setCameraMeta("No frames attached");
         onVideoStatusChange("The camera is on, but no video frames were attached to this turn.");
       }
 
       return payload;
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Camera capture failed.";
-      setCameraMeta(`The camera is on, but this turn will use only voice or text. ${detail}`);
+      setCameraMeta("Capture skipped");
       onVideoStatusChange(`Camera capture is unavailable for this turn: ${detail}`);
       onStatusChange(`Camera capture was skipped for this turn: ${detail}`);
       return null;
@@ -246,19 +242,19 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
       if (!cameraEnabled) {
         await cameraRecorder.enable();
         setCameraPresentation(true);
-        setCameraMeta("Camera preview is on. Recent frames are cached automatically for this turn.");
+        setCameraMeta("Live Preview");
         onVideoStatusChange("Camera Preview On");
         return;
       }
 
       await cameraRecorder.disable();
       setCameraPresentation(false);
-      setCameraMeta("Camera is off. Sent interactions are unaffected, and the next turn will not include video frames.");
+      setCameraMeta("Camera Off");
       onVideoStatusChange("Camera Off");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Camera capture failed.";
       setCameraPresentation(false);
-      setCameraMeta(detail);
+      setCameraMeta("Camera Error");
       onVideoStatusChange(detail);
       onStatusChange(detail);
     }
@@ -290,7 +286,7 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
   });
 
   setCameraPresentation(false);
-  setCameraMeta("The camera is off. No video frames will be attached to this turn.");
+  setCameraMeta("Camera Off");
   onVideoStatusChange("Camera Off");
   syncControls();
 

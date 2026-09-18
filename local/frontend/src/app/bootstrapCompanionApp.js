@@ -361,7 +361,7 @@ async function refreshAccessState({ showReadyMessage = true } = {}) {
       remoteStatus: "AI Service Connected",
     });
     if (showReadyMessage) {
-      chatPanel.addSystemMessage("OneCompanion is ready. Type a message or use voice input to begin.");
+      chatPanel.addSystemMessage("EVA is ready. Type a message or use voice input to begin.");
     }
   } else {
     accessGate.show();
@@ -459,7 +459,7 @@ function createAccessGate(element) {
         transport: "Waiting for First Interaction",
         remoteStatus: "AI Service Connected",
       });
-      chatPanel.addSystemMessage("OneCompanion is ready. Type a message or use voice input to begin.");
+      chatPanel.addSystemMessage("EVA is ready. Type a message or use voice input to begin.");
       inputBar.setBusy(state.isSending || !isInteractionReady());
     } catch (error) {
       errorText.textContent = error?.status === 429
