@@ -4,13 +4,13 @@ export function createChatPanel() {
   element.innerHTML = `
     <div class="panel-heading">
       <div>
-        <p class="eyebrow">B · 对话</p>
-        <h2>陪伴记录</h2>
+        <p class="eyebrow">B · Conversation</p>
+        <h2>Conversation</h2>
       </div>
-      <span class="chip">同步数字人回复</span>
+      <span class="chip">Synchronized Avatar Response</span>
     </div>
     <div class="chat-log" data-role="chat-log"></div>
-    <div class="loading-indicator hidden" data-role="loading-indicator">正在生成回复与数字人表达...</div>
+    <div class="loading-indicator hidden" data-role="loading-indicator">Generating response and avatar...</div>
   `;
 
   const log = element.querySelector('[data-role="chat-log"]');
@@ -22,7 +22,7 @@ export function createChatPanel() {
       const item = document.createElement("article");
       item.className = `message-card ${role}`;
       item.innerHTML = `
-        <div class="message-role">${role === "assistant" ? "知心伴行" : "我"}</div>
+        <div class="message-role">${role === "assistant" ? "OneCompanion" : "You"}</div>
         <p class="message-text"></p>
         <div class="message-meta">${meta}</div>
       `;
@@ -34,7 +34,7 @@ export function createChatPanel() {
       const item = document.createElement("article");
       item.className = "message-card system";
       item.innerHTML = `
-        <div class="message-role">系统提示</div>
+        <div class="message-role">System</div>
         <p class="message-text"></p>
       `;
       item.querySelector(".message-text").textContent = text;

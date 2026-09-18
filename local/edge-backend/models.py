@@ -18,6 +18,8 @@ from contracts.schemas import (  # noqa: E402
     AvatarOutputSchema,
     ChatResponseSchema,
     ErrorResponseSchema,
+    LongTermMemoryBundleSchema,
+    LongTermMemoryItemSchema,
     SpeechFeaturesSchema,
     TurnTimeWindowSchema,
     VideoFrameSchema,
@@ -48,6 +50,14 @@ class VisionFeatures(VisionFeaturesSchema):
 
 class TurnTimeWindow(TurnTimeWindowSchema):
     pass
+
+
+class LongTermMemoryItem(LongTermMemoryItemSchema):
+    pass
+
+
+class LongTermMemoryBundle(LongTermMemoryBundleSchema):
+    memories: list[LongTermMemoryItem] = Field(default_factory=list)
 
 
 class ChatRequest(BaseModel):
@@ -98,6 +108,7 @@ class RemoteChatRequest(BaseModel):
     alignment_mode: str | None = None
     avatar_profile_id: str | None = None
     avatar_ref_image_path: str | None = None
+    long_term_memory: LongTermMemoryBundle | None = None
 
 
 class AvatarAction(AvatarActionSchema):

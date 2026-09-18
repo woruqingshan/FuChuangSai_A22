@@ -8,19 +8,19 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
   mediaElement.innerHTML = `
     <div class="panel-heading">
       <div>
-        <p class="eyebrow">C · 摄像头</p>
-        <h2>摄像头预览</h2>
+        <p class="eyebrow">C · Camera</p>
+        <h2>Camera Preview</h2>
       </div>
-      <span class="chip" data-role="camera-chip">摄像头待开启</span>
+      <span class="chip" data-role="camera-chip">Camera Off</span>
     </div>
     <div class="capture-stage" data-camera-state="disabled">
       <div class="capture-placeholder" data-role="capture-placeholder">
-        <p class="capture-title">摄像头预览当前已关闭</p>
-        <p class="capture-copy">如需使用视频情绪识别，可点击下方按钮开启摄像头。不使用摄像头时，文字和语音对话仍可正常使用。</p>
+        <p class="capture-title">Camera preview is currently off</p>
+        <p class="capture-copy">Enable the camera below to use visual emotion recognition. Text and voice conversations remain available while the camera is off.</p>
       </div>
       <div class="camera-preview-shell hidden" data-role="camera-shell" data-state="disabled">
         <video class="camera-preview camera-preview-large" autoplay muted playsinline></video>
-        <div class="camera-preview-overlay" data-role="camera-overlay">摄像头已关闭</div>
+        <div class="camera-preview-overlay" data-role="camera-overlay">Camera Off</div>
       </div>
     </div>
   `;
@@ -30,30 +30,30 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
   controlsElement.innerHTML = `
     <div class="panel-heading compact-panel-heading">
       <div>
-        <p class="eyebrow">C · 输入</p>
-        <h2>对话输入</h2>
+        <p class="eyebrow">C · Input</p>
+        <h2>Message</h2>
       </div>
-      <span class="chip">文字 / 语音 / 视频</span>
+      <span class="chip">Text / Voice / Video</span>
     </div>
     <form class="compact-input-form">
       <div class="compact-compose-row">
         <div class="message-input-shell" data-role="message-input-shell">
-          <input id="message-box" class="message-input" type="text" placeholder="请输入想说的话，或点击语音按钮。" />
+          <input id="message-box" class="message-input" type="text" placeholder="Type a message or use voice input." />
           <div class="recording-input-overlay hidden" data-role="recording-input-overlay" aria-live="polite">
-            <span class="recording-overlay-text">正在录音中</span>
+            <span class="recording-overlay-text">Recording...</span>
           </div>
         </div>
-        <button type="submit" class="primary-button" data-role="send-button">发送</button>
+        <button type="submit" class="primary-button" data-role="send-button">Send</button>
       </div>
       <div class="compact-control-row">
         <button type="button" class="audio-turn-button audio-turn-button-compact" data-role="voice-button" aria-pressed="false">
-          <span class="audio-turn-title" data-role="voice-title">开始语音输入</span>
-          <span class="audio-turn-meta" data-role="voice-meta">点击开始录音，再次点击停止并发送。</span>
+          <span class="audio-turn-title" data-role="voice-title">Start Voice Input</span>
+          <span class="audio-turn-meta" data-role="voice-meta">Click to start recording. Click again to stop and send.</span>
         </button>
-        <button type="button" class="secondary-button camera-toggle-button" data-role="camera-toggle">开启摄像头</button>
+        <button type="button" class="secondary-button camera-toggle-button" data-role="camera-toggle">Enable Camera</button>
         <div class="camera-inline-status">
-          <p class="camera-inline-title">视频采集状态</p>
-          <p class="camera-inline-meta" data-role="camera-meta">摄像头已关闭，本轮不会附带视频画面。</p>
+          <p class="camera-inline-title">Video Capture</p>
+          <p class="camera-inline-meta" data-role="camera-meta">The camera is off. No video frames will be attached to this turn.</p>
         </div>
       </div>
     </form>
@@ -96,9 +96,9 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
     cameraShell.dataset.state = nextEnabled ? "enabled" : "disabled";
     cameraShell.classList.toggle("hidden", !nextEnabled);
     capturePlaceholder.classList.toggle("hidden", nextEnabled);
-    cameraToggle.textContent = nextEnabled ? "关闭摄像头" : "开启摄像头";
-    cameraChip.textContent = nextEnabled ? "摄像头已开启" : "摄像头待开启";
-    cameraOverlay.textContent = nextEnabled ? "实时预览中" : "摄像头已关闭";
+    cameraToggle.textContent = nextEnabled ? "Disable Camera" : "Enable Camera";
+    cameraChip.textContent = nextEnabled ? "Camera On" : "Camera Off";
+    cameraOverlay.textContent = nextEnabled ? "Live Preview" : "Camera Off";
     onCameraModeChange?.(nextEnabled);
   }
 
@@ -107,7 +107,7 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
 
     messageBox.disabled = textLocked;
     sendButton.disabled = textLocked;
-    sendButton.textContent = isBusy ? "发送中..." : "发送";
+    sendButton.textContent = isBusy ? "Sending..." : "Send";
     // Once captureTurn has returned, the current turn already owns an immutable
     // frame payload. Keep this control available while remote rendering runs so
     // the user can stop the camera without affecting the in-flight turn.
@@ -119,24 +119,24 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
     voiceButton.setAttribute("aria-pressed", String(voiceTurnState === VOICE_TURN_STATE.RECORDING));
 
     if (voiceTurnState === VOICE_TURN_STATE.RECORDING) {
-      voiceTitle.textContent = "停止语音输入";
-      voiceMeta.textContent = "正在录音。本轮语音结束前，文字输入会暂时锁定。";
-      messageBox.placeholder = "正在录音中，本轮将以语音发送。";
+      voiceTitle.textContent = "Stop Recording";
+      voiceMeta.textContent = "Recording. Text input is temporarily locked until this voice turn ends.";
+      messageBox.placeholder = "Recording... This turn will be sent as voice.";
       setRecordingOverlay(true);
       return;
     }
 
     if (voiceTurnState === VOICE_TURN_STATE.PROCESSING) {
-      voiceTitle.textContent = "正在处理语音";
-      voiceMeta.textContent = "正在整理录音并发送到本地服务。";
-      messageBox.placeholder = "正在处理语音输入...";
+      voiceTitle.textContent = "Processing Voice";
+      voiceMeta.textContent = "Preparing the recording and sending it to the local service.";
+      messageBox.placeholder = "Processing voice input...";
       setRecordingOverlay(false);
       return;
     }
 
-    voiceTitle.textContent = "开始语音输入";
-    voiceMeta.textContent = "使用麦克风进行一轮语音对话。再次点击即可停止并发送。";
-    messageBox.placeholder = "请输入想说的话，或点击语音按钮。";
+    voiceTitle.textContent = "Start Voice Input";
+    voiceMeta.textContent = "Use your microphone for a voice interaction. Click again to stop and send.";
+    messageBox.placeholder = "Type a message or use voice input.";
     setRecordingOverlay(false);
   }
 
@@ -149,7 +149,7 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
       return null;
     }
 
-    onVideoStatusChange("正在采集本轮摄像头画面。");
+    onVideoStatusChange("Capturing camera frames for this turn.");
 
     try {
       const payload = await cameraRecorder.captureTurn(baseTurnWindow);
@@ -159,20 +159,20 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
         const preRollMs = payload.turn_time_window?.pre_roll_ms || 0;
         const postRollMs = payload.turn_time_window?.post_roll_ms || 0;
         setCameraMeta(
-          `摄像头已开启，已附带 ${count} 帧关键画面（前置缓存 ${preRollMs} 毫秒，后置缓存 ${postRollMs} 毫秒）。`,
+          `Camera is on. Attached ${count} key frames (${preRollMs} ms pre-roll, ${postRollMs} ms post-roll).`,
         );
-        onVideoStatusChange(`已附带 ${count} 帧摄像头画面`);
+        onVideoStatusChange(`${count} camera frames attached`);
       } else {
-        setCameraMeta("摄像头已开启，但本轮未附带视频画面。");
-        onVideoStatusChange("摄像头已开启，但本轮未附带视频画面。");
+        setCameraMeta("The camera is on, but no video frames were attached to this turn.");
+        onVideoStatusChange("The camera is on, but no video frames were attached to this turn.");
       }
 
       return payload;
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "摄像头采集失败。";
-      setCameraMeta(`摄像头已开启，但本轮将只使用语音或文字。${detail}`);
-      onVideoStatusChange(`本轮摄像头采集不可用：${detail}`);
-      onStatusChange(`本轮已跳过摄像头采集：${detail}`);
+      const detail = error instanceof Error ? error.message : "Camera capture failed.";
+      setCameraMeta(`The camera is on, but this turn will use only voice or text. ${detail}`);
+      onVideoStatusChange(`Camera capture is unavailable for this turn: ${detail}`);
+      onStatusChange(`Camera capture was skipped for this turn: ${detail}`);
       return null;
     }
   }
@@ -185,14 +185,14 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
 
     try {
       await recorder.start();
-      onStatusChange("正在通过麦克风录音，本轮暂时不能输入文字。");
+      onStatusChange("Recording through the microphone. Text input is temporarily unavailable.");
     } catch (error) {
       voiceTurnState = VOICE_TURN_STATE.IDLE;
       messageBox.value = preservedDraft;
       preservedDraft = "";
       syncControls();
 
-      const detail = error instanceof Error ? error.message : "语音采集失败。";
+      const detail = error instanceof Error ? error.message : "Voice capture failed.";
       onStatusChange(detail);
     }
   }
@@ -200,12 +200,12 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
   async function stopVoiceTurn() {
     voiceTurnState = VOICE_TURN_STATE.PROCESSING;
     syncControls();
-    onStatusChange("正在停止录音并准备发送。");
+    onStatusChange("Stopping the recording and preparing to send.");
 
     try {
       const audioPayload = await recorder.stop();
       if (!audioPayload?.audio_base64) {
-        throw new Error("本轮没有录到语音内容。");
+        throw new Error("No voice content was recorded for this turn.");
       }
 
       const videoPayload = await captureOptionalVideoTurn(audioPayload.turn_time_window);
@@ -224,7 +224,7 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
       messageBox.value = preservedDraft;
       preservedDraft = "";
 
-      const detail = error instanceof Error ? error.message : "语音处理失败。";
+      const detail = error instanceof Error ? error.message : "Voice processing failed.";
       onStatusChange(detail);
     } finally {
       voiceTurnState = VOICE_TURN_STATE.IDLE;
@@ -246,17 +246,17 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
       if (!cameraEnabled) {
         await cameraRecorder.enable();
         setCameraPresentation(true);
-        setCameraMeta("摄像头预览已开启，系统会自动缓存最近画面用于本轮分析。");
-        onVideoStatusChange("摄像头预览已开启");
+        setCameraMeta("Camera preview is on. Recent frames are cached automatically for this turn.");
+        onVideoStatusChange("Camera Preview On");
         return;
       }
 
       await cameraRecorder.disable();
       setCameraPresentation(false);
-      setCameraMeta("摄像头已关闭；已发送轮次不受影响，下一轮不会附带视频画面。");
-      onVideoStatusChange("摄像头未开启");
+      setCameraMeta("Camera is off. Sent interactions are unaffected, and the next turn will not include video frames.");
+      onVideoStatusChange("Camera Off");
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "摄像头采集失败。";
+      const detail = error instanceof Error ? error.message : "Camera capture failed.";
       setCameraPresentation(false);
       setCameraMeta(detail);
       onVideoStatusChange(detail);
@@ -285,13 +285,13 @@ export function createInputBar({ onSend, onStatusChange, onVideoStatusChange, on
     });
     if (sent) {
       messageBox.value = "";
-      onStatusChange("输入已清空，可以继续对话。");
+      onStatusChange("Input cleared. You can continue the conversation.");
     }
   });
 
   setCameraPresentation(false);
-  setCameraMeta("摄像头已关闭，本轮不会附带视频画面。");
-  onVideoStatusChange("摄像头未开启");
+  setCameraMeta("The camera is off. No video frames will be attached to this turn.");
+  onVideoStatusChange("Camera Off");
   syncControls();
 
   return {

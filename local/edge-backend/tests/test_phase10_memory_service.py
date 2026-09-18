@@ -18,6 +18,7 @@ from services.memory_service import (  # noqa: E402
     default_dynamic_expires_at,
     format_stable_profile,
 )
+from models import RemoteChatRequest  # noqa: E402
 
 
 def create_user() -> str:
@@ -267,6 +268,38 @@ class MemoryServiceTest(unittest.TestCase):
             compact = format_stable_profile(profile.stable_profile, max_chars=20)
             self.assertLessEqual(len(compact), 20)
             self.assertTrue(compact.startswith("Preferred name:"))
+
+    def test_memory_bundle_is_bounded_and_serializable(self):
+        self.service.create_or_update_memory(
+            MemoryInput(
+                user_id=self.user_id,
+                memory_type="semantic_fact",
+                category="interest",
+                normalized_key="interest:xiangqi",
+                content="象棋",
+                source_type="explicit_user",
+                confidence=0.95,
+                importance=0.8,
+            )
+        )
+        bundle = self.service.build_memory_bundle(self.user_id)
+
+        self.assertEqual(bundle.user_id, self.user_id)
+        self.assertIn("象棋", bundle.compact_profile_text)
+        self.assertEqual(len(bundle.memories), 1)
+
+        request = RemoteChatRequest(
+            session_id="sess_test",
+            turn_id=1,
+            user_text="你好",
+            input_type="text",
+            long_term_memory=bundle,
+        )
+        if hasattr(request, "model_validate_json"):
+            parsed = RemoteChatRequest.model_validate_json(request.model_dump_json())
+        else:
+            parsed = RemoteChatRequest.parse_raw(request.json())
+        self.assertEqual(parsed.long_term_memory.memories[0].content, "象棋")
 
 
 if __name__ == "__main__":

@@ -22,9 +22,13 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
 
-    accounts: Mapped[list["Account"]] = relationship(back_populates="user")
-    profile: Mapped["UserProfile | None"] = relationship(back_populates="user", uselist=False)
-    memories: Mapped[list["UserMemory"]] = relationship(back_populates="user")
+    accounts: Mapped[list["Account"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    profile: Mapped["UserProfile | None"] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+    memories: Mapped[list["UserMemory"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Account(Base):

@@ -40,10 +40,10 @@ async function resolveStreamFirstChunkUrl(streamManifestUrl) {
     }).catch(() => null);
     if (!manifestResponse || !manifestResponse.ok) {
       if (manifestResponse?.status === 401) {
-        throw new Error("会话已失效，请重新开始");
+        throw new Error("The session has expired. Please start again.");
       }
       if (manifestResponse?.status === 403) {
-        throw new Error("当前媒体不属于此会话");
+        throw new Error("This media does not belong to the current session.");
       }
       await waitFor(pollIntervalMs);
       continue;
@@ -56,12 +56,12 @@ async function resolveStreamFirstChunkUrl(streamManifestUrl) {
       return resolveBackendMediaUrl(firstChunkUrl);
     }
     if (manifest?.complete) {
-      throw new Error(manifest?.error || "数字人视频生成失败");
+      throw new Error(manifest?.error || "Avatar video generation failed");
     }
     await waitFor(pollIntervalMs);
   }
 
-  throw new Error("数字人视频生成等待超时");
+  throw new Error("Avatar video generation timed out");
 }
 
 function waitFor(ms) {
@@ -174,7 +174,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
         if (!videoElement.muted) {
           videoElement.controls = true;
           revealVideo();
-          setRenderStatus("视频已生成，请点击播放");
+          setRenderStatus("Video is ready. Click to play.");
           return;
         }
         resetVideoElement();
@@ -368,7 +368,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       const replyVideoStreamUrl = resolveBackendMediaUrl(response.reply_video_stream_url);
       if (videoElement && replyVideoStreamUrl) {
         if (synchronizedVideo) {
-          setRenderStatus("数字人视频生成中，请稍候…");
+          setRenderStatus("Generating avatar video. Please wait...");
         }
         try {
           const chunkUrl = await resolveStreamFirstChunkUrl(replyVideoStreamUrl);
@@ -386,7 +386,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
           return { status: "ready", synchronizedVideo };
         } catch (error) {
           if (renderToken === currentToken && synchronizedVideo) {
-            setRenderStatus(error instanceof Error ? error.message : "数字人视频生成失败");
+            setRenderStatus(error instanceof Error ? error.message : "Avatar video generation failed");
           }
           throw error;
         }

@@ -65,13 +65,13 @@ async function waitForChatResponse(jobId, options) {
       return status.chat_response;
     }
     if (["failed", "cancelled"].includes(status.status)) {
-      const error = new Error(status.error || "本轮生成失败，请稍后再试。");
+      const error = new Error(status.error || "Generation failed for this turn. Please try again shortly.");
       error.status = 502;
       throw error;
     }
   }
 
-  const error = new Error("当前生成等待时间较长，请稍后再试。");
+  const error = new Error("Generation is taking longer than expected. Please try again shortly.");
   error.status = 504;
   throw error;
 }

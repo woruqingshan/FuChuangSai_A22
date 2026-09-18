@@ -1,48 +1,48 @@
 const FEATURE_ITEMS = [
   {
-    title: "有温度",
-    text: "融合文字、语音和视觉等多模态信息，感知用户当前表达与情绪状态，让陪伴不只停留在文字问答。",
+    title: "Physical Presence",
+    text: "At home, an embodied companion robot interacts through voice, vision, expressive displays, and physical motion.",
   },
   {
-    title: "有专业度",
-    text: "结合大语言模型、心理知识库和陪护策略，提供具有知识增强和安全边界的支持性交流。",
+    title: "Shared Intelligence",
+    text: "Both embodiments access the same user identity, profile, long-term memory, and cloud AI services.",
   },
   {
-    title: "有持续性",
-    text: "面向多轮上下文、用户状态和长期交互记录设计，让系统从一次问答走向连续陪伴。",
+    title: "Cross-Device Continuity",
+    text: "Move between the home robot and the browser-based digital human while preserving persistent personalized context.",
   },
 ];
 
 const SCENARIO_ITEMS = [
   {
-    title: "居家养老",
-    text: "为独居或居家老人提供日常问候、情绪倾听和陪伴式交流入口。",
+    title: "At Home — Physical Robot",
+    text: "The home robot provides embodied interaction through voice, vision, expression, and motion.",
   },
   {
-    title: "社区养老",
-    text: "辅助社区服务人员了解老人近期状态，形成更连续的关怀触点。",
+    title: "On the Go — Web Digital Human",
+    text: "Access the same companion from a smartphone or computer browser while away from home.",
   },
   {
-    title: "养老机构",
-    text: "为机构场景提供可演示、可扩展的数字人陪护交互原型。",
+    title: "Across Environments — Shared Context",
+    text: "The same identity, profile, and long-term memory support personalized interaction across both embodiments.",
   },
 ];
 
 const CAROUSEL_SLIDES = [
   {
-    title: "数字人 A",
-    subtitle: "温和、稳定的陪护表达",
-    image: "/avatar-portrait-idle.jpg",
-    alt: "知心伴行数字人 A 预览",
+    title: "EVA",
+    subtitle: "Physical companion robot",
+    image: "/physical-companion-robot.png",
+    alt: "EVA physical companion robot",
   },
   {
-    title: "数字人 B",
-    subtitle: "更生活化的陪伴形象",
+    title: "Avatar B",
+    subtitle: "Casual companion",
     image: "/avatar-portrait-alt.jpg",
-    alt: "知心伴行数字人 B 预览",
+    alt: "OneCompanion Avatar B preview",
   },
   {
-    title: "更多形象持续开发中",
+    title: "More Avatars Coming Soon",
     subtitle: "More avatars coming soon",
     image: "",
     alt: "",
@@ -57,32 +57,39 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
   root.innerHTML = `
     <div class="landing-shell">
       <header class="landing-nav">
-        <a class="brand-mark" href="/" aria-label="知心伴行首页">
-          <span class="brand-symbol" aria-hidden="true">知</span>
-          <span class="brand-wordmark">知心伴行</span>
+        <a class="brand-mark" href="/" aria-label="EVA OneCompanion home">
+          <span class="brand-symbol" aria-hidden="true">EVA</span>
+          <span class="brand-wordmark">OneCompanion</span>
         </a>
-        <nav class="landing-nav-links" aria-label="首页导航">
-          <a href="#features">产品特点</a>
-          <a href="#scenarios">应用场景</a>
-          <a href="#preview">产品展示</a>
-          <a class="nav-cta" href="/app">开始体验</a>
+        <nav class="landing-nav-links" aria-label="Main navigation">
+          <a href="#features">Features</a>
+          <a href="#scenarios">How It Works</a>
+          <a href="#preview">Demo</a>
+          <a class="nav-cta" href="/app">Try the Demo</a>
         </nav>
       </header>
 
-      ${notFoundPath ? `<section class="notice-strip">未找到 ${escapeHtml(notFoundPath)}，已为你回到产品首页。</section>` : ""}
+      ${notFoundPath ? `<section class="notice-strip">Page ${escapeHtml(notFoundPath)} was not found. You have been returned to the product home page.</section>` : ""}
 
       <main>
         <section class="landing-hero">
           <div class="hero-copy">
-            <p class="eyebrow">AI 情感陪护虚拟数字人系统</p>
-            <h1>知心伴行</h1>
-            <p class="hero-lede">让陪伴更有温度、更专业、更持续，为老年情感陪护场景提供可体验的 AI 数字人原型。</p>
+            <div class="hero-heading-panel">
+              <div class="hero-heading-copy">
+                <p class="eyebrow">CROSS-DEVICE AI COMPANION</p>
+                <h1>EVA: <span class="hero-eva-initial">E</span>mpatía para la <span class="hero-eva-initial">V</span>ida, <span class="hero-eva-initial">A</span>compañante en cada momento.</h1>
+              </div>
+              <figure class="hero-robot-proof">
+                <img src="/physical-companion-robot.png" alt="EVA physical companion robot" />
+              </figure>
+            </div>
+            <p class="hero-lede">EVA: your personal AI-powered companion, navigating life’s experiences alongside you.</p>
             <div class="hero-actions">
-              <a class="primary-button landing-button" href="/app">开始体验</a>
-              <a class="text-link-button" href="#features">查看产品特点</a>
+              <a class="primary-button landing-button" href="/app">Try the Demo</a>
+              <a class="text-link-button" href="#features">Explore Features</a>
             </div>
           </div>
-          <div class="hero-product" aria-label="知心伴行产品预览">
+          <div class="hero-product" aria-label="OneCompanion product preview">
             <div class="preview-window">
               <div class="preview-toolbar">
                 <span></span>
@@ -106,18 +113,18 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
                       </article>
                     `).join("")}
                   </div>
-                  <button type="button" class="carousel-arrow carousel-arrow-prev" data-role="carousel-prev" aria-label="上一张数字人形象">‹</button>
-                  <button type="button" class="carousel-arrow carousel-arrow-next" data-role="carousel-next" aria-label="下一张数字人形象">›</button>
-                  <div class="carousel-indicators" data-role="carousel-indicators" aria-label="数字人形象轮播指示">
+                  <button type="button" class="carousel-arrow carousel-arrow-prev" data-role="carousel-prev" aria-label="Previous Avatar">‹</button>
+                  <button type="button" class="carousel-arrow carousel-arrow-next" data-role="carousel-next" aria-label="Next Avatar">›</button>
+                  <div class="carousel-indicators" data-role="carousel-indicators" aria-label="Avatar Carousel">
                     ${CAROUSEL_SLIDES.map((_, index) => `
-                      <button type="button" class="${index === 0 ? "is-active" : ""}" data-slide-target="${index}" aria-label="查看第 ${index + 1} 张"></button>
+                      <button type="button" class="${index === 0 ? "is-active" : ""}" data-slide-target="${index}" aria-label="View Avatar ${index + 1}"></button>
                     `).join("")}
                   </div>
                 </div>
                 <div class="preview-dialogue">
-                  <p class="preview-kicker">AI 陪护对话</p>
-                  <div class="preview-bubble preview-bubble-user">最近晚上总是睡不好。</div>
-                  <div class="preview-bubble preview-bubble-ai">我在这里陪你。我们可以先从今晚让身体慢慢放松开始。</div>
+                  <p class="preview-kicker">AI Companion</p>
+                  <div class="preview-bubble preview-bubble-user">I have an important appointment this afternoon.</div>
+                  <div class="preview-bubble preview-bubble-ai">I'll remember that. You can continue our conversation later from another device.</div>
                 </div>
               </div>
             </div>
@@ -127,7 +134,7 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
         <section class="landing-section" id="features">
           <div class="section-heading">
             <p class="eyebrow">Product Features</p>
-            <h2>从问答走向陪伴</h2>
+            <h2>From a Single Device to a Continuous Companion</h2>
           </div>
           <div class="feature-grid">
             ${FEATURE_ITEMS.map((item) => `
@@ -141,8 +148,8 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
 
         <section class="landing-section" id="scenarios">
           <div class="section-heading">
-            <p class="eyebrow">Care Scenarios</p>
-            <h2>围绕老年情感陪护场景设计</h2>
+            <p class="eyebrow">How It Works</p>
+            <h2>One Companion Across Daily Life</h2>
           </div>
           <div class="scenario-list">
             ${SCENARIO_ITEMS.map((item) => `
@@ -156,32 +163,32 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
 
         <section class="landing-section preview-section" id="preview">
           <div class="section-heading">
-            <p class="eyebrow">Product Preview</p>
-            <h2>产品展示</h2>
+            <p class="eyebrow">Demo</p>
+            <h2>Experience OneCompanion</h2>
           </div>
           <div class="product-preview">
             <div>
-              <h3>数字人陪护体验</h3>
-              <p>体验页保留当前比赛系统的文字输入、语音输入、摄像头视觉输入、数字人切换和同步视频播放链路。</p>
+              <h3>Digital Companion Experience</h3>
+              <p>The demo supports text, voice, and optional camera input, avatar switching, personalized AI responses, and synchronized digital-human playback.</p>
             </div>
-            <a class="primary-button landing-button" href="/app">进入体验</a>
+            <a class="primary-button landing-button" href="/app">Launch Demo</a>
           </div>
         </section>
       </main>
 
       <footer class="landing-footer">
-        <strong>知心伴行</strong>
-        <span>AI 情感陪护虚拟数字人系统</span>
+        <strong>OneCompanion</strong>
+        <span>Cross-Device AI Companion</span>
       </footer>
 
       <div class="service-modal-backdrop" data-role="service-modal" hidden>
         <section class="service-modal" role="dialog" aria-modal="true" aria-labelledby="service-modal-title">
           <p class="eyebrow">AI Service Status</p>
-          <h2 id="service-modal-title">AI 服务暂未启动</h2>
-          <p>当前数字人推理服务还没有连接，请稍后再试。</p>
+          <h2 id="service-modal-title">AI Service Unavailable</h2>
+          <p>The AI companion service is not connected at the moment. Please try again shortly.</p>
           <div class="service-modal-actions">
-            <button type="button" class="secondary-button" data-role="service-modal-close">我知道了</button>
-            <button type="button" class="primary-button landing-button" data-role="service-modal-retry">重新检查</button>
+            <button type="button" class="secondary-button" data-role="service-modal-close">Close</button>
+            <button type="button" class="primary-button landing-button" data-role="service-modal-retry">Check Again</button>
           </div>
         </section>
       </div>

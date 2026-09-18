@@ -7,31 +7,31 @@ export function createStatusBar() {
       <div class="status-summary-main">
         <span class="status-dot" data-role="status-dot"></span>
         <div>
-          <p class="status-summary-title" data-role="status-summary-title">AI 服务等待连接</p>
-          <p class="status-summary-meta" data-role="status-summary-meta">多模态就绪</p>
+          <p class="status-summary-title" data-role="status-summary-title">Waiting for AI Service</p>
+          <p class="status-summary-meta" data-role="status-summary-meta">Multimodal Ready</p>
         </div>
       </div>
       <button type="button" class="status-toggle-button" data-role="status-toggle" aria-expanded="false">
-        详情⌄
+        Details⌄
       </button>
     </div>
     <div class="status-scroll-shell" data-role="status-details">
       <div class="panel-heading status-details-heading">
         <div>
-          <p class="eyebrow">A · 状态</p>
-          <h2>服务与交互状态</h2>
+          <p class="eyebrow">A · Status</p>
+          <h2>Service Status</h2>
         </div>
-        <span class="chip">安全连接</span>
+        <span class="chip">Secure Connection</span>
       </div>
       <dl class="status-grid">
-        <div><dt>当前状态</dt><dd data-role="transport"></dd></div>
-        <div><dt>AI 服务</dt><dd data-role="remote-status"></dd></div>
-        <div><dt>输入方式</dt><dd data-role="input-mode"></dd></div>
-        <div><dt>情绪风格</dt><dd data-role="emotion-style"></dd></div>
-        <div><dt>表情</dt><dd data-role="facial-expression"></dd></div>
-        <div><dt>动作</dt><dd data-role="head-motion"></dd></div>
-        <div><dt>语音</dt><dd data-role="audio-status"></dd></div>
-        <div><dt>视觉</dt><dd data-role="video-status"></dd></div>
+        <div><dt>Status</dt><dd data-role="transport"></dd></div>
+        <div><dt>AI Service</dt><dd data-role="remote-status"></dd></div>
+        <div><dt>Input Mode</dt><dd data-role="input-mode"></dd></div>
+        <div><dt>Emotion Style</dt><dd data-role="emotion-style"></dd></div>
+        <div><dt>Expression</dt><dd data-role="facial-expression"></dd></div>
+        <div><dt>Motion</dt><dd data-role="head-motion"></dd></div>
+        <div><dt>Audio</dt><dd data-role="audio-status"></dd></div>
+        <div><dt>Vision</dt><dd data-role="video-status"></dd></div>
       </dl>
     </div>
   `;
@@ -54,18 +54,18 @@ export function createStatusBar() {
   refs.toggleButton.addEventListener("click", () => {
     const expanded = element.dataset.expanded !== "true";
     element.dataset.expanded = expanded ? "true" : "false";
-    refs.toggleButton.textContent = expanded ? "收起⌃" : "详情⌄";
+    refs.toggleButton.textContent = expanded ? "Hide Details⌃" : "Details⌄";
     refs.toggleButton.setAttribute("aria-expanded", expanded ? "true" : "false");
   });
 
   return {
     element,
     update(snapshot) {
-      const remoteStatus = snapshot.remoteStatus || "AI 服务等待连接";
-      const serviceReady = /已连接|正常|就绪|ready|ok/i.test(remoteStatus);
+      const remoteStatus = snapshot.remoteStatus || "Waiting for AI Service";
+      const serviceReady = /connected|ready|healthy|normal|ok/i.test(remoteStatus);
       refs.statusDot.dataset.state = serviceReady ? "ok" : "pending";
-      refs.summaryTitle.textContent = serviceReady ? "AI 服务正常" : remoteStatus;
-      refs.summaryMeta.textContent = `${snapshot.transport || "等待首次对话"} · ${snapshot.inputMode || "text"}`;
+      refs.summaryTitle.textContent = serviceReady ? "AI Service Ready" : remoteStatus;
+      refs.summaryMeta.textContent = `${snapshot.transport || "Waiting for First Interaction"} · ${snapshot.inputMode || "text"}`;
       refs.transport.textContent = snapshot.transport;
       refs.remoteStatus.textContent = snapshot.remoteStatus;
       refs.inputMode.textContent = snapshot.inputMode;

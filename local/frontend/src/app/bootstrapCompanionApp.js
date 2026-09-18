@@ -18,14 +18,14 @@ const state = {
   sessionId: "",
   streamId: "",
   nextTurnId: 1,
-  transport: "正在准备服务",
-  remoteStatus: "AI 服务连接中",
+  transport: "Preparing Service",
+  remoteStatus: "Connecting to AI Service",
   inputMode: "text",
   emotionStyle: "supportive",
   facialExpression: "neutral",
   headMotion: "steady",
-  audioStatus: "语音待输入",
-  videoStatus: "摄像头未开启",
+  audioStatus: "Waiting for Voice Input",
+  videoStatus: "Camera Off",
   isSending: false,
   isSessionReady: false,
   hasAccess: false,
@@ -68,12 +68,12 @@ app.innerHTML = `
   <div class="page-shell app-page-shell">
     <header class="topbar">
       <div>
-        <a class="home-link" href="/">← 知心伴行</a>
-        <h1>AI 情感陪护数字人</h1>
+        <a class="home-link" href="/">← OneCompanion</a>
+        <h1>AI Companion</h1>
       </div>
       <div class="topbar-meta">
-        <span class="chip">多模态陪伴</span>
-        <span class="chip">数字人表达</span>
+        <span class="chip">Multimodal Interaction</span>
+        <span class="chip">Digital Human</span>
         <div class="account-entry" data-role="account-entry"></div>
       </div>
     </header>
@@ -89,32 +89,32 @@ app.innerHTML = `
     </main>
     <div class="access-modal-backdrop hidden" data-role="access-gate">
       <form class="access-modal" data-role="access-form">
-        <p class="eyebrow">体验入口</p>
-        <h2>请输入体验邀请码</h2>
-        <p>当前数字人服务需要邀请码后才能开始体验。</p>
+        <p class="eyebrow">Demo Access</p>
+        <h2>Enter Access Code</h2>
+        <p>An access code is required to use the current demo service.</p>
         <label>
-          <span>邀请码</span>
-          <input type="password" autocomplete="off" data-role="access-code" placeholder="请输入邀请码" />
+          <span>Access Code</span>
+          <input type="password" autocomplete="off" data-role="access-code" placeholder="Enter access code" />
         </label>
-        <button type="submit">进入体验</button>
+        <button type="submit">Enter Demo</button>
         <p class="access-error" data-role="access-error" aria-live="polite"></p>
       </form>
     </div>
     <div class="access-modal-backdrop hidden" data-role="auth-gate">
       <form class="access-modal auth-modal" data-role="auth-form">
-        <p class="eyebrow" data-role="auth-eyebrow">账号</p>
-        <h2 data-role="auth-title">登录账号</h2>
-        <p data-role="auth-description">登录后可为后续长期陪伴能力保留用户身份。</p>
+        <p class="eyebrow" data-role="auth-eyebrow">Account</p>
+        <h2 data-role="auth-title">Sign In</h2>
+        <p data-role="auth-description">Sign in to keep your persistent user identity across future interactions.</p>
         <label>
-          <span>用户名</span>
-          <input type="text" autocomplete="username" data-role="auth-username" placeholder="请输入用户名" />
+          <span>Username</span>
+          <input type="text" autocomplete="username" data-role="auth-username" placeholder="Enter username" />
         </label>
         <label>
-          <span>密码</span>
-          <input type="password" autocomplete="current-password" data-role="auth-password" placeholder="请输入密码" />
+          <span>Password</span>
+          <input type="password" autocomplete="current-password" data-role="auth-password" placeholder="Enter password" />
         </label>
-        <button type="submit" data-role="auth-submit">登录</button>
-        <button type="button" class="modal-secondary-button" data-role="auth-cancel">取消</button>
+        <button type="submit" data-role="auth-submit">Sign In</button>
+        <button type="button" class="modal-secondary-button" data-role="auth-cancel">Cancel</button>
         <p class="access-error" data-role="auth-error" aria-live="polite"></p>
       </form>
     </div>
@@ -134,10 +134,10 @@ accountMenu = createAccountMenu(
 
 inputBar.setBusy(true);
 syncStatus({
-  transport: "正在准备服务",
-  remoteStatus: "AI 服务连接中",
-  audioStatus: "语音待输入",
-  videoStatus: "摄像头未开启",
+  transport: "Preparing Service",
+  remoteStatus: "Connecting to AI Service",
+  audioStatus: "Waiting for Voice Input",
+  videoStatus: "Camera Off",
 });
 syncLayout();
 void initializeSession();
@@ -158,19 +158,19 @@ function buildTextTurnTimeWindow(turnId) {
 
 async function handleSend({ text, audio, video }) {
   if (!state.isSessionReady) {
-    chatPanel.addSystemMessage("服务正在准备中，请稍后再试。");
+    chatPanel.addSystemMessage("The service is preparing. Please try again shortly.");
     return false;
   }
 
   if (!state.hasAccess) {
-    chatPanel.addSystemMessage("请先输入体验邀请码。");
+    chatPanel.addSystemMessage("Enter an access code first.");
     accessGate.show();
     inputBar.setBusy(true);
     return false;
   }
 
   if (state.isSending) {
-    chatPanel.addSystemMessage("上一轮还在处理中，请稍等。");
+    chatPanel.addSystemMessage("The previous interaction is still processing. Please wait.");
     return false;
   }
 
@@ -179,13 +179,13 @@ async function handleSend({ text, audio, video }) {
   const hasVideo = Boolean(video?.video_frames?.length || video?.video_meta);
 
   if (!hasText && !hasAudio) {
-    chatPanel.addSystemMessage("请先输入文字，或录制一段语音。");
+    chatPanel.addSystemMessage("Type a message or record a voice message first.");
     return false;
   }
 
   const turnId = state.nextTurnId;
   const inputMode = hasAudio ? "audio" : "text";
-  const userMessage = hasText ? text : "[语音消息]";
+  const userMessage = hasText ? text : "[Voice Message]";
 
   chatPanel.addMessage({
     role: "user",
@@ -197,12 +197,12 @@ async function handleSend({ text, audio, video }) {
   inputBar.setBusy(true);
   chatPanel.setLoading(true);
   syncStatus({
-    transport: "正在发送请求",
-    remoteStatus: "等待 AI 服务生成回复",
+    transport: "Sending Request",
+    remoteStatus: "Waiting for AI Response",
     inputMode,
-    audioStatus: hasAudio ? `已附带语音（${audio.audio_duration_ms} 毫秒）` : "文本输入",
+    audioStatus: hasAudio ? `Voice attached (${audio.audio_duration_ms} ms)` : "Text Input",
     videoStatus: hasVideo
-      ? `已附带 ${video.video_frames?.length || video.video_meta?.sampled_frame_count || 0} 帧视频画面`
+      ? `${video.video_frames?.length || video.video_meta?.sampled_frame_count || 0} video frames attached`
       : state.videoStatus,
   });
 
@@ -242,10 +242,10 @@ async function handleSend({ text, audio, video }) {
     });
 
     state.nextTurnId += 1;
-    state.transport = "等待数字人表达生成";
+    state.transport = "Waiting for Avatar Response";
     syncStatus({
       transport: state.transport,
-      remoteStatus: "文字与语音已就绪，正在生成同步数字人视频",
+      remoteStatus: "Text and audio are ready. Generating synchronized avatar video.",
     });
 
     const avatarRenderResult = await avatarPanel.update(response).catch((error) => ({
@@ -265,49 +265,49 @@ async function handleSend({ text, audio, video }) {
     if (avatarRenderResult?.status === "failed") {
       const videoError = avatarRenderResult.error instanceof Error
         ? avatarRenderResult.error.message
-        : "数字人视频生成失败";
-      chatPanel.addSystemMessage(`文本回复已保留，但${videoError}`);
+        : "Avatar video generation failed";
+      chatPanel.addSystemMessage(`The text response was preserved, but ${videoError}`);
     }
     syncStatus({
       transport: avatarRenderResult?.status === "failed"
-        ? "文字回复已完成，数字人视频生成失败"
-        : "文字与数字人表达已就绪",
-      remoteStatus: response.server_status === "ok" ? "AI 服务已连接" : "AI 服务异常",
+        ? "Response complete; avatar video generation failed"
+        : "Response and avatar are ready",
+      remoteStatus: response.server_status === "ok" ? "AI Service Connected" : "AI Service Error",
       inputMode: response.input_mode || inputMode,
       emotionStyle: response.emotion_style,
       facialExpression: response.avatar_action.facial_expression,
       headMotion: response.avatar_action.head_motion,
-      audioStatus: hasAudio ? "语音已处理" : "文本已处理",
-      videoStatus: hasVideo ? "视觉关键帧已处理" : state.videoStatus,
+      audioStatus: hasAudio ? "Voice Processed" : "Text Processed",
+      videoStatus: hasVideo ? "Visual Keyframes Processed" : state.videoStatus,
     });
     return true;
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "未知请求错误";
+    const detail = error instanceof Error ? error.message : "Unknown request error";
     if (error?.status === 401) {
       state.isSessionReady = false;
       state.hasAccess = false;
       inputBar.setBusy(true);
-      chatPanel.addSystemMessage("当前连接已失效，正在重新连接服务。请重新发送上一条消息。");
+      chatPanel.addSystemMessage("The connection expired. Reconnecting to the service; please resend your last message.");
       await initializeSession({ showReadyMessage: false });
     } else if (error?.status === 403) {
       state.hasAccess = false;
       inputBar.setBusy(true);
       accessGate.show();
-      chatPanel.addSystemMessage("请先输入体验邀请码。");
+      chatPanel.addSystemMessage("Enter an access code first.");
     } else if (error?.status === 409) {
-      chatPanel.addSystemMessage("当前已有一轮对话正在处理中，请等待完成。");
+      chatPanel.addSystemMessage("An interaction is already processing. Please wait for it to finish.");
     } else if (error?.status === 429 && error?.reason === "queue_full") {
-      chatPanel.addSystemMessage("当前体验人数较多，请稍后再试。");
+      chatPanel.addSystemMessage("The demo is busy. Please try again shortly.");
     } else if (error?.status === 429) {
-      chatPanel.addSystemMessage("尝试次数过多，请稍后再试。");
+      chatPanel.addSystemMessage("Too many attempts. Please try again later.");
     } else {
-      chatPanel.addSystemMessage(`请求失败：${detail}`);
+      chatPanel.addSystemMessage(`Request failed: ${detail}`);
     }
     syncStatus({
-      transport: "请求失败",
-      remoteStatus: "AI 服务暂不可用，请稍后再试",
-      audioStatus: hasAudio ? "语音发送失败" : "文本发送失败",
-      videoStatus: hasVideo ? "视觉信息发送失败" : state.videoStatus,
+      transport: "Request Failed",
+      remoteStatus: "AI Service temporarily unavailable. Please try again shortly.",
+      audioStatus: hasAudio ? "Voice Send Failed" : "Text Send Failed",
+      videoStatus: hasVideo ? "Visual Input Send Failed" : state.videoStatus,
     });
     return false;
   } finally {
@@ -329,10 +329,10 @@ async function initializeSession({ showReadyMessage = true } = {}) {
   } catch (error) {
     state.isSessionReady = false;
     console.warn("Companion service bootstrap failed", error);
-    chatPanel.addSystemMessage("服务初始化失败，请刷新页面后重试。");
+    chatPanel.addSystemMessage("Service initialization failed. Refresh the page and try again.");
     syncStatus({
-      transport: "服务初始化失败",
-      remoteStatus: "服务连接异常",
+      transport: "Service Initialization Failed",
+      remoteStatus: "Service Connection Error",
     });
   } finally {
     inputBar.setBusy(state.isSending || !isInteractionReady());
@@ -357,17 +357,17 @@ async function refreshAccessState({ showReadyMessage = true } = {}) {
   if (state.hasAccess) {
     accessGate.hide();
     syncStatus({
-      transport: "等待首次对话",
-      remoteStatus: "AI 服务已连接",
+      transport: "Waiting for First Interaction",
+      remoteStatus: "AI Service Connected",
     });
     if (showReadyMessage) {
-      chatPanel.addSystemMessage("知心伴行已准备好。请输入文字，或点击语音按钮开始对话。");
+      chatPanel.addSystemMessage("OneCompanion is ready. Type a message or use voice input to begin.");
     }
   } else {
     accessGate.show();
     syncStatus({
-      transport: "等待输入邀请码",
-      remoteStatus: "AI 服务已连接",
+      transport: "Waiting for Access Code",
+      remoteStatus: "AI Service Connected",
     });
   }
 }
@@ -378,22 +378,22 @@ function handleJobStatus(job) {
   }
   if (job.status === "queued") {
     syncStatus({
-      transport: `当前正在排队，第 ${job.queue_position || 1} 位`,
-      remoteStatus: "等待进入生成",
+      transport: `Queued: position ${job.queue_position || 1}`,
+      remoteStatus: "Waiting to Generate",
     });
     return;
   }
   if (job.status === "processing") {
     syncStatus({
-      transport: "正在生成回复",
-      remoteStatus: "AI 服务正在处理",
+      transport: "Generating Response",
+      remoteStatus: "AI Service Processing",
     });
     return;
   }
   if (job.status === "rendering") {
     syncStatus({
-      transport: "等待数字人表达生成",
-      remoteStatus: "文字与语音已就绪，正在生成同步数字人视频",
+      transport: "Waiting for Avatar Response",
+      remoteStatus: "Text and audio are ready. Generating synchronized avatar video.",
     });
   }
 }
@@ -444,7 +444,7 @@ function createAccessGate(element) {
     event.preventDefault();
     const code = input.value.trim();
     if (!code) {
-      errorText.textContent = "请输入体验邀请码。";
+      errorText.textContent = "Enter an access code.";
       return;
     }
     submitButton.disabled = true;
@@ -456,15 +456,15 @@ function createAccessGate(element) {
       state.hasAccess = true;
       element.classList.add("hidden");
       syncStatus({
-        transport: "等待首次对话",
-        remoteStatus: "AI 服务已连接",
+        transport: "Waiting for First Interaction",
+        remoteStatus: "AI Service Connected",
       });
-      chatPanel.addSystemMessage("知心伴行已准备好。请输入文字，或点击语音按钮开始对话。");
+      chatPanel.addSystemMessage("OneCompanion is ready. Type a message or use voice input to begin.");
       inputBar.setBusy(state.isSending || !isInteractionReady());
     } catch (error) {
       errorText.textContent = error?.status === 429
-        ? "尝试次数过多，请稍后再试。"
-        : "邀请码无效或已失效。";
+        ? "Too many attempts. Please try again later."
+        : "The access code is invalid or has expired.";
     } finally {
       submitButton.disabled = false;
       input.disabled = false;
@@ -503,7 +503,7 @@ function createAccountMenu(element, modalElement) {
     }
     if (action === "register") {
       if (!state.hasAccess) {
-        chatPanel.addSystemMessage("请先完成体验邀请码验证。");
+        chatPanel.addSystemMessage("Complete access code verification first.");
         accessGate.show();
         return;
       }
@@ -514,9 +514,9 @@ function createAccountMenu(element, modalElement) {
         await logoutAccount();
         state.authUser = null;
         render();
-        chatPanel.addSystemMessage("已退出账号，当前匿名会话可继续使用。");
+        chatPanel.addSystemMessage("You have signed out. The current anonymous session can continue.");
       } catch (error) {
-        chatPanel.addSystemMessage("退出失败，请稍后再试。");
+        chatPanel.addSystemMessage("Sign out failed. Please try again shortly.");
       }
     }
   });
@@ -530,7 +530,7 @@ function createAccountMenu(element, modalElement) {
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
     if (!username || !password) {
-      errorText.textContent = "请输入用户名和密码。";
+      errorText.textContent = "Enter both username and password.";
       return;
     }
     submitButton.disabled = true;
@@ -544,16 +544,16 @@ function createAccountMenu(element, modalElement) {
       state.authUser = auth.user || null;
       render();
       hide();
-      chatPanel.addSystemMessage(mode === "register" ? "注册成功，已登录。" : "登录成功。");
+      chatPanel.addSystemMessage(mode === "register" ? "Registration successful. You are now signed in." : "Signed in successfully.");
     } catch (error) {
       if (mode === "register" && error?.status === 403) {
-        errorText.textContent = "请先完成体验邀请码验证。";
+        errorText.textContent = "Complete access code verification first.";
       } else if (error?.status === 409) {
-        errorText.textContent = "用户名已被注册。";
+        errorText.textContent = "This username is already registered.";
       } else if (error?.status === 429) {
-        errorText.textContent = "尝试次数过多，请稍后再试。";
+        errorText.textContent = "Too many attempts. Please try again later.";
       } else {
-        errorText.textContent = error?.message || "账号操作失败，请稍后重试。";
+        errorText.textContent = error?.message || "Account operation failed. Please try again later.";
       }
     } finally {
       submitButton.disabled = false;
@@ -566,11 +566,11 @@ function createAccountMenu(element, modalElement) {
   function show(nextMode) {
     mode = nextMode;
     const isRegister = mode === "register";
-    title.textContent = isRegister ? "注册账号" : "登录账号";
+    title.textContent = isRegister ? "Create Account" : "Sign In";
     description.textContent = isRegister
-      ? "注册后当前会话会绑定到你的长期用户身份。"
-      : "登录后当前会话会绑定到你的长期用户身份。";
-    submitButton.textContent = isRegister ? "注册并登录" : "登录";
+      ? "Your current session will be linked to your persistent user identity."
+      : "Sign in to keep your persistent user identity across future interactions.";
+    submitButton.textContent = isRegister ? "Register and Sign In" : "Sign In";
     errorText.textContent = "";
     passwordInput.value = "";
     modalElement.classList.remove("hidden");
@@ -586,13 +586,13 @@ function createAccountMenu(element, modalElement) {
     if (state.authUser) {
       element.innerHTML = `
         <span class="account-name">${escapeHtml(state.authUser.username)}</span>
-        <button type="button" class="account-link" data-action="logout">退出</button>
+        <button type="button" class="account-link" data-action="logout">Sign Out</button>
       `;
       return;
     }
     element.innerHTML = `
-      <button type="button" class="account-link" data-action="login">登录</button>
-      <button type="button" class="account-primary" data-action="register">注册</button>
+      <button type="button" class="account-link" data-action="login">Sign In</button>
+      <button type="button" class="account-primary" data-action="register">Register</button>
     `;
   }
 

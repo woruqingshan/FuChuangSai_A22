@@ -8,6 +8,7 @@ from models import ChatJobAcceptedResponse, ChatRequest, ErrorResponse
 from services.access_service import AccessError, access_service
 from services.job_manager import JobError, job_manager
 from services.input_preprocessor import normalize_chat_request
+from services.memory_service import memory_service
 from services.observability import edge_observability
 from services.rate_limiter import rate_limiter
 from services.request_context import get_client_ip
@@ -114,6 +115,12 @@ async def chat(http_request: Request, request: ChatRequest) -> ChatJobAcceptedRe
             turn_id=turn_id,
             request_id=request_id,
         )
+        if session_record.user_id:
+            memory_bundle = memory_service.build_memory_bundle(session_record.user_id)
+            if hasattr(remote_request, "model_copy"):
+                remote_request = remote_request.model_copy(update={"long_term_memory": memory_bundle})
+            else:
+                remote_request = remote_request.copy(update={"long_term_memory": memory_bundle})
     except ValueError as exc:
         edge_observability.log_chat_error(
             request_id,
@@ -138,6 +145,10 @@ async def chat(http_request: Request, request: ChatRequest) -> ChatJobAcceptedRe
             "resolved_user_text": remote_request.user_text,
             "turn_window_id": (
                 remote_request.turn_time_window.window_id if remote_request.turn_time_window else None
+            ),
+            "has_long_term_memory": bool(remote_request.long_term_memory),
+            "long_term_memory_count": (
+                len(remote_request.long_term_memory.memories) if remote_request.long_term_memory else 0
             ),
             "video_frame_count": len(remote_request.video_frames),
             "speech_tags": (

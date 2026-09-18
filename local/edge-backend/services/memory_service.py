@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 
 from config import settings
+from models import LongTermMemoryBundle, LongTermMemoryItem
 from services.db import db_session
 from services.db_models import UserMemory, UserProfile
 
@@ -163,6 +164,35 @@ class MemoryService:
             if not profile:
                 return ""
             return format_stable_profile(profile.stable_profile, max_chars=max_chars or settings.memory_core_profile_max_chars)
+
+    def build_memory_bundle(self, user_id: str) -> LongTermMemoryBundle:
+        memories = self.load_active_memories(user_id, limit=settings.memory_bundle_max_items)
+        with db_session() as session:
+            profile = session.get(UserProfile, user_id)
+            stable_profile = profile.stable_profile if profile else empty_profile()
+            compact_profile_text = format_stable_profile(
+                stable_profile,
+                max_chars=settings.memory_core_profile_max_chars,
+            )
+        return LongTermMemoryBundle(
+            user_id=user_id,
+            stable_profile=stable_profile,
+            compact_profile_text=compact_profile_text,
+            memories=[
+                LongTermMemoryItem(
+                    memory_id=memory.memory_id,
+                    memory_type=memory.memory_type,
+                    category=memory.category,
+                    content=memory.content[: settings.memory_single_item_max_chars],
+                    source_type=memory.source_type,
+                    confidence=memory.confidence,
+                    importance=memory.importance,
+                    last_seen_at=memory.last_seen_at.astimezone(UTC).isoformat(),
+                )
+                for memory in memories
+            ],
+            generated_at=utc_now().isoformat(),
+        )
 
     def _materialize_profile_in_session(self, user_id: str, session) -> UserProfile:
         now = utc_now()

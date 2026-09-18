@@ -121,6 +121,27 @@ class MultimodalResultSchema(BaseModel):
     fusion_summary: str | None = None
     evidence: MultimodalEvidenceSchema | None = None
 
+
+class LongTermMemoryItemSchema(BaseModel):
+    memory_id: str = Field(..., min_length=1)
+    memory_type: str = Field(..., min_length=1)
+    category: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1)
+    source_type: str | None = None
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    importance: float | None = Field(default=None, ge=0.0, le=1.0)
+    last_seen_at: str | None = None
+
+
+class LongTermMemoryBundleSchema(BaseModel):
+    contract_version: str = Field(default="memory-v1")
+    user_id: str | None = None
+    stable_profile: dict = Field(default_factory=dict)
+    compact_profile_text: str = Field(default="")
+    memories: list[LongTermMemoryItemSchema] = Field(default_factory=list)
+    generated_at: str | None = None
+
+
 class ChatRequestSchema(BaseModel):
     session_id: str = Field(..., min_length=1)
     turn_id: int = Field(..., ge=1)
@@ -148,6 +169,7 @@ class ChatRequestSchema(BaseModel):
     alignment_mode: str | None = None
     avatar_profile_id: str | None = None
     avatar_ref_image_path: str | None = None
+    long_term_memory: LongTermMemoryBundleSchema | None = None
 
 
 class AvatarActionSchema(BaseModel):

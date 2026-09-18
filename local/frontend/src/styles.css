@@ -1250,7 +1250,7 @@ textarea {
 .brand-symbol {
   display: grid;
   place-items: center;
-  width: 32px;
+  width: 42px;
   height: 32px;
   border: 1px solid rgba(31, 122, 91, 0.2);
   border-radius: 9px;
@@ -1334,12 +1334,44 @@ textarea {
   max-width: 680px;
 }
 
+.hero-heading-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 176px;
+  gap: 22px;
+  align-items: start;
+}
+
+.hero-heading-copy {
+  min-width: 0;
+}
+
 .hero-copy h1 {
   margin: 14px 0 18px;
   color: #10231d;
-  font-size: 82px;
-  line-height: 0.98;
+  font-size: clamp(30px, 2.7vw, 42px);
+  line-height: 1.08;
   letter-spacing: 0;
+}
+
+.hero-eva-initial {
+  color: #c62828;
+}
+
+.hero-robot-proof {
+  align-self: start;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid rgba(57, 76, 96, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 46px rgba(23, 32, 51, 0.14);
+}
+
+.hero-robot-proof img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 
 .hero-copy .eyebrow,
@@ -1966,7 +1998,7 @@ textarea {
   }
 
   .hero-copy h1 {
-    font-size: 64px;
+    font-size: clamp(30px, 4vw, 42px);
   }
 
   .hero-product {
@@ -2112,8 +2144,19 @@ textarea {
     padding-bottom: 36px;
   }
 
+  .hero-heading-panel {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .hero-robot-proof {
+    width: 100%;
+    max-width: 360px;
+    justify-self: start;
+  }
+
   .hero-copy h1 {
-    font-size: 48px;
+    font-size: clamp(30px, 8vw, 42px);
   }
 
   .hero-lede {

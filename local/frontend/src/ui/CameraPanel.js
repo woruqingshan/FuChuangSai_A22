@@ -4,14 +4,14 @@ export function createCameraPanel({ onToggle }) {
   element.innerHTML = `
     <div class="camera-panel-header">
       <div>
-        <p class="camera-panel-title">摄像头输入</p>
-        <p class="camera-panel-meta" data-role="camera-meta">摄像头未开启，本轮不会附带视觉画面。</p>
+        <p class="camera-panel-title">Camera Input</p>
+        <p class="camera-panel-meta" data-role="camera-meta">The camera is off. No visual frames will be attached to this turn.</p>
       </div>
-      <button type="button" class="secondary-button" data-role="camera-toggle">开启摄像头</button>
+      <button type="button" class="secondary-button" data-role="camera-toggle">Enable Camera</button>
     </div>
     <div class="camera-preview-shell" data-state="disabled">
       <video class="camera-preview" autoplay muted playsinline></video>
-      <div class="camera-preview-overlay" data-role="camera-overlay">摄像头未开启</div>
+      <div class="camera-preview-overlay" data-role="camera-overlay">Camera Off</div>
     </div>
   `;
 
@@ -26,9 +26,9 @@ export function createCameraPanel({ onToggle }) {
 
   function sync() {
     toggleButton.disabled = busy;
-    toggleButton.textContent = enabled ? "关闭摄像头" : "开启摄像头";
+    toggleButton.textContent = enabled ? "Disable Camera" : "Enable Camera";
     previewShell.dataset.state = enabled ? "enabled" : "disabled";
-    overlay.textContent = enabled ? "实时预览与最近画面缓存" : "摄像头未开启";
+    overlay.textContent = enabled ? "Live preview with recent-frame buffering" : "Camera Off";
   }
 
   toggleButton.addEventListener("click", async () => {
