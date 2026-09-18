@@ -50,12 +50,12 @@ async function resolveStreamFirstChunkUrl(streamManifestUrl) {
       return resolveBackendMediaUrl(firstChunkUrl);
     }
     if (manifest?.complete) {
-      throw new Error(manifest?.error || "数字人视频生成失败");
+      throw new Error(manifest?.error || "Digital human video generation failed");
     }
     await waitFor(pollIntervalMs);
   }
 
-  throw new Error("数字人视频生成等待超时");
+  throw new Error("Timed out waiting for the digital human video");
 }
 
 function waitFor(ms) {
@@ -168,7 +168,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
         if (!videoElement.muted) {
           videoElement.controls = true;
           revealVideo();
-          setRenderStatus("视频已生成，请点击播放");
+          setRenderStatus("Video is ready. Click play.");
           return;
         }
         resetVideoElement();
@@ -362,7 +362,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       const replyVideoStreamUrl = resolveBackendMediaUrl(response.reply_video_stream_url);
       if (videoElement && replyVideoStreamUrl) {
         if (synchronizedVideo) {
-          setRenderStatus("数字人视频生成中，请稍候…");
+          setRenderStatus("Generating digital human video. Please wait…");
         }
         try {
           const chunkUrl = await resolveStreamFirstChunkUrl(replyVideoStreamUrl);
@@ -380,7 +380,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
           return { status: "ready", synchronizedVideo };
         } catch (error) {
           if (renderToken === currentToken && synchronizedVideo) {
-            setRenderStatus(error instanceof Error ? error.message : "数字人视频生成失败");
+            setRenderStatus(error instanceof Error ? error.message : "Digital human video generation failed");
           }
           throw error;
         }

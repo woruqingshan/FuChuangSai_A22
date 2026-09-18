@@ -81,12 +81,12 @@ app.innerHTML = `
   <div class="page-shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">A22 情感陪伴系统</p>
-        <h1>情感陪伴数字人助手</h1>
+        <p class="eyebrow">A22 Emotional Support System</p>
+        <h1>Digital Human Companion</h1>
       </div>
       <div class="topbar-meta">
-        <span class="chip">本地轻量处理</span>
-        <span class="chip">远端智能推理</span>
+        <span class="chip">Local Processing</span>
+        <span class="chip">Remote AI</span>
       </div>
     </header>
     <main class="workspace-grid">
@@ -108,7 +108,7 @@ app.querySelector(".control-column").append(inputBar.controlsElement);
 app.querySelector(".avatar-column").appendChild(avatarPanel.element);
 app.querySelector(".status-column").appendChild(statusBar.element);
 
-chatPanel.addSystemMessage("界面已准备好。请输入文字，或点击语音按钮开始对话。");
+chatPanel.addSystemMessage("Ready to chat. Type a message or use the voice button to begin.");
 syncStatus({
   remoteStatus: "Remote link pending",
   audioStatus: "Audio idle",
@@ -132,7 +132,7 @@ function buildTextTurnTimeWindow(turnId) {
 
 async function handleSend({ text, audio, video }) {
   if (state.isSending) {
-    chatPanel.addSystemMessage("上一轮还在处理中，请稍等。");
+    chatPanel.addSystemMessage("Your previous message is still being processed. Please wait.");
     return false;
   }
 
@@ -141,13 +141,13 @@ async function handleSend({ text, audio, video }) {
   const hasVideo = Boolean(video?.video_frames?.length || video?.video_meta);
 
   if (!hasText && !hasAudio) {
-    chatPanel.addSystemMessage("请先输入文字，或录制一段语音。");
+    chatPanel.addSystemMessage("Please type a message or record your voice first.");
     return false;
   }
 
   const turnId = state.nextTurnId;
   const inputMode = hasAudio ? "audio" : "text";
-  const userMessage = hasText ? text : "[语音消息]";
+  const userMessage = hasText ? text : "[Voice message]";
 
   chatPanel.addMessage({
     role: "user",
@@ -162,9 +162,9 @@ async function handleSend({ text, audio, video }) {
     transport: "Sending request to local edge-backend",
     remoteStatus: "Awaiting remote orchestrator response",
     inputMode,
-    audioStatus: hasAudio ? `已附带语音（${audio.audio_duration_ms} 毫秒）` : "Text only",
+    audioStatus: hasAudio ? `Voice attached (${audio.audio_duration_ms} ms)` : "Text only",
     videoStatus: hasVideo
-      ? `已附带 ${video.video_frames?.length || video.video_meta?.sampled_frame_count || 0} 帧视频画面`
+      ? `${video.video_frames?.length || video.video_meta?.sampled_frame_count || 0} video frames attached`
       : state.videoStatus,
   });
 
@@ -225,8 +225,8 @@ async function handleSend({ text, audio, video }) {
     if (avatarRenderResult?.status === "failed") {
       const videoError = avatarRenderResult.error instanceof Error
         ? avatarRenderResult.error.message
-        : "数字人视频生成失败";
-      chatPanel.addSystemMessage(`文本回复已保留，但${videoError}`);
+        : "Digital human video generation failed";
+      chatPanel.addSystemMessage(`The text reply is available, but the video failed: ${videoError}`);
     }
     syncStatus({
       transport: avatarRenderResult?.status === "failed"
@@ -242,8 +242,8 @@ async function handleSend({ text, audio, video }) {
     });
     return true;
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "未知请求错误";
-    chatPanel.addSystemMessage(`请求失败：${detail}`);
+    const detail = error instanceof Error ? error.message : "Unknown request error";
+    chatPanel.addSystemMessage(`Request failed: ${detail}`);
     syncStatus({
       transport: "Request failed",
       remoteStatus: "Check edge-backend and remote orchestrator",

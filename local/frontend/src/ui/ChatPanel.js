@@ -4,10 +4,10 @@ export function createChatPanel() {
   element.innerHTML = `
     <div class="panel-heading">
       <div>
-        <p class="eyebrow">B \u00b7 \u5bf9\u8bdd\u8bb0\u5f55</p>
-        <h2>\u804a\u5929\u8bb0\u5f55</h2>
+        <p class="eyebrow">B · Conversation</p>
+        <h2>Chat History</h2>
       </div>
-      <span class="chip">\u8fdc\u7aef\u667a\u80fd\u56de\u590d</span>
+      <span class="chip">AI Replies</span>
     </div>
     <div class="chat-log" data-role="chat-log"></div>
   `;
@@ -17,12 +17,12 @@ export function createChatPanel() {
 
   function getRoleLabel(role) {
     if (role === "assistant") {
-      return "\u6570\u5b57\u4eba\u52a9\u624b";
+      return "Digital Human";
     }
     if (role === "user") {
-      return "\u6211";
+      return "You";
     }
-    return "\u7cfb\u7edf\u63d0\u793a";
+    return "System";
   }
 
   function addMessage({ role, text, meta }) {
@@ -65,7 +65,7 @@ export function createChatPanel() {
 
       const textElement = document.createElement("p");
       textElement.className = "message-text";
-      textElement.textContent = "\u6b63\u5728\u7b49\u5f85\u8fdc\u7aef\u56de\u590d...";
+      textElement.textContent = "Waiting for the remote reply...";
 
       loadingBubble.append(roleElement, textElement);
       log.appendChild(loadingBubble);

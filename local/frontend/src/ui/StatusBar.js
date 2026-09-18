@@ -1,17 +1,17 @@
 import { labelStatus, labelValue } from "./displayText";
 
 const STATUS_ITEMS = [
-  ["sessionId", "会话"],
-  ["streamId", "通道"],
-  ["nextTurnId", "下一轮"],
-  ["transport", "传输"],
-  ["remoteStatus", "远端"],
-  ["inputMode", "输入方式"],
-  ["emotionStyle", "情绪风格"],
-  ["facialExpression", "表情"],
-  ["headMotion", "动作"],
-  ["audioStatus", "语音"],
-  ["videoStatus", "视频"],
+  ["sessionId", "Session"],
+  ["streamId", "Stream"],
+  ["nextTurnId", "Next Turn"],
+  ["transport", "Connection"],
+  ["remoteStatus", "Remote"],
+  ["inputMode", "Input Mode"],
+  ["emotionStyle", "Emotion"],
+  ["facialExpression", "Expression"],
+  ["headMotion", "Motion"],
+  ["audioStatus", "Audio"],
+  ["videoStatus", "Video"],
 ];
 
 const STATUS_VALUE_KEYS = new Set([
@@ -27,12 +27,14 @@ export function createStatusBar() {
   element.innerHTML = `
     <div class="panel-heading">
       <div>
-        <p class="eyebrow">A · 运行状态</p>
-        <h2>系统连接状态</h2>
+        <p class="eyebrow">A · System Status</p>
+        <h2>Connection Status</h2>
       </div>
-      <span class="chip">会话已保持</span>
+      <span class="chip">Session Active</span>
     </div>
-    <dl class="status-grid"></dl>
+    <div class="status-scroll-shell">
+      <dl class="status-grid"></dl>
+    </div>
   `;
 
   const grid = element.querySelector(".status-grid");
