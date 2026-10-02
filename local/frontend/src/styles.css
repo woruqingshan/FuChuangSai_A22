@@ -1980,6 +1980,45 @@ textarea {
   }
 }
 
+.language-toggle {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 1200;
+  min-height: 38px;
+  padding: 0 15px;
+  border: 1px solid rgba(147, 197, 253, 0.34);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e0f2fe;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.34);
+  backdrop-filter: blur(12px);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.language-toggle:hover {
+  border-color: rgba(147, 197, 253, 0.72);
+  background: rgba(30, 64, 175, 0.78);
+  transform: translateY(-1px);
+}
+
+.language-toggle:focus-visible {
+  outline: 3px solid rgba(56, 189, 248, 0.42);
+  outline-offset: 2px;
+}
+
+body[data-page="app"] .topbar-meta {
+  padding-right: 118px;
+}
+
+body[data-page="landing"] .landing-nav-links {
+  padding-right: 118px;
+}
+
 @media (max-width: 1180px) {
   body {
     height: auto;

@@ -1,6 +1,7 @@
 import "./styles.css";
 
 import { bootstrapCompanionApp } from "./app/bootstrapCompanionApp";
+import { initializeI18n } from "./i18n";
 import { renderLandingPage } from "./pages/landingPage";
 
 const root = document.getElementById("app");
@@ -16,3 +17,5 @@ if (pathname === "/app") {
   document.body.dataset.page = "landing";
   renderLandingPage({ root, notFoundPath: window.location.pathname });
 }
+
+initializeI18n({ root });
