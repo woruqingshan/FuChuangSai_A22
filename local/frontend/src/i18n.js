@@ -97,6 +97,7 @@ const ES = {
   "Supportive Companion": "Compañera comprensiva",
   "Casual Companion": "Compañera informal",
   "Switch Avatar": "Cambiar avatar",
+  "Replay EVA Reply": "Reproducir respuesta de EVA",
   "Default Avatar": "Avatar predeterminado",
   "D · Avatar Source": "D · Fuente del avatar",
   "Paste an external avatar page or video URL": "Pega la URL de una página o vídeo de avatar externo",

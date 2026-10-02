@@ -364,6 +364,20 @@ textarea {
   border-radius: 10px;
 }
 
+.avatar-profile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.avatar-replay-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
 .avatar-panel--show-source-controls .avatar-source-controls {
   display: block;
 }
@@ -2186,6 +2200,14 @@ body[data-page="landing"] .landing-nav-links {
 
   .avatar-profile-row {
     grid-template-columns: 1fr;
+  }
+
+  .avatar-profile-actions {
+    justify-content: stretch;
+  }
+
+  .avatar-profile-actions .avatar-profile-button {
+    flex: 1 1 150px;
   }
 
   .landing-nav {

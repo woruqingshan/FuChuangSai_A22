@@ -143,9 +143,19 @@ export function createAvatarPanel({ onProfileChange } = {}) {
           <p class="avatar-profile-name" data-role="avatar-profile-name">-</p>
           <p class="avatar-profile-meta" data-role="avatar-profile-chip">Supportive Companion</p>
         </div>
-        <button type="button" class="secondary-button avatar-profile-button" data-role="avatar-profile-toggle">
-          Switch Avatar
-        </button>
+        <div class="avatar-profile-actions">
+          <button
+            type="button"
+            class="secondary-button avatar-profile-button avatar-replay-button"
+            data-role="avatar-replay"
+            disabled
+          >
+            Replay EVA Reply
+          </button>
+          <button type="button" class="secondary-button avatar-profile-button" data-role="avatar-profile-toggle">
+            Switch Avatar
+          </button>
+        </div>
       </div>
     </div>
     <div class="avatar-source-controls">
@@ -220,13 +230,20 @@ export function createAvatarPanel({ onProfileChange } = {}) {
   const profileChip = element.querySelector('[data-role="avatar-profile-chip"]');
   const profileName = element.querySelector('[data-role="avatar-profile-name"]');
   const profileToggleButton = element.querySelector('[data-role="avatar-profile-toggle"]');
+  const replayButton = element.querySelector('[data-role="avatar-replay"]');
   const portraitImage = element.querySelector(".avatar-portrait-image");
   const avatarVideo = element.querySelector(".avatar-video");
   const embedFrame = element.querySelector('[data-role="avatar-embed-frame"]');
 
+  function setReplayAvailable(available) {
+    replayButton.disabled = !available;
+    replayButton.setAttribute("aria-disabled", available ? "false" : "true");
+  }
+
   const renderer = createAvatarRenderer({
     faceElement: face,
     readouts: null,
+    onReplayAvailabilityChange: setReplayAvailable,
   });
 
   let selectedAvatarProfile = avatarProfiles[0] || {
@@ -368,6 +385,13 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % avatarProfiles.length : 0;
     const nextProfile = avatarProfiles[nextIndex];
     applyAvatarProfile(nextProfile);
+  });
+
+  replayButton.addEventListener("click", () => {
+    const replayStarted = renderer.replayLastReply();
+    if (!replayStarted) {
+      setReplayAvailable(false);
+    }
   });
 
   portraitImage?.addEventListener("error", () => {
