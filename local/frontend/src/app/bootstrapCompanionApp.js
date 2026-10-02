@@ -69,7 +69,7 @@ app.innerHTML = `
     <header class="topbar">
       <div>
         <a class="home-link" href="/">← OneCompanion</a>
-        <h1>AI Companion</h1>
+        <h1>EVA Companion</h1>
       </div>
       <div class="topbar-meta">
         <span class="chip">Multimodal Interaction</span>

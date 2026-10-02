@@ -9,7 +9,7 @@ const ES = {
   "CROSS-DEVICE AI COMPANION": "COMPAÑERO DE IA MULTIDISPOSITIVO",
   "EVA: your personal AI-powered companion, navigating life’s experiences alongside you.": "EVA: tu compañera personal con inteligencia artificial, a tu lado en cada experiencia de la vida.",
   "Explore Features": "Explorar características",
-  "AI Companion": "Compañera de IA",
+  "EVA Companion": "Compañera EVA",
   "I have an important appointment this afternoon.": "Tengo una cita importante esta tarde.",
   "I'll remember that. You can continue our conversation later from another device.": "Lo recordaré. Puedes continuar nuestra conversación más tarde desde otro dispositivo.",
   "Product Features": "Características del producto",
@@ -38,7 +38,6 @@ const ES = {
   "Close": "Cerrar",
   "Check Again": "Comprobar de nuevo",
 
-  "AI Companion": "Compañera de IA",
   "Multimodal Interaction": "Interacción multimodal",
   "Digital Human": "Humano digital",
   "Demo Access": "Acceso a la demostración",

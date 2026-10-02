@@ -122,7 +122,7 @@ export function renderLandingPage({ root = document.getElementById("app"), notFo
                   </div>
                 </div>
                 <div class="preview-dialogue">
-                  <p class="preview-kicker">AI Companion</p>
+                  <p class="preview-kicker">EVA Companion</p>
                   <div class="preview-bubble preview-bubble-user">I have an important appointment this afternoon.</div>
                   <div class="preview-bubble preview-bubble-ai">I'll remember that. You can continue our conversation later from another device.</div>
                 </div>
