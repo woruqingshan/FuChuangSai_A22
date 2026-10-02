@@ -64,6 +64,18 @@ async function resolveStreamFirstChunkUrl(streamManifestUrl) {
   throw new Error("数字人视频生成等待超时");
 }
 
+async function bufferVideoForPlayback(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`数字人视频下载失败 (${response.status})`);
+  }
+  const videoBlob = await response.blob();
+  if (!videoBlob.size) {
+    throw new Error("数字人视频为空");
+  }
+  return URL.createObjectURL(videoBlob);
+}
+
 function waitFor(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -89,6 +101,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
   let renderToken = 0;
   let detachVideoListeners = () => {};
   let pinnedVideoSource = "";
+  let ownedVideoObjectUrl = "";
 
   function setRenderStatus(message = "") {
     const text = String(message || "").trim();
@@ -111,6 +124,26 @@ export function createAvatarRenderer({ faceElement, readouts }) {
     }
   }
 
+  function releaseOwnedVideoObjectUrl() {
+    if (ownedVideoObjectUrl) {
+      URL.revokeObjectURL(ownedVideoObjectUrl);
+      ownedVideoObjectUrl = "";
+    }
+  }
+
+  async function prepareSynchronizedVideo(url, currentToken) {
+    setRenderStatus("正在下载数字人视频，请稍候…");
+    const objectUrl = await bufferVideoForPlayback(url);
+    if (renderToken !== currentToken) {
+      URL.revokeObjectURL(objectUrl);
+      return "";
+    }
+    releaseOwnedVideoObjectUrl();
+    ownedVideoObjectUrl = objectUrl;
+    setRenderStatus();
+    return objectUrl;
+  }
+
   function resetVideoElement({ removeSource = true } = {}) {
     if (!videoElement) {
       return;
@@ -123,6 +156,7 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       videoElement.removeAttribute("data-source-url");
       videoElement.removeAttribute("data-source-type");
       videoElement.load();
+      releaseOwnedVideoObjectUrl();
     }
     videoElement.classList.remove("avatar-video--visible");
     videoElement.classList.add("hidden");
@@ -343,9 +377,22 @@ export function createAvatarRenderer({ faceElement, readouts }) {
       }
 
       setExternalStreamFlag(false);
-      stopExpression = applyExpressionSequence(faceElement, expressionSeq, fallbackExpression);
-      stopMotion = applyMotionSequence(faceElement, motionSeq, fallbackMotion);
-      stopViseme = applyVisemeSequence(faceElement, visemeSeq);
+      if (synchronizedVideo) {
+        // The synchronized renderer already bakes facial and body motion into
+        // the video. Applying the CSS motion drivers again resets transforms at
+        // sequence boundaries and makes otherwise smooth video appear jerky.
+        stopExpression = () => {};
+        stopMotion = () => {};
+        stopViseme = () => {};
+        faceElement.dataset.expression = "neutral";
+        faceElement.dataset.motion = "video_native";
+        faceElement.dataset.gesture = "none";
+        faceElement.dataset.viseme = "sil";
+      } else {
+        stopExpression = applyExpressionSequence(faceElement, expressionSeq, fallbackExpression);
+        stopMotion = applyMotionSequence(faceElement, motionSeq, fallbackMotion);
+        stopViseme = applyVisemeSequence(faceElement, visemeSeq);
+      }
       const audioCue = avatarOutput?.audio;
       // LiveAvatar output already contains the synchronized audio track. Other
       // renderers keep their historical reply.wav + muted-video behavior.
@@ -355,8 +402,14 @@ export function createAvatarRenderer({ faceElement, readouts }) {
 
       const replyVideoUrl = resolveBackendMediaUrl(response.reply_video_url);
       if (videoElement && replyVideoUrl) {
+        const playbackUrl = synchronizedVideo
+          ? await prepareSynchronizedVideo(replyVideoUrl, currentToken)
+          : replyVideoUrl;
+        if (!playbackUrl) {
+          return { status: "cancelled", synchronizedVideo };
+        }
         startVideoSource({
-          url: replyVideoUrl,
+          url: playbackUrl,
           currentToken,
           muted: !synchronizedVideo,
           loop: false,
@@ -375,9 +428,15 @@ export function createAvatarRenderer({ faceElement, readouts }) {
           if (renderToken !== currentToken) {
             return { status: "cancelled", synchronizedVideo };
           }
+          const playbackUrl = synchronizedVideo
+            ? await prepareSynchronizedVideo(chunkUrl, currentToken)
+            : chunkUrl;
+          if (!playbackUrl) {
+            return { status: "cancelled", synchronizedVideo };
+          }
           setRenderStatus();
           startVideoSource({
-            url: chunkUrl,
+            url: playbackUrl,
             currentToken,
             muted: !synchronizedVideo,
             loop: false,

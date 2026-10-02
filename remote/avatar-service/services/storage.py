@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import shutil
+import subprocess
 
 from config import settings
 
@@ -30,7 +31,7 @@ class AvatarStorage:
 
     def persist_video(self, *, session_id: str, turn_id: int, source_path: str | Path) -> Path:
         output_path = self._turn_dir(session_id, turn_id) / "reply.mp4"
-        shutil.copy2(Path(source_path), output_path)
+        _copy_web_video(Path(source_path), output_path)
         return output_path
 
     def get_video_path(self, *, session_id: str, turn_id: int) -> Path:
@@ -40,7 +41,7 @@ class AvatarStorage:
         chunk_dir = self._turn_dir(session_id, turn_id) / "video_chunks"
         chunk_dir.mkdir(parents=True, exist_ok=True)
         output_path = chunk_dir / f"chunk-{chunk_index:04d}.mp4"
-        shutil.copy2(Path(source_path), output_path)
+        _copy_web_video(Path(source_path), output_path)
         return output_path
 
     def get_video_chunk_path(self, *, session_id: str, turn_id: int, chunk_index: int) -> Path:
@@ -59,6 +60,37 @@ class AvatarStorage:
         output_path = self._turn_dir(session_id, turn_id) / "tts_runtime_error.json"
         output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return output_path
+
+
+def _copy_web_video(source_path: Path, output_path: Path) -> None:
+    """Copy an MP4 and move its index to the front for reliable web playback."""
+    shutil.copy2(source_path, output_path)
+    optimized_path = output_path.with_name(f"{output_path.stem}.faststart{output_path.suffix}")
+    completed = subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(output_path),
+            "-map",
+            "0",
+            "-c",
+            "copy",
+            "-movflags",
+            "+faststart",
+            str(optimized_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode == 0 and optimized_path.is_file():
+        optimized_path.replace(output_path)
+    else:
+        optimized_path.unlink(missing_ok=True)
 
 
 avatar_storage = AvatarStorage()
