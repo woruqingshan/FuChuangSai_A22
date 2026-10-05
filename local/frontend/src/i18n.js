@@ -106,6 +106,7 @@ const ES = {
   "Avatar video is ready. Click to play.": "El vídeo del avatar está listo. Haz clic para reproducirlo.",
   "Generating avatar video. Please wait…": "Generando el vídeo del avatar. Espera un momento…",
   "EVA is preparing a video reply…": "EVA está preparando una respuesta en vídeo…",
+  "EVA video begins in": "El vídeo de EVA comienza en",
   "Default Avatar": "Avatar predeterminado",
   "D · Avatar Source": "D · Fuente del avatar",
   "Paste an external avatar page or video URL": "Pega la URL de una página o vídeo de avatar externo",

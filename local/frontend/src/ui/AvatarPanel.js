@@ -500,11 +500,11 @@ export function createAvatarPanel({ onProfileChange } = {}) {
     getSelectedProfileId() {
       return selectedAvatarProfile?.id || avatarProfiles[0]?.id || "avatar_a";
     },
-    update(response) {
+    update(response, options = {}) {
       api.currentEmotionStyle = response.emotion_style || api.currentEmotionStyle;
       api.currentFacialExpression = response.avatar_action?.facial_expression || api.currentFacialExpression;
       api.currentHeadMotion = response.avatar_action?.head_motion || api.currentHeadMotion;
-      return renderer.render(response);
+      return renderer.render(response, options);
     },
   };
 

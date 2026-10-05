@@ -248,20 +248,31 @@ async function handleSend({ text, audio, video }) {
       remoteStatus: "Text and audio are ready. Generating synchronized avatar video.",
     });
 
-    const avatarRenderResult = await avatarPanel.update(response).catch((error) => ({
+    let assistantMessageAdded = false;
+    const revealAssistantMessage = () => {
+      if (assistantMessageAdded) return;
+      assistantMessageAdded = true;
+      chatPanel.addMessage({
+        role: "assistant",
+        text: response.reply_text,
+        meta: formatAssistantMeta({
+          emotionStyle: response.emotion_style,
+          facialExpression: response.avatar_action.facial_expression,
+          headMotion: response.avatar_action.head_motion,
+        }),
+      });
+    };
+
+    const avatarRenderResult = await avatarPanel.update(response, {
+      onPlaybackStart: revealAssistantMessage,
+    }).catch((error) => ({
       status: "failed",
       error,
     }));
 
-    chatPanel.addMessage({
-      role: "assistant",
-      text: response.reply_text,
-      meta: formatAssistantMeta({
-        emotionStyle: response.emotion_style,
-        facialExpression: response.avatar_action.facial_expression,
-        headMotion: response.avatar_action.head_motion,
-      }),
-    });
+    if (!avatarRenderResult?.playbackScheduled) {
+      revealAssistantMessage();
+    }
     if (avatarRenderResult?.status === "failed") {
       const videoError = avatarRenderResult.error instanceof Error
         ? avatarRenderResult.error.message

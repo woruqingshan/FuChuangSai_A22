@@ -95,6 +95,37 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
   renderStatus.setAttribute("role", "status");
   renderStatus.setAttribute("aria-live", "polite");
   portraitShell?.appendChild(renderStatus);
+
+  const countdownOverlay = document.createElement("div");
+  countdownOverlay.className = "avatar-countdown-overlay hidden";
+  countdownOverlay.setAttribute("role", "status");
+  countdownOverlay.setAttribute("aria-live", "assertive");
+  countdownOverlay.setAttribute("aria-hidden", "true");
+  countdownOverlay.innerHTML = `
+    <div class="avatar-countdown-frame" aria-hidden="true"></div>
+    <div class="avatar-countdown-content">
+      <p class="avatar-countdown-kicker">EVA video begins in</p>
+      <div class="avatar-countdown-dial">
+        <span class="avatar-countdown-number" data-role="avatar-countdown-number">5</span>
+      </div>
+    </div>
+  `;
+  (document.getElementById("app") || document.body).appendChild(countdownOverlay);
+  const countdownNumber = countdownOverlay.querySelector('[data-role="avatar-countdown-number"]');
+
+  function setCountdownOverlay(remaining = 0) {
+    const visible = Number(remaining) > 0;
+    countdownOverlay.classList.toggle("hidden", !visible);
+    countdownOverlay.setAttribute("aria-hidden", visible ? "false" : "true");
+    document.body.classList.toggle("avatar-countdown-active", visible);
+    if (!visible || !countdownNumber) return;
+    countdownNumber.textContent = String(remaining);
+    countdownOverlay.dataset.tick = String(remaining % 2);
+    countdownNumber.classList.remove("avatar-countdown-number--tick");
+    void countdownNumber.offsetWidth;
+    countdownNumber.classList.add("avatar-countdown-number--tick");
+  }
+
   const portraitDefaultSrc = portraitImage?.getAttribute("src") || "";
   let stopExpression = () => {};
   let stopMotion = () => {};
@@ -187,13 +218,21 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
       }
     }
     setRenderStatus();
+    setCountdownOverlay(0);
   }
 
-  function armVideoTransition(currentToken, { countdownSeconds = 0 } = {}) {
+  function armVideoTransition(currentToken, { countdownSeconds = 0, onPlaybackStart } = {}) {
     if (!videoElement) {
       return;
     }
     let transitionCancelled = false;
+    let playbackNotified = false;
+
+    const notifyPlaybackStart = () => {
+      if (playbackNotified || renderToken !== currentToken || transitionCancelled) return;
+      playbackNotified = true;
+      onPlaybackStart?.();
+    };
 
     const revealVideo = () => {
       if (renderToken !== currentToken) {
@@ -214,12 +253,14 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
           return;
         }
         setRenderStatus(`EVA will speak in ${remaining}…`);
+        setCountdownOverlay(remaining);
         await waitFor(1000);
       }
       if (renderToken !== currentToken || transitionCancelled) {
         return;
       }
       setRenderStatus();
+      setCountdownOverlay(0);
       revealVideo();
       void videoElement.play().catch(() => {
         if (renderToken !== currentToken || transitionCancelled) {
@@ -248,13 +289,21 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
     };
 
     const handleError = () => {
+      notifyPlaybackStart();
       transitionCancelled = true;
       cleanupListeners();
       if (renderToken !== currentToken) {
         return;
       }
+      setCountdownOverlay(0);
+      notifyPlaybackStart();
       resetVideoElement();
       portraitImage?.classList.remove("hidden");
+    };
+
+    const handlePlaying = () => {
+      setCountdownOverlay(0);
+      notifyPlaybackStart();
     };
 
     const handleEnded = () => {
@@ -289,6 +338,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
     const cleanupListeners = () => {
       cleanupReadyListeners();
       videoElement.removeEventListener("error", handleError);
+      videoElement.removeEventListener("playing", handlePlaying);
       videoElement.removeEventListener("ended", handleEnded);
       detachVideoListeners = () => {};
     };
@@ -297,10 +347,19 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
     videoElement.addEventListener("loadeddata", handleReady, { once: true });
     videoElement.addEventListener("canplay", handleReady, { once: true });
     videoElement.addEventListener("error", handleError, { once: true });
+    videoElement.addEventListener("playing", handlePlaying, { once: true });
     videoElement.addEventListener("ended", handleEnded, { once: true });
   }
 
-  function startVideoSource({ url, currentToken, muted, loop, sourceType, countdownSeconds = 0 }) {
+  function startVideoSource({
+    url,
+    currentToken,
+    muted,
+    loop,
+    sourceType,
+    countdownSeconds = 0,
+    onPlaybackStart,
+  }) {
     if (!videoElement || !url) {
       return false;
     }
@@ -316,7 +375,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
     videoElement.classList.remove("avatar-video--visible");
     videoElement.classList.add("hidden");
     portraitImage?.classList.remove("hidden");
-    armVideoTransition(currentToken, { countdownSeconds });
+    armVideoTransition(currentToken, { countdownSeconds, onPlaybackStart });
     videoElement.dataset.sourceUrl = url;
     videoElement.dataset.sourceType = sourceType;
     if (sourceType === "reply") {
@@ -402,7 +461,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
         sourceType: "reply",
       });
     },
-    async render(response) {
+    async render(response, { onPlaybackStart } = {}) {
       const externalStreamPinned = Boolean(pinnedVideoSource);
       const currentToken = renderToken + 1;
       cleanup({ preserveVideo: externalStreamPinned });
@@ -473,8 +532,9 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
           loop: false,
           sourceType: "reply",
           countdownSeconds: synchronizedVideo ? FIRST_PLAY_COUNTDOWN_SECONDS : 0,
+          onPlaybackStart,
         });
-        return { status: "ready", synchronizedVideo };
+        return { status: "ready", synchronizedVideo, playbackScheduled: synchronizedVideo };
       }
 
       const replyVideoStreamUrl = resolveBackendMediaUrl(response.reply_video_stream_url);
@@ -501,8 +561,9 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
             loop: false,
             sourceType: "reply",
             countdownSeconds: synchronizedVideo ? FIRST_PLAY_COUNTDOWN_SECONDS : 0,
+            onPlaybackStart,
           });
-          return { status: "ready", synchronizedVideo };
+          return { status: "ready", synchronizedVideo, playbackScheduled: synchronizedVideo };
         } catch (error) {
           if (renderToken === currentToken && synchronizedVideo) {
             setRenderStatus(error instanceof Error ? error.message : "Avatar video generation failed.");

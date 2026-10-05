@@ -2313,3 +2313,174 @@ body[data-page="landing"] .landing-nav-links {
     transition: none;
   }
 }
+
+/* Full-screen cinematic countdown before the first EVA reply playback. */
+.avatar-countdown-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at center, rgba(30, 64, 175, 0.22) 0 18%, transparent 52%),
+    linear-gradient(135deg, rgba(2, 6, 23, 0.97), rgba(15, 23, 42, 0.94));
+  color: #f8fafc;
+  backdrop-filter: blur(10px);
+}
+
+.avatar-countdown-overlay::before,
+.avatar-countdown-overlay::after {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  pointer-events: none;
+}
+
+.avatar-countdown-overlay::before {
+  z-index: -2;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.026) 0 1px, transparent 1px 5px),
+    linear-gradient(90deg, transparent 49.85%, rgba(255,255,255,0.13) 50%, transparent 50.15%);
+  opacity: 0.58;
+}
+
+.avatar-countdown-overlay::after {
+  z-index: -1;
+  background: conic-gradient(
+    from -32deg at 50% 50%,
+    transparent 0deg,
+    transparent 300deg,
+    rgba(96, 165, 250, 0.18) 330deg,
+    rgba(255, 255, 255, 0.4) 360deg
+  );
+  animation: avatarCountdownSweep 1s linear infinite;
+}
+
+.avatar-countdown-content {
+  display: grid;
+  justify-items: center;
+  gap: clamp(18px, 3vh, 32px);
+  width: min(86vw, 720px);
+  text-align: center;
+}
+
+.avatar-countdown-kicker {
+  margin: 0;
+  color: #dbeafe;
+  font-size: clamp(16px, 2.1vw, 26px);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-shadow: 0 3px 22px rgba(0, 0, 0, 0.65);
+}
+
+.avatar-countdown-dial {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(250px, 38vw, 430px);
+  aspect-ratio: 1;
+  border: clamp(4px, 0.55vw, 7px) solid rgba(219, 234, 254, 0.86);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 clamp(12px, 1.8vw, 22px) rgba(37, 99, 235, 0.16),
+    0 0 0 clamp(15px, 2.2vw, 28px) rgba(191, 219, 254, 0.25),
+    0 0 90px rgba(37, 99, 235, 0.35),
+    inset 0 0 70px rgba(15, 23, 42, 0.65);
+}
+
+.avatar-countdown-dial::before,
+.avatar-countdown-dial::after,
+.avatar-countdown-frame::before,
+.avatar-countdown-frame::after {
+  content: "";
+  position: absolute;
+  background: rgba(219, 234, 254, 0.42);
+}
+
+.avatar-countdown-dial::before {
+  top: 50%;
+  left: -28vw;
+  right: -28vw;
+  height: 2px;
+}
+
+.avatar-countdown-dial::after {
+  top: -28vh;
+  bottom: -28vh;
+  left: 50%;
+  width: 2px;
+}
+
+.avatar-countdown-number {
+  position: relative;
+  z-index: 2;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(150px, 24vw, 300px);
+  font-weight: 700;
+  line-height: 0.8;
+  color: #ffffff;
+  text-shadow:
+    0 4px 0 rgba(15, 23, 42, 0.75),
+    0 0 32px rgba(147, 197, 253, 0.52);
+}
+
+.avatar-countdown-number--tick {
+  animation: avatarCountdownTick 820ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.avatar-countdown-frame {
+  position: absolute;
+  inset: clamp(18px, 3vw, 42px);
+  border: 1px solid rgba(191, 219, 254, 0.22);
+  pointer-events: none;
+}
+
+.avatar-countdown-frame::before {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+
+.avatar-countdown-frame::after {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+body.avatar-countdown-active {
+  overflow: hidden;
+}
+
+@keyframes avatarCountdownTick {
+  0% {
+    opacity: 0;
+    transform: scale(1.32);
+    filter: blur(7px);
+  }
+  18% { opacity: 1; }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes avatarCountdownSweep {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-countdown-overlay::after,
+  .avatar-countdown-number--tick {
+    animation: none;
+  }
+}
+
+.avatar-countdown-overlay.hidden {
+  display: none;
+}
