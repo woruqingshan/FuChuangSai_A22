@@ -105,6 +105,7 @@ const ES = {
   "Downloading avatar video. Please wait…": "Descargando el vídeo del avatar. Espera un momento…",
   "Avatar video is ready. Click to play.": "El vídeo del avatar está listo. Haz clic para reproducirlo.",
   "Generating avatar video. Please wait…": "Generando el vídeo del avatar. Espera un momento…",
+  "EVA is preparing a video reply…": "EVA está preparando una respuesta en vídeo…",
   "Default Avatar": "Avatar predeterminado",
   "D · Avatar Source": "D · Fuente del avatar",
   "Paste an external avatar page or video URL": "Pega la URL de una página o vídeo de avatar externo",
@@ -220,6 +221,7 @@ const TEXT_PATTERNS = [
   [/^Motion (.+)$/, "Movimiento: $1"],
   [/^Request failed: (.+)$/, "Error en la solicitud: $1"],
   [/^Avatar video download failed \((\d+)\)\.$/, "No se pudo descargar el vídeo del avatar ($1)."],
+  [/^EVA will speak in (\d+)…$/, "EVA hablará en $1…"],
   [/^Page (.+) was not found\. You have been returned to the product home page\.$/, "No se encontró la página $1. Te hemos devuelto a la página principal del producto."],
   [/^View Avatar (\d+)$/, "Ver avatar $1"],
 ];

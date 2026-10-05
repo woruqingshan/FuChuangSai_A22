@@ -83,6 +83,7 @@ function waitFor(ms) {
 }
 
 const VIDEO_FADE_MS = 550;
+const FIRST_PLAY_COUNTDOWN_SECONDS = 5;
 
 export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabilityChange }) {
   const audioPlayer = createAudioPlayer();
@@ -136,7 +137,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
   }
 
   async function prepareSynchronizedVideo(url, currentToken) {
-    setRenderStatus("Downloading avatar video. Please wait…");
+    setRenderStatus("EVA is preparing a video reply…");
     const objectUrl = await bufferVideoForPlayback(url);
     if (renderToken !== currentToken) {
       URL.revokeObjectURL(objectUrl);
@@ -188,10 +189,11 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
     setRenderStatus();
   }
 
-  function armVideoTransition(currentToken) {
+  function armVideoTransition(currentToken, { countdownSeconds = 0 } = {}) {
     if (!videoElement) {
       return;
     }
+    let transitionCancelled = false;
 
     const revealVideo = () => {
       if (renderToken !== currentToken) {
@@ -206,11 +208,21 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
       });
     };
 
-    const handleReady = () => {
-      cleanupReadyListeners();
+    const beginPlayback = async () => {
+      for (let remaining = countdownSeconds; remaining > 0; remaining -= 1) {
+        if (renderToken !== currentToken || transitionCancelled) {
+          return;
+        }
+        setRenderStatus(`EVA will speak in ${remaining}…`);
+        await waitFor(1000);
+      }
+      if (renderToken !== currentToken || transitionCancelled) {
+        return;
+      }
+      setRenderStatus();
       revealVideo();
       void videoElement.play().catch(() => {
-        if (renderToken !== currentToken) {
+        if (renderToken !== currentToken || transitionCancelled) {
           return;
         }
         if (!videoElement.muted) {
@@ -224,7 +236,13 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
       });
     };
 
+    const handleReady = () => {
+      cleanupReadyListeners();
+      void beginPlayback();
+    };
+
     const handleError = () => {
+      transitionCancelled = true;
       cleanupListeners();
       if (renderToken !== currentToken) {
         return;
@@ -275,7 +293,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
     videoElement.addEventListener("ended", handleEnded, { once: true });
   }
 
-  function startVideoSource({ url, currentToken, muted, loop, sourceType }) {
+  function startVideoSource({ url, currentToken, muted, loop, sourceType, countdownSeconds = 0 }) {
     if (!videoElement || !url) {
       return false;
     }
@@ -290,7 +308,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
     videoElement.classList.remove("avatar-video--visible");
     videoElement.classList.add("hidden");
     portraitImage?.classList.remove("hidden");
-    armVideoTransition(currentToken);
+    armVideoTransition(currentToken, { countdownSeconds });
     videoElement.dataset.sourceUrl = url;
     videoElement.dataset.sourceType = sourceType;
     if (sourceType === "reply") {
@@ -446,6 +464,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
           muted: !synchronizedVideo,
           loop: false,
           sourceType: "reply",
+          countdownSeconds: synchronizedVideo ? FIRST_PLAY_COUNTDOWN_SECONDS : 0,
         });
         return { status: "ready", synchronizedVideo };
       }
@@ -453,7 +472,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
       const replyVideoStreamUrl = resolveBackendMediaUrl(response.reply_video_stream_url);
       if (videoElement && replyVideoStreamUrl) {
         if (synchronizedVideo) {
-          setRenderStatus("Generating avatar video. Please wait…");
+          setRenderStatus("EVA is preparing a video reply…");
         }
         try {
           const chunkUrl = await resolveStreamFirstChunkUrl(replyVideoStreamUrl);
@@ -473,6 +492,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
             muted: !synchronizedVideo,
             loop: false,
             sourceType: "reply",
+            countdownSeconds: synchronizedVideo ? FIRST_PLAY_COUNTDOWN_SECONDS : 0,
           });
           return { status: "ready", synchronizedVideo };
         } catch (error) {
