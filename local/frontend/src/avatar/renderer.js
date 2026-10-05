@@ -110,11 +110,16 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
       </div>
     </div>
   `;
-  (document.getElementById("app") || document.body).appendChild(countdownOverlay);
   const countdownNumber = countdownOverlay.querySelector('[data-role="avatar-countdown-number"]');
 
   function setCountdownOverlay(remaining = 0) {
     const visible = Number(remaining) > 0;
+    // The avatar renderer is created before the app shell writes its markup.
+    // Mount only when playback is about to start so app initialization cannot
+    // remove the fixed overlay from the DOM.
+    if (visible && !countdownOverlay.isConnected) {
+      (document.getElementById("app") || document.body).appendChild(countdownOverlay);
+    }
     countdownOverlay.classList.toggle("hidden", !visible);
     countdownOverlay.setAttribute("aria-hidden", visible ? "false" : "true");
     document.body.classList.toggle("avatar-countdown-active", visible);
@@ -252,7 +257,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
         if (renderToken !== currentToken || transitionCancelled) {
           return;
         }
-        setRenderStatus(`EVA will speak in ${remaining}…`);
+        setRenderStatus();
         setCountdownOverlay(remaining);
         await waitFor(1000);
       }
