@@ -511,11 +511,12 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
         stopViseme = applyVisemeSequence(faceElement, visemeSeq);
       }
       const audioCue = avatarOutput?.audio;
-      // LiveAvatar output already contains the synchronized audio track. Other
-      // renderers keep their historical reply.wav + muted-video behavior.
-      if (!synchronizedVideo) {
-        audioPlayer.play(audioCue);
-      }
+      // Every reply video gets the same countdown. If its audio is separate,
+      // start it only when playback begins so audio, video, and text align.
+      const handleReplyPlaybackStart = () => {
+        if (!synchronizedVideo) audioPlayer.play(audioCue);
+        onPlaybackStart?.();
+      };
 
       const replyVideoUrl = resolveBackendMediaUrl(response.reply_video_url);
       if (videoElement && replyVideoUrl) {
@@ -531,10 +532,10 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
           muted: !synchronizedVideo,
           loop: false,
           sourceType: "reply",
-          countdownSeconds: synchronizedVideo ? FIRST_PLAY_COUNTDOWN_SECONDS : 0,
-          onPlaybackStart,
+          countdownSeconds: FIRST_PLAY_COUNTDOWN_SECONDS,
+          onPlaybackStart: handleReplyPlaybackStart,
         });
-        return { status: "ready", synchronizedVideo, playbackScheduled: synchronizedVideo };
+        return { status: "ready", synchronizedVideo, playbackScheduled: true };
       }
 
       const replyVideoStreamUrl = resolveBackendMediaUrl(response.reply_video_stream_url);
@@ -560,10 +561,10 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
             muted: !synchronizedVideo,
             loop: false,
             sourceType: "reply",
-            countdownSeconds: synchronizedVideo ? FIRST_PLAY_COUNTDOWN_SECONDS : 0,
-            onPlaybackStart,
+            countdownSeconds: FIRST_PLAY_COUNTDOWN_SECONDS,
+            onPlaybackStart: handleReplyPlaybackStart,
           });
-          return { status: "ready", synchronizedVideo, playbackScheduled: synchronizedVideo };
+          return { status: "ready", synchronizedVideo, playbackScheduled: true };
         } catch (error) {
           if (renderToken === currentToken && synchronizedVideo) {
             setRenderStatus(error instanceof Error ? error.message : "Avatar video generation failed.");
@@ -571,7 +572,8 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
           throw error;
         }
       }
-      return { status: "ready", synchronizedVideo };
+      if (!synchronizedVideo) audioPlayer.play(audioCue);
+      return { status: "ready", synchronizedVideo, playbackScheduled: false };
     },
     cleanup,
   };
