@@ -203,7 +203,6 @@ export function createAvatarPanel({ onProfileChange } = {}) {
             class="avatar-video hidden"
             muted
             playsinline
-            autoplay
           ></video>
           <iframe
             class="avatar-embed-frame hidden"

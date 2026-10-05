@@ -238,6 +238,12 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
 
     const handleReady = () => {
       cleanupReadyListeners();
+      // The video element used to carry the autoplay attribute. Some browsers
+      // start playback as soon as the file is ready, even while the five-second
+      // countdown keeps it hidden. Always hold the reply at its first frame
+      // until beginPlayback starts it explicitly.
+      videoElement.pause();
+      videoElement.currentTime = 0;
       void beginPlayback();
     };
 
@@ -255,6 +261,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
       if (renderToken !== currentToken) {
         return;
       }
+      transitionCancelled = true;
       stopExpression();
       stopMotion();
       stopViseme();
@@ -300,6 +307,7 @@ export function createAvatarRenderer({ faceElement, readouts, onReplayAvailabili
     renderToken = currentToken;
     faceElement.dataset.playbackEnded = "false";
     videoElement.muted = Boolean(muted);
+    videoElement.autoplay = false;
     videoElement.controls = false;
     videoElement.playsInline = true;
     videoElement.loop = Boolean(loop);
