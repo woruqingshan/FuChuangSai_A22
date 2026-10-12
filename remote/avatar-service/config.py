@@ -77,6 +77,24 @@ class Settings:
             "yes",
             "on",
         }
+        self.edge_spanish_tts_enabled = _env_str(
+            "EDGE_SPANISH_TTS_ENABLED", "false"
+        ).lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.edge_spanish_tts_voice = (
+            _env_str("EDGE_SPANISH_TTS_VOICE", "es-ES-ElviraNeural")
+            or "es-ES-ElviraNeural"
+        )
+        self.edge_spanish_tts_rate = (
+            _env_str("EDGE_SPANISH_TTS_RATE", "+0%") or "+0%"
+        )
+        self.edge_spanish_tts_timeout_seconds = float(
+            _env_str("EDGE_SPANISH_TTS_TIMEOUT_SECONDS", "90")
+        )
 
     @property
     def tts_prompt_wav_path(self) -> str:

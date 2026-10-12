@@ -41,3 +41,4 @@ pyworld==0.3.4
 networkx==3.1
 protobuf==4.25.0
 onnxruntime-gpu==1.18.0; sys_platform == 'linux'
+edge-tts==7.2.8
