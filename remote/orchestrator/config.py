@@ -124,13 +124,15 @@ class Settings:
             "yes",
             "on",
         }
+        self.response_language = (
+            os.getenv("RESPONSE_LANGUAGE", "auto").strip().lower() or "auto"
+        )
         self.system_prompt = os.getenv(
             "LLM_SYSTEM_PROMPT",
             (
                 "You are A22, an emotionally supportive digital human assistant. "
                 "Answer with warmth, empathy, and concise helpful guidance. "
-                "Reply naturally in concise Chinese, adapting the length to the user's message. "
-                "Keep each reply within about 90 Chinese characters. "
+                "Keep each reply concise and suitable for spoken delivery. "
                 "Keep replies safe, supportive, and suitable for a local demo."
             ),
         ).strip()

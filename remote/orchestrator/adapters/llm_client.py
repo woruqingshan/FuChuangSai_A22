@@ -1,3 +1,4 @@
+import re
 from typing import Protocol
 
 import httpx
@@ -17,6 +18,7 @@ class LLMRequest:
         input_mode: str,
         context_messages: list[ContextMessage],
         context_summary: str,
+        response_language: str | None = None,
     ) -> None:
         self.session_id = session_id
         self.turn_id = turn_id
@@ -25,6 +27,7 @@ class LLMRequest:
         self.input_mode = input_mode
         self.context_messages = context_messages
         self.context_summary = context_summary
+        self.response_language = response_language
 
 
 class LLMResult:
@@ -52,30 +55,55 @@ class MockLLMProvider:
 
     async def complete(self, request: LLMRequest) -> LLMResult:
         lowered = request.user_text.lower()
+        spanish = request.response_language == "Spanish"
 
-        if any(keyword in lowered for keyword in ["sad", "unhappy", "压力", "焦虑", "难过", "不开心"]):
+        emotional_keywords = [
+            "sad", "unhappy", "stressed", "triste", "ansioso", "ansiosa",
+            "preocupado", "preocupada", "压力", "焦虑", "难过", "不开心",
+        ]
+        if any(keyword in lowered for keyword in emotional_keywords):
             return LLMResult(
-                reply_text="我在这里陪着你。你可以慢慢说，我会先认真听你现在最在意的事情。",
+                reply_text=(
+                    "Estoy aquí contigo. Tómate tu tiempo; quiero escuchar "
+                    "lo que más te preocupa ahora."
+                    if spanish
+                    else "I'm here with you. Take your time; I'm listening to "
+                    "what matters most to you right now."
+                ),
                 response_source="mock",
                 reasoning_hint="detected-emotional-keywords",
             )
 
         if request.input_mode == "audio":
             return LLMResult(
-                reply_text="我已经收到你的语音输入了。当前先用 mock LLM 回复，下一阶段会接入真实 ASR 和更完整的情绪理解。",
+                reply_text=(
+                    "Te escucho. Tómate tu tiempo y cuéntame qué tienes en mente."
+                    if spanish
+                    else "I heard you. Take your time, and tell me what's on your mind."
+                ),
                 response_source="mock",
                 reasoning_hint="audio-placeholder",
             )
 
         if request.context_summary:
             return LLMResult(
-                reply_text=f"我记得你刚刚提到过：{request.context_summary}。这次我继续陪你往下聊。",
+                reply_text=(
+                    "Recuerdo lo que compartiste antes. Podemos seguir hablando "
+                    "cuando te sientas preparado."
+                    if spanish
+                    else "I remember what you shared earlier. I'm here to keep "
+                    "talking whenever you're ready."
+                ),
                 response_source="mock",
                 reasoning_hint="summary-conditioned-response",
             )
 
         return LLMResult(
-            reply_text="你好，我已经收到你的消息了。当前是 remote orchestrator 的 mock LLM 回复。",
+            reply_text=(
+                "Hola, estoy aquí para escucharte. ¿De qué te gustaría hablar?"
+                if spanish
+                else "Hello, I'm here and ready to listen. What would you like to talk about?"
+            ),
             response_source="mock",
             reasoning_hint="default-mock-response",
         )
@@ -158,14 +186,71 @@ class LLMClient:
         return FallbackLLMProvider(settings.llm_provider)
 
     async def generate_reply(self, request: LLMRequest) -> LLMResult:
+        target_language = self._resolve_response_language(request.user_text)
+        request.response_language = target_language
+        request.system_prompt = (
+            f"{request.system_prompt}\n\n"
+            f"Response language: Write the entire final reply in natural "
+            f"{target_language}. Do not mix languages."
+        )
         try:
-            return await self._provider.complete(request)
+            result = await self._provider.complete(request)
+            if not re.search(r"[\u3400-\u9fff]", result.reply_text):
+                return result
+
+            translated = await self._provider.complete(
+                LLMRequest(
+                    session_id=request.session_id,
+                    turn_id=request.turn_id,
+                    system_prompt=(
+                        "Translate the following assistant response into natural, "
+                        f"concise {target_language}. Preserve its meaning, empathy, "
+                        "and safety advice. Output only the translated response. "
+                        "Do not include Chinese characters or mix languages."
+                    ),
+                    user_text=result.reply_text,
+                    input_mode="text",
+                    context_messages=[],
+                    context_summary="",
+                    response_language=target_language,
+                )
+            )
+            if re.search(r"[\u3400-\u9fff]", translated.reply_text):
+                raise ValueError(
+                    f"LLM {target_language} rewrite still contains Chinese text"
+                )
+            translated.reasoning_hint = f"rewritten-in-{target_language.lower()}"
+            return translated
         except Exception:
-            # 真 LLM 调用失败时回退到 mock
             result = await self._fallback.complete(request)
             result.response_source = f"fallback:{self.provider_name}"
             result.reasoning_hint = "runtime-fallback-to-mock"
             return result
+
+    def _resolve_response_language(self, user_text: str) -> str:
+        configured = settings.response_language
+        if configured in {"es", "es-es", "spanish"}:
+            return "Spanish"
+        if configured in {"en", "en-us", "english"}:
+            return "English"
+
+        lowered = (user_text or "").lower()
+        words = re.findall(r"[a-záéíóúüñ]+", lowered)
+        strong_markers = {
+            "hola", "gracias", "adiós", "adios", "ayúdame", "ayudame",
+        }
+        common_markers = {
+            "me", "siento", "estoy", "tengo", "necesito", "quiero", "puedo",
+            "porque", "pero", "muy", "mis", "notas", "examen", "ansioso",
+            "ansiosa", "triste", "preocupado", "preocupada", "ayuda",
+        }
+        if any(word in strong_markers for word in words):
+            return "Spanish"
+        if re.search(r"[¿¡áéíóúüñ]", lowered):
+            return "Spanish"
+        if sum(word in common_markers for word in words) >= 2:
+            return "Spanish"
+        return "English"
 
 
 llm_client = LLMClient()

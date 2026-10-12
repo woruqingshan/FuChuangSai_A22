@@ -487,14 +487,17 @@ class SpeechRuntime:
             kwargs.pop("use_itn", None)
             return pipeline_instance.transcribe(audio_path, **kwargs)
 
-    def _resolve_qwen_language(self) -> str:
+    def _resolve_qwen_language(self) -> str | None:
         raw = (settings.asr_language or "auto").strip().lower()
         if raw in {"", "auto"}:
-            return "auto"
+            # Qwen3-ASR uses language=None for automatic language detection.
+            return None
         if raw in {"zh", "zh-cn", "zh_cn", "chinese"}:
             return "Chinese"
-        if raw in {"en", "english"}:
+        if raw in {"en", "en-us", "english"}:
             return "English"
+        if raw in {"es", "es-es", "spanish"}:
+            return "Spanish"
         return settings.asr_language
 
     def _extract_qwen_text(self, result) -> str:

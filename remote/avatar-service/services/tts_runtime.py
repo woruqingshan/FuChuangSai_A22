@@ -2,7 +2,10 @@ import base64
 import inspect
 import importlib
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import traceback
 import wave
 from io import BytesIO
@@ -45,15 +48,18 @@ class TTSRuntime:
             return None
 
         try:
-            model = self._ensure_model()
-            waveform, sample_rate = self._run_inference(
-                model,
-                normalized_text,
-                instruct_text=instruct_text,
-                speed=speed,
-                speaker_id=speaker_id,
-            )
-            audio_bytes = self._to_wav_bytes(waveform, sample_rate)
+            if self._should_use_edge_spanish(normalized_text):
+                audio_bytes = self._synthesize_edge_spanish(normalized_text)
+            else:
+                model = self._ensure_model()
+                waveform, sample_rate = self._run_inference(
+                    model,
+                    normalized_text,
+                    instruct_text=instruct_text,
+                    speed=speed,
+                    speaker_id=speaker_id,
+                )
+                audio_bytes = self._to_wav_bytes(waveform, sample_rate)
             avatar_storage.persist_audio(session_id=session_id, turn_id=turn_id, audio_bytes=audio_bytes)
             encoded = base64.b64encode(audio_bytes).decode("ascii")
             return f"data:audio/wav;base64,{encoded}"
@@ -72,6 +78,121 @@ class TTSRuntime:
                 },
             )
             return None
+
+    def _should_use_edge_spanish(self, text: str) -> bool:
+        if not settings.edge_spanish_tts_enabled:
+            return False
+
+        lowered = " " + re.sub(r"[^\wáéíóúü]+", " ", text.lower()).strip() + " "
+        if re.search(r"[áéíóúüñ¿¡]", lowered):
+            return True
+
+        strong_markers = (
+            " hola ",
+            " gracias ",
+            " estoy ",
+            " siento ",
+            " puedes ",
+            " puedo ",
+            " porque ",
+            " contigo ",
+            " escuchar",
+            " escucho ",
+            " preocupa",
+            " notas ",
+            " respira",
+            " recuerda",
+            " entiendo ",
+            " tienes ",
+            " pasa ",
+            " nada ",
+            " todo ",
+            " bien ",
+        )
+        if any(marker in lowered for marker in strong_markers):
+            return True
+
+        common_markers = (
+            " el ",
+            " la ",
+            " los ",
+            " las ",
+            " de ",
+            " del ",
+            " en ",
+            " una ",
+            " para ",
+            " que ",
+            " con ",
+            " pero ",
+            " muy ",
+        )
+        return sum(marker in lowered for marker in common_markers) >= 2
+
+    def _synthesize_edge_spanish(self, text: str) -> bytes:
+        edge_tts = shutil.which("edge-tts")
+        ffmpeg = shutil.which("ffmpeg")
+        if not edge_tts:
+            raise RuntimeError("Spanish TTS requires the edge-tts executable.")
+        if not ffmpeg:
+            raise RuntimeError("Spanish TTS requires ffmpeg.")
+
+        with tempfile.TemporaryDirectory(prefix="a22-edge-tts-") as temp_dir:
+            temp_root = Path(temp_dir)
+            mp3_path = temp_root / "speech.mp3"
+            wav_path = temp_root / "speech.wav"
+
+            edge_command = [
+                edge_tts,
+                "--voice",
+                settings.edge_spanish_tts_voice,
+                "--rate",
+                settings.edge_spanish_tts_rate,
+                "--text",
+                text,
+                "--write-media",
+                str(mp3_path),
+            ]
+            edge_result = subprocess.run(
+                edge_command,
+                capture_output=True,
+                text=True,
+                timeout=settings.edge_spanish_tts_timeout_seconds,
+                check=False,
+            )
+            if edge_result.returncode != 0 or not mp3_path.exists():
+                detail = (edge_result.stderr or edge_result.stdout).strip()
+                raise RuntimeError(f"Spanish Edge TTS failed: {detail}")
+
+            ffmpeg_result = subprocess.run(
+                [
+                    ffmpeg,
+                    "-y",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    str(mp3_path),
+                    "-ar",
+                    "24000",
+                    "-ac",
+                    "1",
+                    "-c:a",
+                    "pcm_s16le",
+                    str(wav_path),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=settings.edge_spanish_tts_timeout_seconds,
+                check=False,
+            )
+            if ffmpeg_result.returncode != 0 or not wav_path.exists():
+                detail = (ffmpeg_result.stderr or ffmpeg_result.stdout).strip()
+                raise RuntimeError(f"Spanish audio conversion failed: {detail}")
+
+            audio_bytes = wav_path.read_bytes()
+            if len(audio_bytes) <= 44:
+                raise RuntimeError("Spanish TTS returned an empty WAV file.")
+            return audio_bytes
 
     def _sanitize_tts_text(self, text: str) -> str:
         cleaned = (text or "").strip()
