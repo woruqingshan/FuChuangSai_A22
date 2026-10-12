@@ -75,6 +75,7 @@ class AvatarClient:
             "session_id": request.session_id,
             "turn_id": request.turn_id,
             "reply_text": reply_text,
+            "ui_language": request.ui_language,
             "emotion_style": emotion_style,
             "tts_instruct_text": tts_instruct_text,
             "tts_speed": tts_speed,

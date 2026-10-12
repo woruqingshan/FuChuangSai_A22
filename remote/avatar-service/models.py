@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 SHARED_PATH_CANDIDATES = [
@@ -28,6 +30,7 @@ class TurnTimeWindow(TurnTimeWindowSchema):
 
 
 class GenerateRequest(BaseModel):
+    ui_language: Literal["en", "es"] | None = None
     session_id: str = Field(..., min_length=1)
     turn_id: int = Field(..., ge=1)
     reply_text: str = Field(..., min_length=1)

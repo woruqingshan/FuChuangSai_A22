@@ -19,6 +19,7 @@ class LLMRequest:
         context_messages: list[ContextMessage],
         context_summary: str,
         response_language: str | None = None,
+        ui_language: str | None = None,
     ) -> None:
         self.session_id = session_id
         self.turn_id = turn_id
@@ -28,6 +29,7 @@ class LLMRequest:
         self.context_messages = context_messages
         self.context_summary = context_summary
         self.response_language = response_language
+        self.ui_language = ui_language
 
 
 class LLMResult:
@@ -127,7 +129,10 @@ class VllmProvider:
             )
 
         # 当前用户输入
-        messages.append({"role": "user", "content": request.user_text})
+        user_content = request.user_text
+        if request.response_language:
+            user_content += f"\n\nReply entirely in {request.response_language}."
+        messages.append({"role": "user", "content": user_content})
 
         payload = {
             "model": settings.llm_model,
@@ -187,8 +192,7 @@ class LLMClient:
 
     async def generate_reply(self, request: LLMRequest) -> LLMResult:
         target_language = self._resolve_response_language(
-            request.user_text,
-            request.context_messages,
+            request.ui_language,
         )
         request.response_language = target_language
         request.system_prompt = (
@@ -230,70 +234,16 @@ class LLMClient:
             result.reasoning_hint = "runtime-fallback-to-mock"
             return result
 
-    def _resolve_response_language(
-        self,
-        user_text: str,
-        context_messages: list[ContextMessage] | None = None,
-    ) -> str:
-        configured = settings.response_language
-        if configured in {"es", "es-es", "spanish"}:
+    def _resolve_response_language(self, ui_language: str | None = None) -> str:
+        # The current interface selection is authoritative for each turn.
+        if ui_language == "es":
             return "Spanish"
-        if configured in {"en", "en-us", "english"}:
+        if ui_language == "en":
             return "English"
-
-        current_language = self._detect_response_language(user_text)
-        if current_language:
-            return current_language
-
-        # Short voice turns often do not contain enough markers for reliable
-        # per-turn detection. In auto mode, keep the language already
-        # established in this browser session.
-        for message in reversed(context_messages or []):
-            context_language = self._detect_response_language(message.content)
-            if context_language:
-                return context_language
-
+        # Compatibility for clients predating the interface-language field.
+        if settings.response_language in {"es", "es-es", "spanish"}:
+            return "Spanish"
         return "English"
-
-    def _detect_response_language(self, text: str) -> str | None:
-        lowered = (text or "").lower()
-        words = re.findall(r"[a-záéíóúüñ]+", lowered)
-        if not words:
-            return None
-
-        spanish_strong_markers = {
-            "hola", "gracias", "adiós", "adios", "ayúdame", "ayudame",
-        }
-        spanish_common_markers = {
-            "me", "siento", "estoy", "tengo", "necesito", "quiero", "puedo",
-            "porque", "pero", "muy", "mis", "notas", "examen", "ansioso",
-            "ansiosa", "triste", "preocupado", "preocupada", "ayuda", "hoy",
-            "algo", "cansado", "cansada", "he", "dormido", "poco", "bien",
-            "mal", "quieres", "podemos", "hablar", "escuchar", "entiendo",
-        }
-        english_strong_markers = {
-            "hello", "thanks", "thank", "goodbye", "help",
-        }
-        english_common_markers = {
-            "i", "am", "feel", "felt", "today", "tired", "slept", "little",
-            "need", "want", "can", "because", "but", "very", "worried", "sad",
-            "anxious", "talk", "listen", "understand",
-        }
-
-        if any(word in spanish_strong_markers for word in words):
-            return "Spanish"
-        if any(word in english_strong_markers for word in words):
-            return "English"
-        if re.search(r"[¿¡áéíóúüñ]", lowered):
-            return "Spanish"
-
-        spanish_score = sum(word in spanish_common_markers for word in words)
-        english_score = sum(word in english_common_markers for word in words)
-        if spanish_score >= 2 and spanish_score > english_score:
-            return "Spanish"
-        if english_score >= 2 and english_score > spanish_score:
-            return "English"
-        return None
 
 
 llm_client = LLMClient()

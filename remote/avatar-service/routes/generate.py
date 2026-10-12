@@ -53,6 +53,7 @@ async def generate(request: GenerateRequest, background_tasks: BackgroundTasks) 
             session_id=request.session_id,
             turn_id=request.turn_id,
             text=request.reply_text,
+            ui_language=request.ui_language,
             instruct_text=request.tts_instruct_text,
             speed=request.tts_speed,
             speaker_id=request.tts_speaker_id,

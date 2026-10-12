@@ -40,6 +40,7 @@ class TTSRuntime:
         instruct_text: str | None = None,
         speed: float | None = None,
         speaker_id: str | None = None,
+        ui_language: str | None = None,
     ) -> str | None:
         normalized_text = self._sanitize_tts_text(text)
         if not normalized_text:
@@ -48,7 +49,7 @@ class TTSRuntime:
             return None
 
         try:
-            if self._should_use_edge_spanish(normalized_text):
+            if self._should_use_edge_spanish(normalized_text, ui_language=ui_language):
                 audio_bytes = self._synthesize_edge_spanish(normalized_text)
             else:
                 model = self._ensure_model()
@@ -79,9 +80,12 @@ class TTSRuntime:
             )
             return None
 
-    def _should_use_edge_spanish(self, text: str) -> bool:
+    def _should_use_edge_spanish(self, text: str, ui_language: str | None = None) -> bool:
         if not settings.edge_spanish_tts_enabled:
             return False
+
+        if ui_language is not None:
+            return ui_language == "es"
 
         lowered = " " + re.sub(r"[^\wáéíóúü]+", " ", text.lower()).strip() + " "
         if re.search(r"[áéíóúüñ¿¡]", lowered):

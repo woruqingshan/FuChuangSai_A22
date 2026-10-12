@@ -88,6 +88,7 @@ class DialogService:
                 input_mode=enriched_request.input_type,
                 context_messages=context_messages,
                 context_summary=memory_summary,
+                ui_language=request.ui_language,
             )
         )
         tts_plan = tts_style_mapper.build_plan(
