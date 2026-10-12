@@ -295,7 +295,7 @@ def _resolve_audio_meta(audio_path, *, fallback_ms: int) -> tuple[int, int | Non
             frame_count = wav_file.getnframes()
         if sample_rate <= 0:
             return fallback_ms, None
-        duration_ms = max(fallback_ms, math.ceil((frame_count / sample_rate) * 1000))
+        duration_ms = math.ceil((frame_count / sample_rate) * 1000)
         return duration_ms, sample_rate
     except Exception:
         return fallback_ms, None

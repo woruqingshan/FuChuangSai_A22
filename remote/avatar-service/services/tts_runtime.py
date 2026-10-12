@@ -143,7 +143,8 @@ class TTSRuntime:
             wav_path = temp_root / "speech.wav"
 
             edge_command = [
-                edge_tts,
+                sys.executable,
+                str(Path(__file__).with_name("edge_tts_cli.py")),
                 "--voice",
                 settings.edge_spanish_tts_voice,
                 "--rate",
@@ -379,6 +380,12 @@ class TTSRuntime:
         )
 
     def _invoke_zero_shot(self, model, text: str, *, speed: float | None = None):
+        method = getattr(model, "inference_zero_shot", None)
+        if not callable(method):
+            raise RuntimeError(
+                "TTS_MODE='cosyvoice3_zero_shot' requires model.inference_zero_shot, but it is unavailable."
+            )
+
         prompt_wav = settings.tts_prompt_wav_path
         if not prompt_wav:
             raise RuntimeError(
@@ -386,33 +393,8 @@ class TTSRuntime:
                 "or a repo asset/zero_shot_prompt.wav."
             )
 
-        cleaned_text = text.strip()
-        spanish_markers = re.compile(
-            r"[áéíóúüñ¿¡]|\b(?:hola|gracias|estoy|siento|puedes|puedo|porque|contigo|"
-            r"escuchar|preocupa|respira|entiendo|tienes|quieres|podemos|parece|hoy)\b",
-            re.IGNORECASE,
-        )
-        if spanish_markers.search(cleaned_text):
-            method = getattr(model, "inference_cross_lingual", None)
-            if not callable(method):
-                raise RuntimeError(
-                    "Spanish CosyVoice3 synthesis requires model.inference_cross_lingual, "
-                    "but it is unavailable."
-                )
-            return method(
-                tts_text=f"You are a helpful assistant.<|endofprompt|>{cleaned_text}",
-                prompt_wav=prompt_wav,
-                stream=False,
-                speed=self._resolve_speed(speed),
-            )
-
-        method = getattr(model, "inference_zero_shot", None)
-        if not callable(method):
-            raise RuntimeError(
-                "TTS_MODE='cosyvoice3_zero_shot' requires model.inference_zero_shot, but it is unavailable."
-            )
         return method(
-            tts_text=cleaned_text,
+            tts_text=self._normalize_cosyvoice3_text(text),
             prompt_text=self._normalize_cosyvoice3_prompt(settings.tts_prompt_text),
             prompt_wav=prompt_wav,
             stream=False,
