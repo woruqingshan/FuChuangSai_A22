@@ -359,6 +359,10 @@ function updateToggle() {
   toggleButton.setAttribute("title", spanishActive ? "Cambiar a inglés" : "Switch to Spanish");
 }
 
+export function getLanguage() {
+  return currentLanguage;
+}
+
 export function setLanguage(language) {
   currentLanguage = SUPPORTED_LANGUAGES.has(language) ? language : "en";
   saveLanguage(currentLanguage);

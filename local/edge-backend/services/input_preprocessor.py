@@ -51,6 +51,7 @@ def normalize_chat_request(
     turn_time_window = processed_video.turn_time_window or request.turn_time_window
 
     return RemoteChatRequest(
+        ui_language=request.ui_language,
         session_id=session_id,
         turn_id=turn_id,
         user_text=user_text,

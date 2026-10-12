@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 SHARED_PATH_CANDIDATES = [
@@ -61,6 +63,7 @@ class LongTermMemoryBundle(LongTermMemoryBundleSchema):
 
 
 class ChatRequest(BaseModel):
+    ui_language: Literal["en", "es"] | None = None
     session_id: str | None = Field(default=None)
     turn_id: int | None = Field(default=None, ge=1)
     user_text: str | None = Field(default=None)
@@ -86,6 +89,7 @@ class ChatRequest(BaseModel):
 
 
 class RemoteChatRequest(BaseModel):
+    ui_language: Literal["en", "es"] | None = None
     session_id: str = Field(..., min_length=1)
     turn_id: int = Field(..., ge=1)
     user_text: str = Field(default="")

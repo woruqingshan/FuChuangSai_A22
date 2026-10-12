@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -143,6 +145,7 @@ class LongTermMemoryBundleSchema(BaseModel):
 
 
 class ChatRequestSchema(BaseModel):
+    ui_language: Literal["en", "es"] | None = None
     session_id: str = Field(..., min_length=1)
     turn_id: int = Field(..., ge=1)
     user_text: str = Field(default="")

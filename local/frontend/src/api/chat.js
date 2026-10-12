@@ -1,3 +1,5 @@
+import { getLanguage } from "../i18n";
+
 function resolveChatEndpoint() {
   const directApiBase = import.meta.env.VITE_USE_DIRECT_API === "true"
     ? import.meta.env.VITE_API_BASE
@@ -32,7 +34,7 @@ export async function sendChatRequest(payload, options = {}) {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, ui_language: getLanguage() }),
   });
 
   const data = await response.json().catch(() => ({}));
